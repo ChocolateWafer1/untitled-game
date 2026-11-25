@@ -64,6 +64,7 @@ public sealed class Life
     public void Flame(Vector2 p) { Add(p + new Vector2(r.R(-5, 5), 0), new(r.R(-6, 6), -r.R(18, 46)), r.R(.3f, .6f), r.R(1.5f, 3.4f), r.P(.5f) ? new Color(255, 190, 80, 255) : new Color(255, 120, 50, 255), 5, -30, 1); if (r.P(.12f)) Add(p + new Vector2(r.R(-5, 5), -8), new(r.R(-14, 14), -r.R(30, 70)), r.R(.8f, 1.6f), 1, new Color(255, 200, 110, 255), 5, -10, .6f); }
     public void Drop(Vector2 p, Vector2 v, float life) => Add(p, v, life, r.R(1, 2), new Color(190, 226, 240, 220), 3, 260, 0);
     public void Foam(Vector2 p) => Add(p, new(r.R(-34, 34), -r.R(10, 60)), r.R(.4f, .9f), r.R(1, 2), new Color(236, 246, 250, 190), 3, 160, 1);
+    public int CrittersAhead(Vector2 p, int dir, float range) { int n = 0; foreach (var a in animals) if (a.K is Kind.Bunny or Kind.Squirrel && a.S != 2 && (a.P.X - p.X) * dir is > -20 and var q && q < range) n++; return n; }
     public void Scatter(float cx, float cy, int vw) { foreach (var a in animals) if (a.K == Kind.Bird && a.P.X > cx - 200 && a.P.X < cx + vw + 200 && a.S == 0) { a.S = 1; a.Dir = r.P(.5f) ? 1 : -1; a.V = new(a.Dir * r.R(60, 120), -r.R(90, 150)); } Snd.Play("flap", .7f); }
     public void Flock(float cx, float cy, int vw) { int n = 0; foreach (var a in animals) if (a.K == Kind.Bird && n++ < 26) { a.Home = a.P; a.P = new(cx - r.R(20, 260), cy + r.R(20, 110)); a.S = 1; a.Dir = 1; a.V = new(r.R(90, 130), r.R(-8, 6)); } }
     public void Petals(float cx, float cy, int vw, int kind) { for (int i = 0; i < 160; i++) Add(new(cx + r.R(-260, vw), cy - r.R(0, 160)), new(r.R(20, 60), r.R(10, 30)), 12, 2, (kind == 0 ? (r.P(.5f) ? (Col)0xf2bcc8 : 0xf8d8de) : r.P(.4f) ? (Col)0xd8743a : r.P(.5f) ? 0xe0a83e : 0xc4523a).Rl(), 1, 16, .4f); }
@@ -102,7 +103,7 @@ public sealed class Life
         var e = g.Env;
         foreach (var a in animals)
         {
-            if (a.P.X < cx - 420 || a.P.X > cx + vw + 420) { if (a.S != 0 && a.K is Kind.Bird) { a.S = 0; a.P = a.Home; a.V = default; } continue; }
+            if (a.P.X < cx - 420 || a.P.X > cx + vw + 420) { if (a.S != 0 && a.K is Kind.Bird) { a.S = 0; a.P = a.Home; a.V = default; } if (a.K is Kind.Bunny or Kind.Squirrel && MathF.Abs(a.P.X - a.Home.X) > 8 && (a.Home.X < cx - 60 || a.Home.X > cx + vw + 60)) { a.P = a.Home; a.S = 0; a.A = a.B = a.Seen = 0; } continue; }
             a.T += dt; float dx = a.P.X - pl.P.X, dy = a.P.Y - pl.P.Y, dist = MathF.Sqrt(dx * dx + dy * dy);
             switch (a.K)
             {
@@ -112,8 +113,17 @@ public sealed class Life
                     break;
                 case Kind.Butterfly: if (e.Night > .5f || e.Rain > .3f) break; a.V = M.Damp(a.V, new Vector2(M.Sin(a.T * .7f + a.Home.X) * 26 + e.Wind * 12, M.Sin(a.T * 1.9f) * 20), 3, dt) + (dist < 30 ? new Vector2(MathF.Sign(dx) * 60, -50) * dt : default); a.P += a.V * dt; a.P += (a.Home - a.P) * dt * .12f; float gy = GroundY(a.P.X) - 10; if (a.P.Y > gy) a.P.Y = gy; break;
                 case Kind.Bunny: case Kind.Squirrel:
-                    if (a.A > 0) { a.A -= dt; float sp = a.S == 1 ? 130 : 46; a.P.X += a.Dir * sp * dt; a.B = MathF.Abs(M.Sin(a.A * (a.S == 1 ? 13 : 9))) * (a.S == 1 ? 10 : 6); if (w.PoolAt(a.P.X + a.Dir * 20, GroundY(a.P.X + a.Dir * 20) - 4) != null) a.Dir *= -1; } else { a.B = 0; a.S = 0; if (r.P(dt * .45f)) { a.Dir = r.P(.5f) ? 1 : -1; a.A = r.R(.3f, 1); } }
-                    if (dist < 80 && a.S == 0) { a.S = 1; a.Dir = dx > 0 ? 1 : -1; a.A = r.R(.8f, 1.4f); Snd.At("hop", dx, dy, .4f); } a.P.Y = M.Damp(a.P.Y, GroundY(a.P.X), 16, dt); break;
+                    // S: 0 calm, 1 bolting, 2 hidden in the undergrowth
+                    if (a.S == 2) { a.Seen -= dt; bool homeSafe = MathF.Abs(a.Home.X - pl.P.X) > 300 && (a.Home.X < cx - 40 || a.Home.X > cx + vw + 40); if (a.Seen < 0 && homeSafe) { a.P = a.Home; a.S = 0; a.A = a.B = a.Seen = 0; } break; }
+                    if (a.A > 0)
+                    {
+                        a.A -= dt; float sp = a.S == 1 ? 205 : 46; a.P.X += a.Dir * sp * dt; a.B = MathF.Abs(M.Sin(a.A * (a.S == 1 ? 15 : 9))) * (a.S == 1 ? 11 : 6); if (w.PoolAt(a.P.X + a.Dir * 20, GroundY(a.P.X + a.Dir * 20) - 4) != null) { a.Dir *= -1; if (a.S == 1) a.A = 0; }
+                        // a short sprint, then a dive into the grass, so nobody is herded along in front of you
+                        if (a.S == 1 && a.A <= 0) { a.S = 2; a.Seen = r.R(8, 16); a.B = 0; Leaves(a.P + new Vector2(0, -6), 7, World.GrassCol(a.P.X / 24)); Snd.At("rustle", a.P.X - pl.P.X, 0, .5f, 1.1f); break; }
+                    }
+                    else { a.B = 0; a.S = 0; if (r.P(dt * .45f)) { a.Dir = MathF.Abs(a.P.X - a.Home.X) > 110 ? (a.P.X > a.Home.X ? -1 : 1) : r.P(.5f) ? 1 : -1; a.A = r.R(.3f, 1); } }
+                    if (dist < 84 && a.S == 0) { a.S = 1; a.Dir = dx > 0 ? 1 : -1; if (MathF.Abs(pl.V.X) > 90 && MathF.Abs(dx) < 46 && r.P(.4f)) a.Dir *= -1; a.A = r.R(.45f, .85f); Snd.At("hop", dx, dy, .4f); }
+                    a.P.Y = M.Damp(a.P.Y, GroundY(a.P.X), 16, dt); break;
                 case Kind.Duck: a.V.X = M.Damp(a.V.X, dist < 90 ? MathF.Sign(dx) * 46 : a.Dir * 11, 2, dt); if (r.P(dt * .12f)) a.Dir *= -1; a.P.X += a.V.X * dt; if (a.P.X < (a.Pool.X0 + 8) * 24) a.Dir = 1; if (a.P.X > (a.Pool.X1 - 20) * 24) a.Dir = -1; a.P.X = M.Clamp(a.P.X, (a.Pool.X0 + 6) * 24, (a.Pool.X1 - 12) * 24); a.P.Y = a.Pool.Surf + M.Sin(a.P.X * .045f + e.T * 1.5f) * .6f + M.Sin(a.T * 2) * .6f; if (a.V.X != 0) a.Dir = a.V.X > 0 ? 1 : -1; if (r.P(dt * .05f)) Snd.At("duck", dx, dy, .4f, .9f + r.F() * .2f); if (r.P(dt * .4f)) g.R.Ripple(a.P.X, .7f); break;
                 case Kind.Frog: if (a.A > 0) { a.A -= dt; a.P.X += a.Dir * 60 * dt; a.B = M.Sin(M.Clamp(a.A / .5f) * M.PI) * 16; if (a.A <= 0) a.B = 0; } else { if (dist < 60) { a.Dir = dx > 0 ? 1 : -1; a.A = .5f; Snd.At("hop", dx, dy, .5f, .8f); } else if (MathF.Abs(a.P.X - a.Home.X) > 70 && r.P(dt)) { a.Dir = a.P.X > a.Home.X ? -1 : 1; a.A = .5f; } } a.P.Y = GroundY(a.P.X); if (w.PoolAt(a.P.X, a.P.Y - 4) is Pool q) a.P.Y = q.Surf; if (r.P(dt * (.05f + e.Night * .12f + e.Rain * .12f))) Snd.At("frog", dx, dy, .5f, .9f + r.F() * .3f); break;
                 case Kind.Firefly: case Kind.Moth: a.V = M.Damp(a.V, new(M.Sin(a.T * .8f + a.Home.X) * 14, M.Sin(a.T * 1.3f + a.Home.Y) * 12), 2, dt); a.P += a.V * dt + (a.Home - a.P) * dt * .2f; break;
@@ -131,8 +141,8 @@ public sealed class Life
             {
                 case Kind.Bird: if (a.S == 0 && (e.Night > .75f || e.Rain > .6f)) continue; n = "bird" + (a.S == 0 ? 0 : 1 + (int)(a.T * 14) % 3) + a.Var; oy = a.S == 0 ? -6 + (a.B > 0 ? 1 : 0) : 0; break;
                 case Kind.Butterfly: if (e.Night > .5f || e.Rain > .3f) continue; n = "fly" + (int)(a.T * 9) % 2 + a.Var; break;
-                case Kind.Bunny: n = "bunny" + (a.B > 3 ? 1 : 0); oy = -9 - a.B; break;
-                case Kind.Squirrel: n = "squirrel" + (a.B > 3 ? 1 : 0); oy = -8 - a.B; break;
+                case Kind.Bunny: if (a.S == 2) continue; n = "bunny" + (a.B > 3 ? 1 : 0); oy = -9 - a.B; break;
+                case Kind.Squirrel: if (a.S == 2) continue; n = "squirrel" + (a.B > 3 ? 1 : 0); oy = -8 - a.B; break;
                 case Kind.Duck: n = "duck" + a.Var; oy = -3; break;
                 case Kind.Frog: n = "frog" + (a.A > 0 ? 1 : 0); oy = -6 - a.B; break;
                 case Kind.Gull: if (e.Night > .6f) continue; n = "gull" + ((int)(a.T * 5) % 4 is var q && q == 3 ? 1 : q); break;
