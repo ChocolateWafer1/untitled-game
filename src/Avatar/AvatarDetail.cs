@@ -87,61 +87,72 @@ public sealed partial class AvatarPainter
     }
 
     // ---------------------------------------------------------------- tattoos
-    Col TatInk => d.TatCol;
-    /// Draws one design. L maps (along, across) in design units to the canvas; k is the size of one unit.
-    public static void TattooArt(Painter p, int id, Func<float, float, Vector2> L, float k, Col ink, bool color)
+    /// Whole-arm tattoo patterns. w runs around the arm and v down it (both in body units, v = 0 at the shoulder);
+    /// L is the arm's length. Returns 0 for bare skin, 1 for ink and 2 for an accent part (coloured when TatColor is on).
+    public static int TatPattern(int id, float w, float v, float L)
     {
-        if (id <= 0) return; Vector2 V(float u, float v) => L(u, v); float w = MathF.Max(.3f, k * .14f); Col red = color ? 0xc8384a : ink, green = color ? 0x3f8a4a : ink, gold = color ? 0xe0a83a : ink, blue = color ? 0x3a72b8 : ink;
-        void Fill(Col c) { p.IntersectAlpha(); p.Flat(c); }
+        static float Fr(float x) => x - MathF.Floor(x);
+        static float H(int a, int b) { uint h = (uint)(a * 374761393 + b * 668265263); h = (h ^ (h >> 13)) * 1274126177; return (h & 0xffff) / 65535f; }
         switch (id)
         {
-            case 1: p.Line(V(-2.2f, 0), V(2.2f, 0), w, ink, true); p.Line(V(-1.2f, -1.1f), V(-1.2f, 1.1f), w, ink, true); p.Curve(V(1.4f, -1.8f), V(3.2f, 0), V(1.4f, 1.8f), w, ink, true); p.Begin().Ellipse(V(-2.7f, 0).X, V(-2.7f, 0).Y, k * .55f, k * .55f).CutEllipse(V(-2.7f, 0).X, V(-2.7f, 0).Y, k * .28f, k * .28f); Fill(ink); break;
-            case 2: { var a = V(-.6f, -.75f); var b = V(-.6f, .75f); p.Begin().Ellipse(a.X, a.Y, k * .95f, k * .95f).Ellipse(b.X, b.Y, k * .95f, k * .95f).Poly(V(-.5f, -1.65f), V(-.5f, 1.65f), V(1.9f, 0)); Fill(red); if (color) { p.Begin().Ellipse(a.X, a.Y, k * .95f, k * .95f).Ellipse(b.X, b.Y, k * .95f, k * .95f).Poly(V(-.5f, -1.65f), V(-.5f, 1.65f), V(1.9f, 0)); p.Stroke([V(-1.5f, -.75f), V(-.6f, -1.7f), V(0, 0), V(-.6f, 1.7f), V(-1.5f, .75f)], w * .7f, ink, 1, true); } break; }
-            case 3: { var c = V(-.4f, 0); p.Begin().Ellipse(c.X, c.Y, k * 1.25f, k * 1.25f); Fill(red); for (int i = 0; i < 3; i++) { float rr = (1 - i * .3f) * 1.1f; p.Curve(V(-.4f - rr, 0), V(-.4f, -rr * 1.2f), V(-.4f + rr, 0), w * .7f, ink, true); } p.Line(V(.8f, 0), V(2.6f, .2f), w, green, true); p.Begin().Ellipse(V(1.7f, .7f).X, V(1.7f, .7f).Y, k * .5f, k * .32f); Fill(green); break; }
-            case 4: { var q = new Vector2[10]; for (int i = 0; i < 10; i++) { float a = i * M.PI / 5, R = (i & 1) == 0 ? 2.1f : .9f; q[i] = V(-M.Cos(a) * R, M.Sin(a) * R); } p.Begin().Poly(q); Fill(color ? gold : ink); break; }
-            case 5: p.Begin().Blob(V(-1.6f, -2.2f), V(-.2f, -.8f), V(.2f, 0), V(-.4f, 1.1f), V(1.2f, 1.6f), V(.9f, .3f), V(1.6f, -.4f), V(.4f, -.6f)); Fill(blue); p.Begin().Ellipse(V(.8f, .9f).X, V(.8f, .9f).Y, k * .35f, k * .35f); Fill(red); break;
-            case 6: p.Begin().Poly(V(-2.6f, 0), V(.6f, -.5f), V(.6f, .5f)); Fill(color ? 0xb8c0c8 : ink); p.Line(V(.7f, -1.2f), V(.7f, 1.2f), w * 1.4f, gold, true); p.Line(V(.8f, 0), V(2.3f, 0), w * 1.6f, ink, true); p.Begin().Ellipse(V(2.5f, 0).X, V(2.5f, 0).Y, k * .4f, k * .4f); Fill(red); break;
-            case 7: { var q = new Vector2[12]; for (int i = 0; i < 12; i++) { float t = i / 11f; q[i] = V(-2.8f + t * 5.4f, M.Sin(t * 9) * 1.1f); } p.Stroke(q, w * 2.2f, green, 1, true); p.Begin().Ellipse(V(2.8f, M.Sin(9) * 1.1f).X, V(2.8f, M.Sin(9) * 1.1f).Y, k * .6f, k * .45f); Fill(green); break; }
-            case 8: { var c = V(0, 0); var o = V(-.5f, .55f); p.Begin().Ellipse(c.X, c.Y, k * 1.7f, k * 1.7f).CutEllipse(o.X, o.Y, k * 1.45f, k * 1.45f); Fill(color ? gold : ink); break; }
-            case 9: for (int i = 0; i < 3; i++) p.Curve(V(-1.8f + i * 1.3f, -1.6f), V(-2.6f + i * 1.3f, 0), V(-1.8f + i * 1.3f, 1.4f), w, blue, true); p.Curve(V(1.6f, -1.8f), V(2.6f, 0), V(1.6f, 1.8f), w, blue, true); break;
-            case 10: for (int i = 0; i < 3; i++) { var q = new Vector2[10]; for (int j = 0; j < 10; j++) q[j] = V(-1.2f + i * 1.2f + M.Sin(j * 2.1f + i) * .25f, -2.2f + j * .5f); p.Stroke(q, w * .8f, ink, 1, true); } break;
-            case 14: p.Line(V(-2.4f, 0), V(2.4f, 0), w * 1.4f, ink, true); p.Line(V(-1, -1.3f), V(-1, 1.3f), w * 1.4f, ink, true); break;
-            case 15: { p.Begin().Ellipse(V(.8f, 0).X, V(.8f, 0).Y, k * 1, k * .85f); Fill(ink); foreach (var (u, v) in new[] { (-.9f, -1.1f), (-1.4f, -.35f), (-1.4f, .35f), (-.9f, 1.1f) }) { p.Begin().Ellipse(V(u, v).X, V(u, v).Y, k * .38f, k * .38f); Fill(ink); } break; }
-            case 16: foreach (var (u, v, rr) in new[] { (-.8f, -1.2f, 1.1f), (-.8f, 1.2f, 1.1f), (.8f, -.9f, .8f), (.8f, .9f, .8f) }) { p.Begin().Ellipse(V(u, v).X, V(u, v).Y, k * rr, k * rr * .85f); Fill(v < 0 ? blue : (color ? 0x8a5ac8 : ink)); } p.Line(V(-1.6f, 0), V(1.6f, 0), w * 1.2f, ink, true); break;
-            case 17: p.Stroke([V(-2.6f, .6f), V(-.4f, -.6f), V(-.2f, .5f), V(2.6f, -.6f)], w * 1.6f, gold, 1, true); break;
-            case 18: for (int i = 0; i < 3; i++) { p.Begin().Ellipse(V(-1.2f + i * 1.2f, 0).X, V(-1.2f + i * 1.2f, 0).Y, k * .38f, k * .38f); Fill(ink); } break;
-            case 19: { var c = V(0, 0); p.Begin().Ellipse(c.X, c.Y, k * 1.1f, k * 1.1f); Fill(gold); for (int i = 0; i < 8; i++) { float a = i * M.TAU / 8; p.Line(V(M.Cos(a) * 1.5f, M.Sin(a) * 1.5f), V(M.Cos(a) * 2.3f, M.Sin(a) * 2.3f), w, gold, true); } break; }
-            case 20: p.Line(V(-2.6f, .3f), V(2.6f, -.3f), w, ink, true); for (int i = 0; i < 7; i++) { float u = -1.8f + i * .6f, s = (i & 1) == 0 ? 1 : -1; p.Line(V(u, -u * .1f), V(u - .9f, -u * .1f + s * 1.1f), w * .7f, color ? (i < 3 ? blue : (Col)0x2f8a8a) : ink, true); } break;
-            default: break;
+            case 1: { // tribal: bold blades that sweep across the arm, each one hooking the other way
+                for (int o = 0; o < 2; o++) { float vv = v + o * 4.5f; int i = (int)MathF.Floor(vv / 9); float x = Fr(vv / 9), sd = ((i + o) & 1) == 0 ? 1 : -1; float cw = sd * 2.6f * MathF.Cos(x * M.PI), wd = 1.25f * MathF.Pow(MathF.Sin(x * M.PI), .75f) + (x > .5f ? 0 : .15f); if (MathF.Abs(w - cw) < wd && Fr(vv / 9 + .5f) > .04f) return 1; }
+                return 0; }
+            case 2: return Fr(v / 8) < .32f ? 1 : 0; // bands
+            case 3: return Fr(v / 3.2f) < .3f ? 1 : 0; // fine rings
+            case 4: return Fr((v + MathF.Abs(w) * 1.1f) / 5.5f) < .34f ? 1 : 0; // chevrons
+            case 5: return Fr((v + w) / 5) < .2f || Fr((v - w) / 5) < .2f ? 1 : 0; // diamonds
+            case 6: return Fr((v + MathF.Sin(w * 1.1f) * 1.6f) / 5) < .32f ? 2 : 0; // waves
+            case 7: return Fr((v + w * 2.4f) / 6) < .34f ? 1 : 0; // spiral
+            case 8: { int row = (int)MathF.Floor(v / 2.8f); float off = (row & 1) * 1.4f, cx = MathF.Round((w - off) / 2.8f) * 2.8f + off, cy = (row + .5f) * 2.8f; float dx = w - cx, dy = v - cy; return dx * dx + dy * dy < .72f ? 1 : 0; } // dotwork
+            case 9: { // scales
+                int row = (int)MathF.Floor(v / 2.6f); for (int rr = row; rr >= row - 1; rr--) { float off = (rr & 1) * 1.8f, cx = MathF.Round((w - off) / 3.6f) * 3.6f + off, cy = rr * 2.6f; float dd = MathF.Sqrt((w - cx) * (w - cx) + (v - cy) * (v - cy)); if (v > cy && MathF.Abs(dd - 1.75f) < .38f) return 2; } return 0; }
+            case 10: { // vines: a winding stem with leaves on alternating sides
+                float ws = MathF.Sin(v * .22f) * 2.2f; if (MathF.Abs(w - ws) < .42f) return 1;
+                int i = (int)MathF.Round(v / 3.6f); float lv = i * 3.6f, s = (i & 1) == 0 ? 1 : -1, lw = MathF.Sin(lv * .22f) * 2.2f + s * 1.25f; float du = (w - lw) / 1.15f, dv = (v - lv - s * (w - lw) * .5f) / .6f; return du * du + dv * dv < 1 ? 2 : 0; }
+            case 11: { // flowers
+                int row = (int)MathF.Floor(v / 5.6f); float off = (row & 1) * 3, cx = MathF.Round((w - off) / 6) * 6 + off, cy = (row + .5f) * 5.6f; float dx = w - cx, dy = v - cy, rr = MathF.Sqrt(dx * dx + dy * dy), a = MathF.Atan2(dy, dx);
+                if (rr < .55f) return 1; return rr < 2f * (.45f + .55f * MathF.Abs(MathF.Cos(a * 2.5f))) ? 2 : 0; }
+            case 12: { // stars scattered over the arm
+                for (int gy = (int)MathF.Floor(v / 5) - 1; gy <= (int)MathF.Floor(v / 5) + 1; gy++) for (int gx = (int)MathF.Floor(w / 5) - 1; gx <= (int)MathF.Floor(w / 5) + 1; gx++)
+                { float cx = (gx + .2f + H(gx, gy) * .6f) * 5, cy = (gy + .2f + H(gy, gx + 7) * .6f) * 5, sz = .9f + H(gx + 3, gy) * .9f; float dx = w - cx, dy = v - cy, rr = MathF.Sqrt(dx * dx + dy * dy), a = MathF.Atan2(dy, dx) + H(gx, gy + 5); if (rr < sz * (.42f + .58f * MathF.Pow(MathF.Abs(MathF.Cos(a * 2.5f)), 3))) return 2; }
+                return 0; }
+            case 13: return (((int)MathF.Floor(v / 2.6f) + (int)MathF.Floor(w / 2.6f)) & 1) == 0 ? 1 : 0; // checkered
+            case 14: { float x = Fr(w / 3.2f) * 2 - 1; return Fr(v / 5.5f) < .62f * (1 - MathF.Abs(x)) ? 1 : 0; } // triangles
+            case 15: { float zig = MathF.Abs(Fr(v / 4) * 2 - 1) * 2.6f; return Fr((w + zig) / 4.6f) < .3f ? 1 : 0; } // zigzag
+            case 16: { // mandalas on the upper arm and the forearm, joined by rings
+                foreach (float c in new[] { L * .27f, L * .72f }) { float dy = v - c, rr = MathF.Sqrt(w * w + dy * dy); if (rr < 4.4f) { float a = MathF.Atan2(dy, w); if (rr < .8f) return 2; if (rr > 1.5f && rr < 2.2f && MathF.Cos(a * 8) > -.2f) return 2; if (MathF.Abs(rr - 3.3f) < .32f) return 1; if (rr > 3.6f && MathF.Cos(a * 14) > .55f) return 1; return 0; } }
+                return Fr(v / 2.2f) < .22f ? 1 : 0; }
+            case 17: { float t = v / L; if (t < .5f) return Fr(v / 9) < .12f ? 1 : 0; return Fr((v - L * .5f) / 7.5f) < .1f ? 0 : 1; } // blackout forearm
+            default: return 0;
         }
     }
-    /// Tattoos on the skin of an arm or the back of a hand. Sleeves are drawn afterwards and cover them.
-    void ArmTattoos(int sd, Vector2 a, Vector2 b, Vector2 c, Vector2 hand, Vector2 dir, Vector2 n, float hr)
+    public static Col TatAccent(int id) => id switch { 6 => 0x3a72b8, 9 => 0x2f8a8a, 10 => 0x3f8a4a, 11 => 0xc8384a, 12 => 0xe0a83a, 16 => 0xc8384a, _ => 0xc8384a };
+    public const int TW = 128, TH = 32; const float T0 = .02f, T1 = .96f;
+    public static float ArmRadOf(Rig r, float t) => t < .5f ? M.Lerp(r.ArmR, r.ForeR, t * 2) : M.Lerp(r.ForeR, r.WristR, (t - .5f) * 2);
+    /// Where a canvas column sits along the arm (0 shoulder .. 1 wrist).
+    public static float ArmT(float ix) => T0 + (ix + .5f) / TW * (T1 - T0);
+    /// Paints a pattern onto a fresh arm canvas in the character's chosen ink.
+    public static byte[] Raster(int id, AvatarData d)
     {
-        if (show == Show.Mannequin || d.Tattoos == null) return; Col ink = TatInk;
-        for (int up = 0; up < 2; up++)
+        if (id <= 0) return null; var r = new Rig(d); float L = r.UArm + r.LArm; var pal = d.TatPal ?? Catalog.TatInks;
+        int ink = Array.IndexOf(pal, d.TatCol) + 1; if (ink <= 0) ink = 2; int acc = d.TatColor ? Array.IndexOf(pal, TatAccent(id).Hex) + 1 : ink; if (acc <= 0) acc = ink;
+        var a = new byte[TW * TH];
+        for (int ix = 0; ix < TW; ix++) { float t = ArmT(ix), rad = ArmRadOf(r, t); for (int iy = 0; iy < TH; iy++) { float sa = (iy + .5f) / TH * 2 - 1; int k = TatPattern(id, sa * M.PI / 2 * rad, t * L, L); if (k > 0) a[iy * TW + ix] = (byte)(k == 2 ? acc : ink); } }
+        return a;
+    }
+    /// The arm's skin with its tattoo painted into it, so the ink takes the same light and shadow. Sleeves cover it.
+    Ink ArmInk(Ink sk, int sd, Vector2 a, Vector2 b, Vector2 c)
+    {
+        var art = show == Show.Mannequin || d.Art == null || d.Art.Length < 2 ? null : d.Art[sd < 0 ? 0 : 1]; if (art == null || art.Length != TW * TH) return sk;
+        var uv = LimbUv(a, b, c); float L = r.UArm + r.LArm; var baseFn = sk.Fn; Col sc = sk.C; var pal = d.TatPal ?? Catalog.TatInks;
+        sk.Fn = (x, y) =>
         {
-            int id = d.Tattoos[(sd < 0 ? 0 : 1) + up * 2]; if (id == 0) continue; float t = up == 1 ? .26f : .74f;
-            if (id is 11 or 12)
-            {
-                float t0 = id == 11 ? t - .05f : (up == 1 ? .04f : .56f), t1 = id == 11 ? t + .05f : (up == 1 ? .48f : .97f); p.Begin(); Limb3(a, b, c, t0, t1, 0); p.IntersectAlpha();
-                if (id == 11) { var (q0, d0) = LimbAt(a, b, c, t0 + .015f); var (q1, d1) = LimbAt(a, b, c, t1 - .015f); var n0 = new Vector2(-d0.Y, d0.X) * 8; var n1 = new Vector2(-d1.Y, d1.X) * 8; p.Line(q0 - n0, q0 + n0, .9f, ink); p.Line(q1 - n1, q1 + n1, .9f, ink); var qm = LimbAt(a, b, c, t).pos; var dm = LimbAt(a, b, c, t).dir; var nm = new Vector2(-dm.Y, dm.X); for (int i = -2; i <= 2; i++) p.Begin().Poly(qm + nm * i * 1.6f - dm * 1.1f, qm + nm * (i * 1.6f + .8f) + dm * 1.1f, qm + nm * (i * 1.6f - .8f) + dm * 1.1f).IntersectAlpha().Flat(ink); continue; }
-                // a full sleeve: swirls and petals packed along the arm
-                for (int i = 0; i < 9; i++) { float tt = M.Lerp(t0, t1, (i + .5f) / 9); var (q, dd) = LimbAt(a, b, c, tt); var nn = new Vector2(-dd.Y, dd.X); float s = (i & 1) == 0 ? 1 : -1; p.Begin(); Limb3(a, b, c, t0, t1, 0); p.Curve(q - nn * 3 * s, q + dd * 2.4f, q + nn * 3 * s, .55f, i % 3 == 0 && d.TatColor ? 0xc8384a : ink, true); p.Curve(q + nn * 1.2f * s, q - dd * 1.4f, q - nn * 1.4f * s, .45f, d.TatColor && i % 3 == 1 ? 0x3a72b8 : ink, true); }
-                continue;
-            }
-            var (pos, dr) = LimbAt(a, b, c, t); var nr = new Vector2(-dr.Y, dr.X) * sd; float k = MathF.Max(.5f, ArmRad(t) * .42f); p.Begin(); Limb3(a, b, c, t - .16f, t + .16f, 0); var mask = p.CopyMask();
-            TattooArt(p, id, (u, v) => pos + dr * u * k + nr * v * k * .82f, k, ink, d.TatColor);
-        }
-        int hd2 = d.Tattoos[6]; if (hd2 > 0) { float k = hr * .32f; if (hd2 == 18) { for (int i = 0; i < 3; i++) { var q = hand + dir * hr * 1.3f + n * hr * (.4f - i * .4f); if (fine) { p.Begin().Ellipse(q.X, q.Y, .3f, .3f); p.IntersectAlpha(); p.Flat(ink); } } } else { p.Begin().Ellipse(hand.X + dir.X * hr * .8f, hand.Y + dir.Y * hr * .8f, hr * .7f, hr * .7f); var ctr = hand + dir * hr * .85f; TattooArt(p, hd2, (u, v) => ctr + dir * u * k + n * v * k, k, ink, d.TatColor); } }
-    }
-    void NeckTattoo()
-    {
-        int id = d.Tattoos?[4] ?? 0; if (id == 0 || show == Show.Mannequin) return; var c = Tp(r.Neck * .38f, r.Torso + r.NeckLen * .45f); float k = r.Neck * .24f; p.Begin().Ellipse(c.X, c.Y, r.Neck * 1.2f, r.NeckLen * 2); TattooArt(p, id, (u, v) => c + new Vector2(v * k, u * k), k, TatInk, d.TatColor);
-    }
-    void FaceTattoo(Func<float, float, Vector2> F2)
-    {
-        int id = d.Tattoos?[5] ?? 0; if (id == 0 || show == Show.Mannequin) return; var c = F2(-EyeX - .02f, EyeY + .30f); float k = fine ? .34f : .5f; if (!fine) { Pix((int)MathF.Floor(OX(c.X)), (int)MathF.Floor(OY(c.Y)), TatInk); return; }
-        p.Begin().Ellipse(c.X, c.Y, 3, 3); if (id == 2 || id == 4 || id == 14 || id == 18 || id == 8) TattooArt(p, id, (u, v) => c + new Vector2(v * k, u * k), k, TatInk, d.TatColor); else { p.Begin().Blob(c + new Vector2(0, -.9f), c + new Vector2(.6f, .3f), c + new Vector2(0, 1.1f), c + new Vector2(-.6f, .3f)); p.IntersectAlpha(); p.Flat(TatInk); } // anything else becomes a small teardrop
+            var b0 = baseFn != null ? baseFn(x, y) : sc; var (u, v) = uv(x, y); float t = v / L; if (t < T0 || t >= T1) return b0;
+            int ix = Math.Clamp((int)((t - T0) / (T1 - T0) * TW), 0, TW - 1); float rad = ArmRad(t); float sa = MathF.Asin(M.Clamp(u / rad, -1, 1)) / (M.PI / 2) * sd;
+            int iy = Math.Clamp((int)((sa + 1) * .5f * TH), 0, TH - 1); int k = art[iy * TW + ix];
+            return k == 0 || k > pal.Length ? b0 : Col.Lerp(b0, pal[k - 1], .88f);
+        };
+        return sk;
     }
 }

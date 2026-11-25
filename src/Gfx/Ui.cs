@@ -221,5 +221,21 @@ static class Icons
         I("sleep", p => { void Z(float x, float y, float s) { p.Line(V(x, y), V(x + s, y), 1.2f, 0x9ec3cf, false); p.Line(V(x + s, y), V(x, y + s), 1.2f, 0x9ec3cf, false); p.Line(V(x, y + s), V(x + s, y + s), 1.2f, 0x9ec3cf, false); } Z(2, 8, 5); Z(9, 2.4f, 4); });
         I("bow", p => { p.Begin().Ellipse(11, 6, 2.2f, 2.2f); p.Shade(K(0xe8b48e)); p.Begin().Capsule(V(9, 8), 1.8f, V(5, 9), 1.8f); p.Shade(K(0x5f8aa8)); p.Begin().Capsule(V(5, 10), 1.4f, V(5, 14), 1.2f); p.Shade(K(0x4a6285)); });
         I("shrug", p => { p.Begin().Ellipse(8, 4.6f, 2.2f, 2.2f); p.Shade(K(0xe8b48e)); p.Begin().Capsule(V(8, 9), 2.2f, V(8, 12), 2); p.Shade(K(0xb8473f)); p.Line(V(5, 8), V(2.4f, 10), 1.6f, 0xe8b48e, false); p.Line(V(2.4f, 10), V(1.6f, 7), 1.4f, 0xe8b48e, false); p.Line(V(11, 8), V(13.6f, 10), 1.6f, 0xe8b48e, false); p.Line(V(13.6f, 10), V(14.4f, 7), 1.4f, 0xe8b48e, false); });
+        // tattoo studio tools
+        I("tBrush", p => { p.Begin().Capsule(V(13, 2.5f), 1.5f, V(8.2f, 7.6f), 1.3f); p.Shade(K(0xa8693c, 1)); p.Begin().Capsule(V(8.6f, 7.2f), 1.7f, V(6.6f, 9.2f), 1.7f); p.Shade(K(0xc9ccd2, 1)); p.Begin().Poly(V(5.4f, 8.2f), V(7.6f, 10.4f), V(2.2f, 14.2f)); p.Flat(0x2a2c38); });
+        I("tEraser", p => { p.Begin().Poly(V(2.5f, 10), V(8.5f, 4), V(13.5f, 9), V(7.5f, 15)); p.Shade(K(0xe88a9a, 1)); p.Begin().Poly(V(5.8f, 6.7f), V(8.5f, 4), V(13.5f, 9), V(10.8f, 11.7f)); p.Shade(K(0x6f9ac0, 1)); });
+        I("tFill", p => { p.Begin().Poly(V(2.5f, 7), V(9.5f, 3.2f), V(13, 9.6f), V(6, 13.4f)); p.Shade(K(0xc9ccd2, 1)); p.Begin().Poly(V(2.5f, 7), V(9.5f, 3.2f), V(10.4f, 4.9f), V(3.4f, 8.7f)); p.Flat(0x2a2c38); p.Begin().Ellipse(13.4f, 13, 1.9f, 1.9f).Poly(V(11.8f, 12.2f), V(13.4f, 8.6f), V(15, 12.2f)); p.Flat(0x3a72b8); });
+        I("tLine", p => { p.Line(V(3.5f, 12.5f), V(12.5f, 3.5f), 1.7f, 0xf6eee0, false); p.Begin().Ellipse(3.2f, 12.8f, 1.8f, 1.8f).Ellipse(12.8f, 3.2f, 1.8f, 1.8f); p.Flat(0xf0b64e); });
+        I("tBox", p => { p.Begin().Rect(2.5f, 3.5f, 11, 9).Rect(4.3f, 5.3f, 7.4f, 5.4f, 0); p.Flat(0xf6eee0); });
+        I("tCircle", p => { p.Begin().Ellipse(8, 8, 5.8f, 5.8f).CutEllipse(8, 8, 4, 4); p.Flat(0xf6eee0); });
+        I("tKnife", p => { p.Begin().Poly(V(1.8f, 14.4f), V(9.6f, 5.6f), V(11.6f, 7.6f)); p.Shade(K(0xdfe3e8, 1)); p.Begin().Capsule(V(10.6f, 5.4f), 1.6f, V(13.8f, 2.2f), 1.6f); p.Shade(K(0xa8693c, 1)); });
+        I("tSelect", p => { p.Begin(); for (int i = 0; i < 4; i++) { float o = 2.5f + i * 3; p.Rect(o, 2.5f, 1.8f, 1.5f).Rect(o, 12, 1.8f, 1.5f).Rect(2.5f, o, 1.5f, 1.8f).Rect(12, o, 1.5f, 1.8f); } p.Flat(0xf6eee0); });
+        I("tPicker", p => { p.Begin().Capsule(V(3, 13), .8f, V(9.6f, 6.4f), 1.4f); p.Shade(K(0xc9d6e0, 1)); p.Begin().Ellipse(11.8f, 4.2f, 2.6f, 2.6f); p.Shade(K(0xc8384a, 1)); });
+        I("tHand", p => { p.Begin().Ellipse(8.4f, 10.6f, 4.2f, 3.8f).Capsule(V(5.2f, 9), 1.1f, V(5.2f, 4), 1.1f).Capsule(V(7.6f, 8), 1.1f, V(7.6f, 2.4f), 1.1f).Capsule(V(10, 8), 1.1f, V(10, 3), 1.1f).Capsule(V(12.2f, 9), 1, V(12.3f, 5), 1).Capsule(V(5, 12), 1.1f, V(2.2f, 8.6f), 1.1f); p.Shade(K(0xf0c4a0, 1.5f)); });
+        I("tMirA", p => { p.Begin().Poly(V(1.5f, 8), V(6.5f, 4), V(6.5f, 12)).Poly(V(14.5f, 8), V(9.5f, 4), V(9.5f, 12)); p.Flat(0xf6eee0); p.Line(V(8, 2), V(8, 14), 1, 0xf0b64e, false); });
+        I("tMirC", p => { p.Begin().Poly(V(8, 1.5f), V(4, 6.5f), V(12, 6.5f)).Poly(V(8, 14.5f), V(4, 9.5f), V(12, 9.5f)); p.Flat(0xf6eee0); p.Line(V(2, 8), V(14, 8), 1, 0xf0b64e, false); });
+        I("tRepeat", p => { p.Begin().Rect(1.5f, 5.5f, 3.6f, 5).Rect(6.2f, 5.5f, 3.6f, 5).Rect(10.9f, 5.5f, 3.6f, 5); p.Flat(0xf6eee0); });
+        I("zin", p => { p.Begin().Ellipse(6.8f, 6.8f, 5, 5).CutEllipse(6.8f, 6.8f, 3.4f, 3.4f).Capsule(V(10.4f, 10.4f), 1.4f, V(13.8f, 13.8f), 1.4f); p.Flat(0xf6eee0); p.Line(V(4.8f, 6.8f), V(8.8f, 6.8f), 1.2f, 0xf0b64e, false); p.Line(V(6.8f, 4.8f), V(6.8f, 8.8f), 1.2f, 0xf0b64e, false); });
+        I("zout", p => { p.Begin().Ellipse(6.8f, 6.8f, 5, 5).CutEllipse(6.8f, 6.8f, 3.4f, 3.4f).Capsule(V(10.4f, 10.4f), 1.4f, V(13.8f, 13.8f), 1.4f); p.Flat(0xf6eee0); p.Line(V(4.8f, 6.8f), V(8.8f, 6.8f), 1.2f, 0xf0b64e, false); });
     }
 }

@@ -66,7 +66,7 @@ public sealed partial class AvatarPainter
     float cosL, sinL, at;
     int near; // which side (-1 left, +1 right) is drawn last
     Col skin, ink;
-    public Vector2 HandL => haL; public Vector2 HandR => haR; public Vector2 HeadC => HC; public Rig Rig => r;
+    public Vector2 HandL => haL; public Vector2 HandR => haR; public Vector2 HeadC => HC; public Rig Rig => r; public (Vector2 sh, Vector2 el, Vector2 ha) ArmJoints(int sd) => sd < 0 ? (shL, elL, haL) : (shR, elR, haR);
     static readonly AvatarData mannequin = new() { Skin = 0xd9c7ad, Hair = new HairData { Id = Catalog.BaldHair } };
 
     Vector2 Tp(float x, float up)
@@ -293,7 +293,7 @@ public sealed partial class AvatarPainter
         var pc = d[Slot.Gloves]; int g = Vis(Slot.Gloves) ? pc.Id : 0; bool glove = g is 1 or 2 or 3 or 7;
         var hk = glove ? new Ink((Col)pc.A, 2, .5f) { Ao = .6f } : sk;
         float hr = r.HandR * (g == 2 ? 1.2f : 1);
-        p.Begin().Limb2(this, a, b, c); p.Shade(sk with { Merge = ShoulderMerge(sd, a, r.ArmR * 1.1f) });
+        p.Begin().Limb2(this, a, b, c); p.Shade(ArmInk(sk, sd, a, b, c) with { Merge = ShoulderMerge(sd, a, r.ArmR * 1.1f) });
         if (open && g != 2)
         {
             // open palm: four spread fingers and a thumb that all turn with the wrist
@@ -312,7 +312,7 @@ public sealed partial class AvatarPainter
         if (g == 3) { p.Begin().Ellipse(c.X + dir.X * hr * .1f, c.Y + dir.Y * hr * .1f, hr, hr * .9f); p.Shade(new Ink((Col)pc.A, 2, .5f) { Ao = 0 }); }
         if (g is 1 or 2 or 3) { p.Begin(); Limb3(a, b, c, .87f, 1f, .5f); p.Shade(new Ink((Col)pc.B, 1.5f, .5f) { Ao = 0 }); }
         if (g == 7) { p.Begin(); Limb3(a, b, c, .56f, 1f, .45f); p.Shade(new Ink((Col)pc.A, 2, .5f) { Ao = .5f }); }
-        ArmTattoos(sd, a, b, c, c, dir, n, hr); if (!glove) Nails(c, dir, n, hr, open && g != 2);
+        if (!glove) Nails(c, dir, n, hr, open && g != 2);
         // watches, bracelets and arm warmers sit on the skin, so a sleeve covers them rather than them floating on top of it
         if (g == 4 && sd > 0) { p.Begin(); Limb3(a, b, c, .86f, .94f, .7f); p.Shade(new Ink((Col)pc.B, 1, .4f) { Ao = 0 }); var w = LimbAt(a, b, c, .9f).pos; p.Begin().Ellipse(w.X, w.Y, 1.5f, 1.5f); p.Shade(new Ink((Col)pc.C, 1, .5f)); }
         if (g == 5) for (int i = 0; i < 3; i++) { p.Begin(); Limb3(a, b, c, .78f + i * .06f, .81f + i * .06f, .6f); p.Shade(new Ink((Col)(i == 0 ? pc.A : i == 1 ? pc.B : pc.C), 1, .4f, .6f) { Ao = 0 }); }

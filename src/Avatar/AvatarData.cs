@@ -93,7 +93,14 @@ public sealed class AvatarData
     public int BlushCol { get; set; } = 0xe0564f;
     public int Nails { get; set; } // 0 = bare
     // tattoos: a design for each spot, and piercings as a set of flags
-    public int[] Tattoos { get; set; } = new int[7];
+    public int[] Tattoos { get; set; } = new int[7]; // pattern last picked for [0] left arm, [1] right arm; -1 = drawn in the studio
+    /// The ink on each arm: AvatarPainter.TW x TH cells, 0 = bare skin, n = TatPal[n - 1].
+    [System.Text.Json.Serialization.JsonIgnore] public byte[][] Art { get; set; } = new byte[2][];
+    public string TatL { get => Enc(0); set => Dec(0, value); }
+    public string TatR { get => Enc(1); set => Dec(1, value); }
+    public int[] TatPal { get; set; } = (int[])Catalog.TatInks.Clone();
+    string Enc(int i) => Art == null || Art.Length < 2 || Art[i] == null ? null : Convert.ToBase64String(Art[i]);
+    void Dec(int i, string v) { if (Art == null || Art.Length < 2) Art = new byte[2][]; try { Art[i] = string.IsNullOrEmpty(v) ? null : Convert.FromBase64String(v); } catch (FormatException) { Art[i] = null; } }
     public int TatCol { get; set; } = 0x2a2c38;
     public bool TatColor { get; set; }
     public int Piercings { get; set; }
@@ -119,7 +126,7 @@ public sealed class AvatarData
     public AvatarData Clone()
     {
         var d = (AvatarData)MemberwiseClone();
-        d.Hair = Hair.Clone(); d.P = P.Select(p => p.Clone()).ToArray(); d.Moles = new(Moles ?? new()); d.Tattoos = (int[])(Tattoos ?? new int[7]).Clone();
+        d.Hair = Hair.Clone(); d.P = P.Select(p => p.Clone()).ToArray(); d.Moles = new(Moles ?? new()); d.Tattoos = (int[])(Tattoos ?? new int[7]).Clone(); d.Art = [Art?.ElementAtOrDefault(0)?.ToArray(), Art?.ElementAtOrDefault(1)?.ToArray()]; d.TatPal = (int[])(TatPal ?? Catalog.TatInks).Clone();
         return d;
     }
 
@@ -138,7 +145,10 @@ public sealed class AvatarData
         Freckles = M.Clamp(Freckles); Wrinkles = M.Clamp(Wrinkles); LaughLines = M.Clamp(LaughLines); UnderEyes = M.Clamp(UnderEyes); Vitiligo = M.Clamp(Vitiligo); Scar = Math.Clamp(Scar, 0, Catalog.Scars.Length - 1); Birthmark = Math.Clamp(Birthmark, 0, Catalog.Birthmarks.Length - 1);
         Moles ??= new(); if (Moles.Count % 2 == 1) Moles.RemoveAt(Moles.Count - 1); if (Moles.Count > 24) Moles.RemoveRange(24, Moles.Count - 24); for (int i = 0; i < Moles.Count; i++) Moles[i] = float.IsFinite(Moles[i]) ? Math.Clamp(Moles[i], -1.2f, 1.2f) : 0;
         Liner = Math.Clamp(Liner, 0, Catalog.Liners.Length - 1); Shadow = M.Clamp(Shadow); Lipstick = M.Clamp(Lipstick); Blush = M.Clamp(Blush);
-        var t = Tattoos ?? new int[7]; if (t.Length != 7) Array.Resize(ref t, 7); for (int i = 0; i < 7; i++) t[i] = Math.Clamp(t[i], 0, Catalog.TattooDesigns.Length - 1); Tattoos = t; Piercings &= (1 << Catalog.Piercings.Length) - 1;
+        var t = Tattoos ?? new int[7]; if (t.Length != 7) Array.Resize(ref t, 7); for (int i = 0; i < 7; i++) t[i] = i < 2 ? Math.Clamp(t[i], -1, Catalog.TattooDesigns.Length - 1) : 0; Tattoos = t;
+        if (TatPal == null || TatPal.Length != Catalog.TatInks.Length) TatPal = (int[])Catalog.TatInks.Clone();
+        if (Art == null || Art.Length != 2) Art = [Art?.ElementAtOrDefault(0), Art?.ElementAtOrDefault(1)];
+        for (int i = 0; i < 2; i++) { var a = Art[i]; if (a != null && a.Length != AvatarPainter.TW * AvatarPainter.TH) a = null; if (a != null) for (int k = 0; k < a.Length; k++) if (a[k] > TatPal.Length) a[k] = 0; if (a == null && t[i] > 0) a = AvatarPainter.Raster(t[i], this); if (a == null && t[i] < 0) t[i] = 0; Art[i] = a; } Piercings &= (1 << Catalog.Piercings.Length) - 1;
         Hair.Hairline = Math.Clamp(Hair.Hairline, 0, Catalog.Hairlines.Length - 1); Hair.Length = M.Clamp(Hair.Length); Hair.Curl = M.Clamp(Hair.Curl); BeardLen = M.Clamp(BeardLen); BeardThick = M.Clamp(BeardThick); BeardGrey = M.Clamp(BeardGrey);
         Height = M.Clamp(Height); Weight = M.Clamp(Weight); Shoulder = M.Clamp(Shoulder); Waist = M.Clamp(Waist); Hip = M.Clamp(Hip); Arm = M.Clamp(Arm); Leg = M.Clamp(Leg); Head = M.Clamp(Head);
     }

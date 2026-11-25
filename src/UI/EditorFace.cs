@@ -83,12 +83,33 @@ public sealed partial class EditorScreen
     int tatSpot;
     void TattooPage(float x, float y, float w)
     {
-        string[] sp = ["L arm", "R arm", "L upper", "R upper", "Neck", "Face", "Hands"]; float bw = (w - 6 * 3) / 7; for (int k = 0; k < 7; k++) { bool has = D.Tattoos[k] > 0; if (Ui.Button("tsp" + k, sp[k], x + k * (bw + 3), y, bw, 18, "btnP", on: tatSpot == k, text: .8f)) tatSpot = k; if (has) Raylib.DrawCircleV(new(x + k * (bw + 3) + bw - 4, y + 3), 2.4f, Ui.Green); }
-        float gh = 344 - (y + 22 - 6) - 92; Col ink = D.TatCol; bool col = D.TatColor; int sk = D.Skin;
-        int i = Grid("tat" + tatSpot, Catalog.TattooDesigns.Length, k => D.Tattoos[tatSpot] == k, k => Thumb("tat" + k, HashCode.Combine(D.TatCol, D.TatColor, D.Skin), p => { p.View(1, 0, 0); p.Begin().Ellipse(48, 44, 30, 30); p.Shade(new Ink(sk, 6, .4f, .3f) { Ao = 0 }); if (k == 0) return; if (k is 11 or 12) { for (int q = 0; q < 6; q++) p.Curve(new(26, 22 + q * 9), new(48, 14 + q * 9), new(70, 22 + q * 9), 2, q % 2 == 0 && col ? 0xc8384a : ink, true); return; } AvatarPainter.TattooArt(p, k, (u, v) => new Vector2(48 + v * 7, 44 + u * 7), 7, ink, col); }), k => Catalog.TattooDesigns[k], x, y + 26, w, gh);
-        if (i >= 0) { Snap(); D.Tattoos[tatSpot] = i; Changed(tatSpot < 4 || tatSpot == 6 ? 1 : 5); }
-        float cy = y + 26 + gh + 12; Font.Draw("Ink", x, cy, Ui.Ink, 1.25f); bool c2 = D.TatColor; Font.Draw("Colored", x + w - 70, cy + 1, Ui.Soft); if (Ui.Toggle("tatcol", ref c2, x + w - 28, cy - 2)) { Snap(); D.TatColor = c2; Changed(-1); } Palette(Inks, D.TatCol, v => D.TatCol = v, x, cy + 16, w, -1, false);
-        Font.Draw("Arm tattoos show when sleeves are short.", x, cy + 40, Ui.Soft, .9f);
+        string[] sp = ["Both arms", "Left arm", "Right arm"]; float bw = (w - 6) / 3;
+        for (int k = 0; k < 3; k++) { bool has = k == 0 ? D.Art[0] != null && D.Art[1] != null : D.Art[k - 1] != null; if (Ui.Button("tsp" + k, sp[k], x + k * (bw + 3), y, bw, 18, "btnP", on: tatSpot == k, text: .9f)) tatSpot = k; if (has) Raylib.DrawCircleV(new(x + k * (bw + 3) + bw - 5, y + 4), 2.4f, Ui.Green); }
+        float gh = 344 - (y + 22 - 6) - 92; Col ink = D.TatCol; bool col = D.TatColor; int sk = D.Skin; int cur = D.Tattoos[tatSpot == 2 ? 1 : 0];
+        int i = Grid("tat" + tatSpot, Catalog.TattooDesigns.Length, k => cur == k && (tatSpot != 0 || D.Tattoos[1] == k), k => Thumb("tat" + k, HashCode.Combine(D.TatCol, D.TatColor, D.Skin), p => TatThumb(p, k, sk, ink, col)), k => Catalog.TattooDesigns[k], x, y + 26, w, gh);
+        if (i >= 0) { Snap(); for (int a = 0; a < 2; a++) if (tatSpot == 0 || tatSpot == a + 1) { D.Tattoos[a] = i; D.Art[a] = AvatarPainter.Raster(i, D); } Changed(1); }
+        float cy = y + 26 + gh + 12; Font.Draw("Ink", x, cy, Ui.Ink, 1.25f); bool c2 = D.TatColor; Font.Draw("Colored", x + w - 70, cy + 1, Ui.Soft); if (Ui.Toggle("tatcol", ref c2, x + w - 28, cy - 2)) { Snap(); D.TatColor = c2; Reraster(); Changed(-1); }
+        Swatches("tink", D.TatPal, Array.IndexOf(D.TatPal, D.TatCol), k => { Snap(); D.TatCol = D.TatPal[k]; Reraster(); Changed(-1); }, x, cy + 15, w);
+        if (Ui.Button("tstudio", "Draw your own", x, cy + 40, w - 104, 22, "btnG", icon: "tBrush", tip: "Opens the Tattoo Studio")) OpenStudio(tatSpot == 2 ? 1 : 0);
+    }
+    /// Arms still wearing a picked pattern follow the ink and color settings; drawn ones are left alone.
+    void Reraster() { for (int a = 0; a < 2; a++) if (D.Tattoos[a] > 0) D.Art[a] = AvatarPainter.Raster(D.Tattoos[a], D); }
+    void Swatches(string id, int[] pal, int sel, Action<int> pick, float x, float y, float w)
+    {
+        float cw = w / pal.Length;
+        for (int i = 0; i < pal.Length; i++)
+        {
+            float cx = x + i * cw; var (a, hit, _) = Ui.Widget(id + i, cx, y, cw, cw, "tick"); bool on = i == sel; a.Sel.Update(on ? 1 : 0, 400, 14, Ui.DT); float g = a.Hover.X * 2f + a.Sel.X * 1.4f + a.Press.X;
+            Raylib.DrawRectangleRounded(new Rectangle(cx + 1.5f - g, y + 1.5f - g, cw - 3 + g * 2, cw - 3 + g * 2), .5f, 4, on ? Ui.Orange : Ui.Ink); Raylib.DrawRectangleRounded(new Rectangle(cx + 2.8f - g, y + 2.8f - g, cw - 5.6f + g * 2, cw - 5.6f + g * 2), .5f, 4, ((Col)pal[i]).Rl());
+            if (hit) pick(i);
+        }
+    }
+    /// A short stretch of arm with the pattern on it, for the grid.
+    public static void TatThumb(Painter p, int k, Col sk, Col ink, bool col)
+    {
+        p.View(1, 0, 0); const float kx = 3.4f, L = 32; p.Begin().Capsule(new(14, 44), 15, new(82, 44), 12);
+        Col acc = col ? AvatarPainter.TatAccent(k) : ink;
+        p.Shade(new Ink((x, y) => { if (k == 0) return sk; float v = 13 + (x - 14) / kx, rad = M.Lerp(15, 12, M.Clamp((x - 14) / 68)) / kx, u = (y - 44) / kx; float w = MathF.Asin(M.Clamp(u / rad, -1, 1)) * rad; int q = AvatarPainter.TatPattern(k, w, v, L); return q == 0 ? sk : Col.Lerp(sk, q == 2 ? acc : ink, .85f); }, 6, .45f, .3f) { Ao = 0 });
     }
     void PiercingPage(float x, float y, float w)
     {

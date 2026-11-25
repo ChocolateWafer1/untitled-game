@@ -133,8 +133,9 @@ public static class Catalog
     public static readonly string[] Scars = ["None", "Brow", "Cheek", "Lip", "Nose", "Eye", "Chin"];
     public static readonly string[] Birthmarks = ["None", "Cheek", "Forehead", "Jaw", "Temple", "Neck"];
     public static readonly string[] Liners = ["None", "Thin", "Winged", "Smoky", "Bold Wing", "Lower Line"];
-    public static readonly string[] TattooSpots = ["Left forearm", "Right forearm", "Left upper arm", "Right upper arm", "Neck", "Face", "Hands"];
-    public static readonly string[] TattooDesigns = ["None", "Anchor", "Heart", "Rose", "Star", "Swallow", "Dagger", "Snake", "Moon", "Wave", "Script", "Band", "Full Sleeve", "Vine", "Cross", "Paw", "Butterfly", "Lightning", "Dots", "Sun", "Feather"];
+    public static readonly int[] TatInks = [0x1c1a22, 0x2a2c38, 0x5a5c66, 0x2f3a6a, 0x3a72b8, 0x2f8a8a, 0x3f8a4a, 0x6a7a3a, 0xe0a83a, 0xd8703a, 0xc8384a, 0x6a2a3a, 0xd86f9a, 0x8a5ac8, 0x8a4a2a, 0xf0ece4];
+    public static readonly string[] TattooSpots = ["Left arm", "Right arm"];
+    public static readonly string[] TattooDesigns = ["None", "Tribal", "Bands", "Fine Rings", "Chevrons", "Diamonds", "Waves", "Spiral", "Dotwork", "Scales", "Vines", "Flowers", "Stars", "Checkered", "Triangles", "Zigzag", "Mandala", "Blackout"];
     public static readonly string[] Piercings = ["Nose stud", "Nose ring", "Septum", "Eyebrow", "Lip ring", "Labret", "Snake bites", "Bridge", "Monroe", "Cheeks", "Ear cuff", "Industrial"];
     public static readonly string[] Hairlines = ["Natural", "High", "Low", "Receding", "Widow's Peak", "M-Shaped", "Thinning", "Bald Top"];
     public static readonly string[] Ages = ["Teen", "Young Adult", "Adult", "Elder"];

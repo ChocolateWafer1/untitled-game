@@ -50,6 +50,7 @@ public sealed partial class EditorScreen
 
     public void Update(float dt)
     {
+        if (studio) { StudioUpdate(dt); return; }
         introT += dt; budget = 3; an.IdleStyle = D.Idle; an.Stride = AvatarPainter.StrideOf(D); fanPow = M.Damp(fanPow, fan ? 1 : 0, 3, dt); an.Wind = fanPow * 2.3f + .12f; fanSpin += fanPow * dt * 26;
         poseT -= dt; if (finishT < 0) { if (preview == 0) { if (poseT <= 0) an.Set(Anim.Idle); an.Vel = M.Damp(an.Vel, default, 10, dt); } else { an.Dir = preview == 1 ? 1 : -1; an.Vel = new(an.Dir * (preview == 1 ? 64 : 64), 0); an.Set(Anim.Walk); } }
         float zt = (tab == 2 || (tab == 1 && sub[1] != 7)) && finishT < 0 ? 1 : 0; zoom = Store.Cfg.ReduceMotion ? zt : M.Approach(zoom, zt, dt * 2.6f); if (an.Update(dt) || MathF.Abs(zoom - zoomDrawn) > .001f) Redraw();
@@ -82,6 +83,7 @@ public sealed partial class EditorScreen
     // ---------------------------------------------------------------- drawing
     public void Draw()
     {
+        if (studio) { StudioDraw(); return; }
         float W = Ui.VW, H = Ui.VH, t = Ui.T; float px = W - 336; avX = M.Clamp((px - 34) / 2, 110, 260); float rx = avX - 170, off = H - 360;
         Raylib.DrawRectangle(0, 0, (int)W + 1, (int)H + 1, new Color(58, 38, 40, 255)); Ui.Tex(room, rx - 100, 0, 1, Color.White);
         // warm light: lamp, string lights and window beams, all breathing a little

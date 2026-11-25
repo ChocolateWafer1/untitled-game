@@ -139,11 +139,28 @@ public static class Dev
         if (n == "flow") { Flow(); return; }
         if (n == "creator")
         {
-            var r = new Rng(31); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Robin"; d[Slot.Top].Id = 0; d.Tattoos[0] = 3; d.Tattoos[1] = 12; d.Liner = 2; d.Lipstick = .5f; d.Piercings = 1 | 64; Program.Editor.Open(d, true); Ui.FakeMouse = new(5, 5); Steps(60); var E = Program.Editor;
+            var r = new Rng(31); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Robin"; d[Slot.Top].Id = 0; d.Tattoos[0] = 3; d.Tattoos[1] = 12; d.Validate(); d.Liner = 2; d.Lipstick = .5f; d.Piercings = 1 | 64; Program.Editor.Open(d, true); Ui.FakeMouse = new(5, 5); Steps(60); var E = Program.Editor;
             foreach (var (t, sb, nm) in new[] { (1, 0, "shape"), (1, 5, "skin"), (1, 6, "makeup"), (1, 7, "tattoos"), (1, 8, "piercings"), (1, 9, "beard"), (2, 1, "hairshape"), (0, 0, "body") }) { E.ShowForTest(t, sb); for (int i = 0; i < 40; i++) Steps(1); Save("cr_" + nm); }
             // place a mole by clicking the face, then type a height and a weight
             E.ShowForTest(1, 5); Steps(10); var (hc, hrx, hry) = E.HeadForTest; float avX = M.Clamp((Ui.VW - 336 - 34) / 2, 110, 260); var at = new Vector2(avX - 125 + hc.X + hrx * .5f, 318 - 336 + hc.Y + hry * .4f); int before = E.D.Moles.Count; ClickAt(at.X, at.Y); Steps(10); Console.WriteLine($"moles {before} -> {E.D.Moles.Count}"); Save("cr_mole");
             E.ShowForTest(0, 0); Steps(5); float px = Ui.VW - 336 + 14, w = 336 - 28; ClickAt(px + w - 20, 6 + 34 + 2 + 3); Steps(20); Save("cr_typing"); foreach (var (i, txt) in new[] { (0, "5'4\""), (0, "6 1"), (0, "178cm"), (1, "120"), (1, "80kg"), (1, "190"), (3, "30") }) Console.WriteLine($"typed {txt,-7} -> {E.TypeForTest(i, txt)}"); Steps(20); Save("cr_typed"); return;
+        }
+        if (n == "studio")
+        {
+            var r = new Rng(31); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Robin"; d[Slot.Top].Id = TankTop(); d[Slot.Jacket].Id = 0; d.Validate(); Program.Editor.Open(d, true); Ui.FakeMouse = new(5, 5); Steps(30); var E = Program.Editor;
+            E.ShowForTest(1, 7); Steps(30); Save("st_page"); float px = Ui.VW - 336 + 14, w = 336 - 28; ClickAt(px + (w - 104) / 2, 340 - 18); Steps(20); Console.WriteLine("studio open: " + E.StudioOpen); Save("st_open");
+            float X0 = MathF.Floor((Ui.VW - 640) / 2); void Tool(int i) => ClickAt(X0 + 16 + 29, 44 + i * 21 + 9);
+            void Drag(params (int x, int y)[] cells) { var p0 = E.CellPosForTest(cells[0].x, cells[0].y); Ui.FakeMouse = p0; Steps(2); Ui.FakeMouse = p0; Ui.FakeClick = true; Steps(1); Ui.FakeHold = true; for (int i = 1; i < cells.Length; i++) { var a = E.CellPosForTest(cells[i - 1].x, cells[i - 1].y); var b = E.CellPosForTest(cells[i].x, cells[i].y); for (int k = 1; k <= 6; k++) { Ui.FakeMouse = Vector2.Lerp(a, b, k / 6f); Steps(1); } } Ui.FakeHold = false; Ui.FakeRelease = true; Steps(1); Steps(4); }
+            void Click(int x, int y) { var p0 = E.CellPosForTest(x, y); ClickAt(p0.X, p0.Y); Steps(4); }
+            ClickAt(X0 + 286 + 45, 282 + 9); // mirror across on
+            Tool(0); Drag((6, 4), (30, 12), (60, 3), (90, 13), (120, 5)); Console.WriteLine("brush, mirrored: " + E.StudioInk(0)); Save("st_brush");
+            Tool(4); Drag((20, 9), (44, 22)); int boxed = E.StudioInk(0); ClickAt(X0 + 80 + 10 * 18 + 9, 258 + 9); Tool(2); Click(32, 15); Console.WriteLine($"box {boxed}, filled red inside: " + E.StudioInk(0)); Save("st_fill");
+            Tool(6); Drag((18, 16), (46, 16)); Console.WriteLine("knife slice: " + E.StudioInk(0));
+            ClickAt(X0 + 380 + 40, 282 + 9); ClickAt(X0 + 380 + 40, 282 + 9); ClickAt(X0 + 464 + 46, 282 + 9); ClickAt(X0 + 80 + 4 * 18 + 9, 258 + 9); Tool(5); Drag((70, 12), (78, 20)); Console.WriteLine("circles x3 repeated: " + E.StudioInk(0)); Save("st_repeat");
+            Tool(7); Drag((19, 8), (45, 23)); Drag((30, 14), (52, 6)); Console.WriteLine("moved selection: " + E.StudioInk(0)); Save("st_move");
+            var zp = E.CellPosForTest(40, 16); Ui.FakeMouse = zp; Steps(2); for (int i = 0; i < 6; i++) { Ui.FakeWheel = 1; Steps(2); } Steps(10); Save("st_zoom");
+            ClickAt(X0 + 496 + 63, 306 + 9); Console.WriteLine("copied to other arm: " + E.StudioInk(1)); ClickAt(X0 + 552 + 35, 13 + 10); Steps(60); Console.WriteLine("studio closed: " + !E.StudioOpen + ", tattoos " + string.Join(",", E.D.Tattoos.Take(2))); E.ShowForTest(0, 0); Steps(60); Save("st_done"); { var json = System.Text.Json.JsonSerializer.Serialize(E.D); var back = System.Text.Json.JsonSerializer.Deserialize<AvatarData>(json); back.Validate(); Console.WriteLine($"saved and loaded: {back.Art[0]?.Count(b => b != 0)} / {back.Art[1]?.Count(b => b != 0)}, same {back.Art[0].SequenceEqual(E.D.Art[0]) && back.Art[1].SequenceEqual(E.D.Art[1])}, file {json.Length / 1024} KB"); }
+            return;
         }
         if (n == "editor")
         {
@@ -282,17 +299,35 @@ public static class Dev
             case 1: { var a = B(); a.Freckles = 1; list.Add(a); a = B(); a.Wrinkles = 1; a.LaughLines = 1; list.Add(a); a = B(); a.UnderEyes = 1; list.Add(a); a = B(); a.Vitiligo = .6f; a.Skin = 0x7e4b30; list.Add(a); for (int i = 1; i < Catalog.Scars.Length; i++) { a = B(); a.Scar = i; list.Add(a); } for (int i = 1; i < Catalog.Birthmarks.Length; i++) { a = B(); a.Birthmark = i; list.Add(a); } a = B(); a.Moles = [.5f, .3f, -.3f, .6f, .2f, -.5f]; list.Add(a); break; }
             case 2: for (int i = 1; i < Catalog.Liners.Length; i++) { var a = B(); a.Liner = i; a.Shadow = i * .18f; a.ShadowCol = 0x9c4a7a; a.Lipstick = i * .2f; a.Blush = .5f; list.Add(a); } for (int i = 0; i < Catalog.Piercings.Length; i++) { var a = B(); a.Piercings = 1 << i; a.Metal = i % 2 == 0 ? 0xc8ccd2 : 0xe0b650; list.Add(a); } break;
             case 3: for (int i = 1; i < Catalog.Beards.Length; i++) { var a = B(); a[Slot.Beard].Id = i; a[Slot.Beard].A = 0x432a1c; if (i % 4 == 0) a.BeardGrey = .6f; if (i % 3 == 0) a.BeardLen = 1; list.Add(a); } for (int i = 0; i < Catalog.Hairlines.Length; i++) { var a = B(); a.Hair.Id = 7; a.Hair.Hairline = i; list.Add(a); } { var a = B(); a.Hair.Id = 22; a.Hair.Curl = 1; list.Add(a); a = B(); a.Hair.Id = 22; a.Hair.Length = 0; list.Add(a); a = B(); a.Hair.Id = 13; a.Hair.Flip = true; list.Add(a); a = B(); a.BrowCol = 0xd8d6d2; list.Add(a); } break;
-            default: for (int i = 1; i < Catalog.TattooDesigns.Length; i++) { var a = B(); a[Slot.Top].Id = 32 < Catalog.Tops.Length ? 0 : 0; a.Tattoos = [i, i, (i + 3) % 21, (i + 5) % 21, i, i, i]; a.TatColor = i % 2 == 0; list.Add(a); } break;
+            default: for (int i = 1; i < Catalog.TattooDesigns.Length; i++) { var a = B(); a[Slot.Top].Id = 32 < Catalog.Tops.Length ? 0 : 0; a.Tattoos = [i, i, 0, 0, 0, 0, 0]; a.Validate(); a.TatColor = i % 2 == 0; list.Add(a); } break;
         }
         bool full = page == 4; int cw = full ? 170 : 160, ch = full ? 330 : 170, cols = 9; var big = new Painter(cols * cw, (list.Count + cols - 1) / cols * ch); var ap = new AvatarPainter(); var one = new Painter(cw, ch);
         for (int i = 0; i < list.Count; i++) { one.Clear(); if (full) ap.Draw(one, list[i], Pose.Stand with { ArmL0 = -.5f, ArmL1 = -1.2f, ArmR0 = .5f, ArmR1 = 1.2f }, 2.6f, cw / 2, 318, outlinePx: 2); else ap.Draw(one, list[i], Pose.Stand, 6.2f, cw / 2, 630, outlinePx: 2); Blit(one, big, i % cols * cw, i / cols * ch); }
+        Finish(big, path);
+    }
+    static void TatBig(string path)
+    {
+        int n = Catalog.TattooDesigns.Length - 1, cw = 200, ch = 180; var big = new Painter(9 * cw, 4 * ch); var one = new Painter(96, 88);
+        for (int i = 0; i < n * 2; i++) { int id = i % n + 1; bool col = i >= n; one.Clear(); EditorScreen.TatThumb(one, id, 0xe6b48e, 0x2a2c38, col); Blit(one, big, i % 9 * cw + 4, i / 9 * ch + 2, 2); }
+        Finish(big, path);
+    }
+    static int TankTop() { for (int i = 0; i < Catalog.Tops.Length; i++) if (Catalog.Tops[i].Name.Contains("Tank")) return i; return 0; }
+    static void TatPeople(string path)
+    {
+        var big = new Painter(2 * 520, 760); var ap = new AvatarPainter(); var one = new Painter(520, 760);
+        for (int i = 0; i < 2; i++)
+        {
+            var d = new AvatarData(); d.Hair.Id = i == 0 ? 1 : 19; d[Slot.Top].Id = 0; d.Skin = i == 0 ? 0xe8b896 : 0xb07a52; d.TatColor = i == 1;
+            d.Tattoos = i == 0 ? [1, 10, 0, 0, 0, 0, 0] : [11, 16, 0, 0, 0, 0, 0]; d[Slot.Top].Id = i == 0 ? 0 : TankTop(); d.Validate();
+            one.Clear(); ap.Draw(one, d, Pose.Stand with { ArmL0 = -.5f, ArmL1 = -1.2f, ArmR0 = .5f, ArmR1 = 1.2f }, 4.6f, 260, 750, outlinePx: 2); Blit(one, big, i * 520, 0); var sm = new Painter(110, 120); ap.Draw(sm, d, Pose.Stand with { ArmL0 = -.5f, ArmL1 = -1.2f, ArmR0 = .5f, ArmR1 = 1.2f }, AvatarAnim.PxPerUnit, 55, 115, outlinePx: 1); Blit(sm, big, i * 520 + 10, 10, 3);
+        }
         Finish(big, path);
     }
     static void GlassSheet(string path) { int n = Catalog.GlassDefs.Length - 1; var big = new Painter(7 * 200, (n + 6) / 7 * 170); var ap = new AvatarPainter(); var one = new Painter(200, 170); int[] fr = [0x2b2a30, 0x8a5a38, 0xc99a4b, 0xb9b2a8, 0x8c2f35]; for (int i = 0; i < n; i++) { one.Clear(); var d = new AvatarData(); d[Slot.Glasses].Id = i + 1; d[Slot.Glasses].A = fr[i % 5]; d[Slot.Glasses].B = 0x9ec3cf; if (Catalog.GlassDefs[i + 1].Shade) d[Slot.Glasses].B = 0x3a3440; ap.Draw(one, d, Pose.Stand, 7.5f, 100, 760, outlinePx: 2); Blit(one, big, i % 7 * 200, i / 7 * 170); } Finish(big, path); }
     static void WristSheet(string path) { var big = new Painter(8 * 170, 2 * 330); var ap = new AvatarPainter(); var one = new Painter(170, 330); int k = 0; foreach (int top in new[] { 0, 9 }) foreach (int g in new[] { 4, 5, 6, 8 }) foreach (int jk in new[] { 0, 2 }) { if (jk == 2 && top == 9) continue; one.Clear(); var d = new AvatarData(); d[Slot.Top].Id = top; d[Slot.Jacket].Id = jk; d[Slot.Gloves].Id = g; d[Slot.Gloves].A = 0xc65a3a; d[Slot.Gloves].B = 0xe0b650; d[Slot.Gloves].C = 0x4a6285; d[Slot.Earrings].Id = 3; d.Hair.Id = 19; ap.Draw(one, d, Pose.Stand with { ArmR0 = .5f, ArmR1 = 1.3f }, 2.6f, 85, 318, outlinePx: 2); Blit(one, big, k % 8 * 170, k / 8 * 330); k++; } Finish(big, path); }
     static void Cat(string path, string what)
     {
-        if (what == "hairnew") { HairSheet(path); return; } if (what == "glasses") { GlassSheet(path); return; } if (what.StartsWith("detail")) { DetailSheet(path, int.Parse(what[6..])); return; } if (what == "wrists") { WristSheet(path); return; } if (what.StartsWith("hairbig")) { HairBig(path, int.Parse(what[7..])); return; } int n = what == "hair" ? Catalog.Hair.Length : what == "face" ? 24 : Catalog.Count(Enum.Parse<Slot>(what)); int cols = 10, cw = 150, ch = what is "Bottom" ? 190 : 170; var big = new Painter(cols * cw, ((n + cols - 1) / cols) * ch); var ap = new AvatarPainter(); var one = new Painter(cw, ch);
+        if (what == "hairnew") { HairSheet(path); return; } if (what == "glasses") { GlassSheet(path); return; } if (what.StartsWith("detail")) { DetailSheet(path, int.Parse(what[6..])); return; } if (what == "wrists") { WristSheet(path); return; } if (what == "tatbig") { TatBig(path); return; } if (what == "tatppl") { TatPeople(path); return; } if (what.StartsWith("hairbig")) { HairBig(path, int.Parse(what[7..])); return; } int n = what == "hair" ? Catalog.Hair.Length : what == "face" ? 24 : Catalog.Count(Enum.Parse<Slot>(what)); int cols = 10, cw = 150, ch = what is "Bottom" ? 190 : 170; var big = new Painter(cols * cw, ((n + cols - 1) / cols) * ch); var ap = new AvatarPainter(); var one = new Painter(cw, ch);
         for (int i = 0; i < n; i++)
         {
             one.Clear(); var d = new AvatarData(); float sc = 2.6f, gy = 300; if (what == "hair") { d.Hair.Id = i; d.Hair.Base = AvatarData.HairCols[i % 12]; sc = 3.2f; gy = 350; } else if (what == "face") { d.Eye = i % 12; d.Brow = i % 10; d.Nose = i % 8; d.Mouth = i % 10; d.Marks = i % 8; d.Skin = AvatarData.SkinTones[i % 14]; d[Slot.Beard].Id = i % 14; sc = 4.6f; gy = 470; }

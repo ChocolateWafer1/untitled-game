@@ -175,7 +175,7 @@ public sealed partial class AvatarPainter
 
     void NeckSkinAndHead(Action collar)
     {
-        NeckTattoo(); collar();
+        collar();
         // ears
         for (int s = -1; s <= 1; s += 2)
         {
@@ -203,7 +203,7 @@ public sealed partial class AvatarPainter
             for (int s = -1; s <= 1; s += 2) { p.Curve(F2(s * .22f, .42f), F2(s * .36f, .5f), F2(s * .4f, .66f), .3f, skin.Shade(-.3f), false); p.Curve(F2(s * .24f, .22f), F2(s * .4f, .27f), F2(s * .55f, .2f), .3f, skin.Shade(-.28f), false); if (fine) p.Line(F2(s * .68f, .02f), F2(s * .8f, -.04f), .3f, skin.Shade(-.3f), false); }
             if (fine) { p.Curve(F2(-.35f, -.42f), F2(0, -.38f), F2(.35f, -.42f), .3f, skin.Shade(-.25f), false); }
         }
-        Blusher(F2); SkinDetail(F2); Eyes(F2); Brows(F2); Scar(F2, false); Nose(F2); Mouth(F2); Scar(F2, true); FaceTattoo(F2);
+        Blusher(F2); SkinDetail(F2); Eyes(F2); Brows(F2); Scar(F2, false); Nose(F2); Mouth(F2); Scar(F2, true);
         if (Vis(Slot.Beard) && d[Slot.Beard].Id > 0) Beard(F2);
         Piercings(F2);
     }
