@@ -34,6 +34,18 @@ public sealed class Rig
         Thigh = 22f * hs * lg; Shin = 21.5f * hs * lg; ThighR = (4.6f + f * 1.2f + hi * .35f) * ws; KneeR = (3.3f + f * .7f) * ws; CalfR = (3.3f + f * .7f) * ws; AnkleR = (2.15f + f * .35f) * ws;
         Total = AnkleH + Thigh + Shin + Torso + NeckLen + HeadRy * 2;
     }
+    /// How much space the body takes up, from the same measurements it is drawn with.
+    public float Volume
+    {
+        get
+        {
+            float v = 0, dz = Torso / 24, deep = .66f + MathF.Max(0, Fat) * .08f; for (int i = 0; i < 24; i++) { float h = Half((i + .5f) * dz); v += M.PI * h * h * deep * (i > 19 ? .72f : 1) * dz; }
+            v += 2 * M.PI * (ArmR * ArmR * UArm * .9f + (ForeR + WristR) * (ForeR + WristR) / 4 * LArm + HandR * HandR * 5); float th = (ThighR + KneeR) / 2, cf = (CalfR + AnkleR) / 2; v += 2 * M.PI * (th * th * Thigh + cf * cf * Shin + AnkleR * AnkleR * 5); v += M.PI * Neck * Neck * NeckLen + 4 / 3f * M.PI * HeadRx * HeadRx * HeadRy; return v;
+        }
+    }
+    /// Pounds. An average body at 5'8" weighs 149; taller bodies weigh more by volume, and against an average body of the
+    /// same height the exponent matches real waists (120 lb is about 27.5 inches there, 225 about 43).
+    public static float Pounds(AvatarData d) { float avg = new Rig(new AvatarData()).Volume, same = new Rig(new AvatarData { Height = d.Height, Age = d.Age }).Volume, own = new Rig(d).Volume; return 149 * same / avg * MathF.Pow(own / same, own < same ? 1.6f : 1.35f); }
     public float Half(float up)
     {
         float t = Torso, s = up / t;

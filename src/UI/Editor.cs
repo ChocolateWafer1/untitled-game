@@ -244,11 +244,11 @@ public sealed class EditorScreen
     /// Real-world readouts worked out from the body the sliders produce (an average body stands 5'7").
     string Measure(int i)
     {
-        var r = new Rig(D); const float inch = 67f / 95.2f; float tall = r.Total * inch, bmi = D.Weight < .42f ? M.Lerp(16.8f, 22.6f, D.Weight / .42f) : M.Lerp(22.6f, 37f, (D.Weight - .42f) / .58f); string In(float v) => MathF.Round(v * 2) / 2 + " in";
+        var r = new Rig(D); const float inch = 67f / 95.2f; float tall = r.Total * inch; string In(float v) => MathF.Round(v * 2) / 2 + " in";
         switch (i)
         {
             case 0: { int t = (int)MathF.Round(tall); return t / 12 + "'" + t % 12 + "\""; }
-            case 1: return (int)MathF.Round(bmi * tall * tall / 703) + " lb";
+            case 1: return (int)MathF.Round(Rig.Pounds(D)) + " lb";
             case 2: return In(r.ShX * 2 * inch);
             case 3: return In(r.Waist * inch * 5.8f);
             case 4: return In(r.Hip * inch * 6.0f);
