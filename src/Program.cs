@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Scr { Title, Editor, World }
 
@@ -21,7 +21,7 @@ public static class Program
     static void Run(bool dev)
     {
         Store.LoadAll(); Raylib.SetTraceLogLevel(TraceLogLevel.Warning);
-        Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "UNNAMED GAME"); Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
+        Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "Untitled Game"); Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
         if (!dev) ApplyWindow();
         Snd.Load(dev); Ui.Load(); Editor = new EditorScreen { Done = EditorDone }; Game = new GameScreen();
         Dev.Shots = shotDir;
@@ -84,6 +84,7 @@ public static class Dev
     public static bool Cpu(string[] a)
     {
         switch (a[0]) { case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--icon": { var pi = new Painter(64, 64); pi.View(1, 0, 0); pi.Begin().Ellipse(32, 32, 30, 30); pi.Shade(new Ink((x, y) => Col.Lerp(0xffd890, 0xe8804a, y / 64), 6, .5f, 1)); pi.Begin().Blob(new(2, 46), new(16, 40), new(32, 45), new(48, 39), new(62, 46), new(50, 60), new(32, 63), new(14, 60)); pi.IntersectAlpha(); pi.Shade(new Ink(0x4f9fb4, 4, .5f, .8f)); FishDex.Draw(pi, FishDex.All[3], .44f, 31, 31); pi.View(1, 0, 0); pi.Outline(0x33201f, 1); pi.Export(a[1]); return true; }
+            case "--migrate": Store.Migrate(a[1], a[2]); return true;
             case "--slide": SlideSheet(a[1]); return true;
             case "--poses": PoseSheet(a[1]); return true;
             case "--wind": WindSheet(a[1]); return true;

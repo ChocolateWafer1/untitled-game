@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public static class Font
 {

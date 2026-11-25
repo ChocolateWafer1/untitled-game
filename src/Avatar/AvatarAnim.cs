@@ -1,5 +1,5 @@
 using System.Numerics;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Anim { Idle, Walk, Run, Jump, Fall, Land, Crouch, CrouchWalk, Slide, Climb, Swim, Tread, Sit, RodHold, Cast, Reel, Wave, Dance, Laugh, Point, Cheer, Think, Sleep, Admire, Ledge, ShowOff, Shrug, Bow, SitGround }
 

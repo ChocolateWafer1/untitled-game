@@ -1,4 +1,4 @@
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Slot { Top, Jacket, Bottom, Shoes, Hat, Glasses, Earrings, Neck, Back, Gloves, Beard }
 

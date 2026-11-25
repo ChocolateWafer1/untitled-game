@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 /// A sprite is one or more painted parts; parts with sway move in the wind independently (tree canopies, flowers...).
 public sealed class Sprite { public sealed class Part { public Texture2D T; public float OX, OY, Sway, Phase, Pivot; } public List<Part> Parts = new(); public float W, H; public float Grass; }

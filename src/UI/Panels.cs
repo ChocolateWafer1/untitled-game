@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Panel { None, Menu, Settings, Bag, Journal, Map, Shop, Tank, Board }
 
@@ -192,7 +192,7 @@ public sealed partial class GameScreen
     public void OpenTitle() { Title = true; titleT = 0; panel = Panel.None; Env.Clock = .70f; Env.SetWeather(Weather.Breezy, true); Env.Colors(); }
     void DrawTitle()
     {
-        float W2 = Ui.VW, H = Ui.VH, t = titleT; Raylib.DrawRectangleGradientV(0, 0, (int)W2 + 1, 170, new Color(30, 14, 34, 120), new Color(30, 14, 34, 0)); Raylib.DrawRectangleGradientV(0, (int)H - 120, (int)W2 + 1, 121, new Color(30, 14, 24, 0), new Color(30, 14, 24, 120)); string s = "UNNAMED GAME"; float size = 6, tw = Font.Width(s, size) / Font.Zoom * 1; float x = W2 / 2 - tw * Font.Zoom / 2;
+        float W2 = Ui.VW, H = Ui.VH, t = titleT; Raylib.DrawRectangleGradientV(0, 0, (int)W2 + 1, 170, new Color(30, 14, 34, 120), new Color(30, 14, 34, 0)); Raylib.DrawRectangleGradientV(0, (int)H - 120, (int)W2 + 1, 121, new Color(30, 14, 24, 0), new Color(30, 14, 24, 120)); string s = "Untitled Game"; float size = 6, tw = Font.Width(s, size) / Font.Zoom * 1; float x = W2 / 2 - tw * Font.Zoom / 2;
         for (int i = 0; i < s.Length; i++) { string c = s[i].ToString(); float k = Store.Cfg.ReduceMotion ? 1 : Ease.OutElastic(M.Clamp((t - .3f - i * .07f) / 1.1f)); float cw = Font.Width(c, size) + size * Font.Zoom; if (s[i] != ' ' && k > .01f) { float y = 60 + M.Sin(t * 1.8f + i * .55f) * 4 + (1 - k) * -80; float sc = MathF.Max(.02f, k); Ui.PushScale(x + cw / 2, y + 22, sc, sc, M.Sin(t * 1.3f + i) * 2.4f); Col cc = Col.Lerp(0xffe2a0, 0xf08a4a, .5f + .5f * M.Sin(i * .6f + t * .8f)); Font.Draw(c, x + 2, y + 5, new Color(58, 26, 30, 170), size, 0); Font.Draw(c, x, y, cc.Rl(), size, 0, new Color(62, 30, 30, 255)); Ui.PopScale(); } x += s[i] == ' ' ? 4 * size * Font.Zoom : cw; }
         if (panel == Panel.Settings) { Ui.PushScale(W2 / 2, H / 2, .82f + Pop * .18f, .82f + Pop * .18f); SettingsUi(); Ui.PopScale(); return; }
         Font.Draw("a cozy little world", W2 / 2, 124, Raylib.Fade(Ui.Cream, M.Clamp(t - 1.4f)), 1.5f, .5f, Ui.Ink); string[] l = ["Play", "Settings", "Quit"]; string[] ic = ["right", "gear", "x"]; string[] st = ["btnG", "btnB", "btnR"]; for (int i = 0; i < 3; i++) { float k = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp((t - 1 - i * .12f) * 2.4f)); if (k <= 0) continue; Ui.PushScale(W2 / 2, 180 + i * 36, k, k); if (Ui.Button("ti" + i, l[i], W2 / 2 - 66, 166 + i * 36, 132, 29, st[i], ic[i], text: 1.5f)) switch (i) { case 0: Program.PlayFromTitle(); break; case 1: settingsFrom = Panel.None; Open(Panel.Settings); break; case 2: Program.Quit = true; break; } Ui.PopScale(); }

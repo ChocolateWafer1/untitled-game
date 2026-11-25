@@ -1,4 +1,4 @@
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Water { Lake, River, Cave, Sea }
 [Flags] public enum When { Dawn = 1, Day = 2, Dusk = 4, Night = 8, Any = 15, Light = 7, Low = 13 }

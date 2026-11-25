@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 struct Puff { public Vector2 P, V; public float T, L, S, R; public Color C; public int K; }
 sealed class Puffs

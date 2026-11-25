@@ -1,5 +1,5 @@
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 /// Sound effects, ambience loops and crossfading music. Files live in assets/audio; names group variants ("step_grass1..5").
 public static class Snd

@@ -1,5 +1,5 @@
 using System.Numerics;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Neckline { Crew, V, Scoop, Collar, Turtle, Mock, Boat, Henley, Hood, OffShoulder, Tank, Polo, Wrap, Sailor, Cowl }
 public enum Knit { Flat, Rib, Cable, Fleece, Flannel, Denim, Lace }

@@ -1,5 +1,5 @@
 using System.Numerics;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public sealed partial class AvatarPainter
 {

@@ -1,5 +1,5 @@
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 /// Paints the block world in chunks: rounded outer corners, ink outlines, hand shaded block faces and grassy caps.
 public sealed class Tiles

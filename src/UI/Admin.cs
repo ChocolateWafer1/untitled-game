@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 /// F1: a testing menu for weather, sky events, time, travel and fishing. The game keeps running behind it.
 public sealed partial class GameScreen

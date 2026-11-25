@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum Weather { Clear, Breezy, Cloudy, Mist, Rain, Storm, Snow }
 

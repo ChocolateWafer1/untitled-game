@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public sealed class FishRecord { public int Count { get; set; } public float BestKg { get; set; } public float BestCm { get; set; } }
 public sealed class FishItem { public int Id { get; set; } public float Kg { get; set; } public float Cm { get; set; } }
@@ -51,7 +51,7 @@ public sealed class Settings
 public static class Store
 {
     static readonly JsonSerializerOptions O = new() { WriteIndented = true };
-    public static string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "UNNAMED GAME");
+    public static string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Untitled Game");
     public static Settings Cfg = new();
     public static SaveData Data = new();
     public static bool ReadOnly;
@@ -66,8 +66,14 @@ public static class Store
         // write to a temp file first so a crash mid-save can never corrupt progress
         try { Directory.CreateDirectory(Dir); var p = Path.Combine(Dir, f); File.WriteAllText(p + ".tmp", JsonSerializer.Serialize(o, o.GetType(), O)); File.Move(p + ".tmp", p, true); } catch { }
     }
+    /// The game used to have another name: copy saves from the old folder once. Never overwrites and never deletes the originals.
+    public static void Migrate(string oldDir, string newDir)
+    {
+        try { if (!Directory.Exists(oldDir)) return; foreach (var f in new[] { "save.json", "settings.json" }) { string a = Path.Combine(oldDir, f), b = Path.Combine(newDir, f); if (File.Exists(a) && !File.Exists(b)) { Directory.CreateDirectory(newDir); File.Copy(a, b); } } } catch { }
+    }
     public static void LoadAll()
     {
+        if (!ReadOnly) Migrate(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "UNNAMED GAME"), Dir);
         Cfg = Load<Settings>("settings.json"); Data = Load<SaveData>("save.json"); Data.Avatar ??= new(); Data.Avatar.Validate();
         if (Data.Baits == null || Data.Baits.Length != 12) Data.Baits = new int[12];
         if (Data.Forage == null || Data.Forage.Length != 12) Data.Forage = new int[12];

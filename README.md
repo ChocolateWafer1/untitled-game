@@ -1,9 +1,9 @@
-# UNNAMED GAME
+# Untitled Game
 
 A cozy pixel-art 2D side platformer about dressing up, exploring and fishing. Written from scratch in C# with no game engine (raylib is used only for the window, drawing and audio).
 
 ## Play
-Download the zip from Releases, unzip it and run `UNNAMED GAME.exe`. Windows 10/11, no install needed.
+Download the zip from Releases, unzip it and run `Untitled Game.exe`. Windows 10/11, no install needed.
 
 | Key | Action |
 | --- | --- |

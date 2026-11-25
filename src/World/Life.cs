@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 /// Everything that moves on its own: grass, particles, weather, animals.
 public sealed class Life

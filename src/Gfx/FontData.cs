@@ -1,4 +1,4 @@
-namespace UnnamedGame;
+namespace UntitledGame;
 /// Original pixel font drawn for this game.
 public static class FontData
 {

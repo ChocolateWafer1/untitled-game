@@ -1,5 +1,5 @@
 using System.Numerics;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public struct Pose
 {

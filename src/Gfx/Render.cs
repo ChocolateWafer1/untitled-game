@@ -1,6 +1,6 @@
 using System.Numerics;
 using Raylib_cs;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 /// The lighting pipeline: sky -> world albedo -> 2D light map with soft sun shadows -> composite with rim light ->
 /// reflective water -> god rays + bloom -> warm grade. Everything happens on a 360-line canvas and is scaled up.

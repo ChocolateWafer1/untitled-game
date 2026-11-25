@@ -3,11 +3,12 @@
     <OutputType>WinExe</OutputType>
     
     <ApplicationIcon>assets\icon.ico</ApplicationIcon>
-    <Version>1.2.0</Version>
+    <Product>Untitled Game</Product>
+    <Version>1.2.1</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <TargetFramework>net10.0</TargetFramework>
-    <AssemblyName>UNNAMED GAME</AssemblyName>
-    <RootNamespace>UnnamedGame</RootNamespace>
+    <AssemblyName>Untitled Game</AssemblyName>
+    <RootNamespace>UntitledGame</RootNamespace>
     <Nullable>disable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

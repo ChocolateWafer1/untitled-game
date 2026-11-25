@@ -1,5 +1,5 @@
 using System.Numerics;
-namespace UnnamedGame;
+namespace UntitledGame;
 
 public enum T : byte { Air, Dirt, Stone, Sand, Cobble, Plank, Moss, Clay }
 public enum Biome { SeaW, BeachW, Autumn, Lake, Village, Meadow, Highlands, BeachE, SeaE }
