@@ -15,6 +15,14 @@ public sealed class AvatarAnim
     float t, acc, blinkT = 2, blink, lookT, lookX, lookY; Vector2 lastVel; readonly Rng rng = new(Environment.TickCount);
     public const float PxPerUnit = .76f;
 
+    /// How hard the legs are driving right now, 0..1. A foot lands at phase pi/2, 3pi/2...; the rear leg's push peaks just
+    /// before that, then speed bleeds off through the landing and the legs passing, until the next push.
+    public float Drive
+    {
+        get { float x = (Phase - (M.PI / 2 - .32f)) / M.PI; x -= MathF.Floor(x); const float ease = .58f; return x < ease ? 1 - M.Smooth(0, ease, x) : M.Smooth(ease, 1, x); }
+    }
+    /// Starting from a standstill, begin as the legs pass so the first thing you feel is a push.
+    public void StartStep() => Phase = MathF.Round(Phase / M.PI) * M.PI - .12f;
     public void Set(Anim a) { if (a != State) { State = a; StateT = 0; } }
     public void Punch(float v) => squash.V += v;
     public float Squash => squash.X;

@@ -56,7 +56,13 @@ public sealed class Player
         bool wantCrouch = Dn && Ground && below == 0 && !Frozen; if (Ground && wantCrouch && run && MathF.Abs(V.X) > 110 && slideT <= 0 && !Crouch) { slideT = .78f; V.X = Dir * 225; Snd.Play("slide", .6f); }
         if (!wantCrouch && Crouch && !Free(P.X, P.Y, 62)) wantCrouch = true; Crouch = wantCrouch || (slideT > 0 && Ground);
         if (slideT > 0) { slideT -= dt; V.X = M.Approach(V.X, 0, 230 * dt); if (!Ground || MathF.Abs(V.X) < 40) slideT = 0; if (M.Hash((int)(g.Env.T * 40), 4) > .35f) g.Life.Dust(P + new Vector2(Dir * 22, 0), Surface(), 1, -Dir); }
-        else { float spd = Crouch ? 38 : run ? 138 : 66; float acc = Ground ? (mx != 0 ? 900 : 1100) : 620; V.X = M.Approach(V.X, mx * spd, acc * dt); }
+        else
+        {
+            // on the ground each step surges: full speed on the push, slower as the foot lands and the legs pass
+            (float peak, float low, float air) gait = Crouch ? (50, .55f, 40) : run ? (181, .68f, 152) : (102, .50f, 75);
+            if (Ground && mx != 0 && MathF.Abs(V.X) < 5) An.StartStep();
+            float spd = Ground ? gait.peak * M.Lerp(gait.low, 1, An.Drive) : gait.air; float acc = Ground ? (mx != 0 ? (MathF.Abs(V.X) > spd ? 520 : 680) : 1000) : 560; V.X = M.Approach(V.X, mx * spd, acc * dt);
+        }
         if (mx != 0 && slideT <= 0) Dir = (int)mx; V.Y = MathF.Min(V.Y + (V.Y < 0 && control && In.Down(Act.Jump) ? 760 : 1080) * dt, 620); if (Ground) coyote = .1f;
         if (buffer > 0 && coyote > 0 && Dn && w.PlatAt(tx, (int)((P.Y + 2) / 24)) && !w.Solid(tx, (int)((P.Y + 2) / 24))) { dropT = .22f; buffer = 0; P.Y += 2; Ground = false; coyote = 0; }
         else if (buffer > 0 && coyote > 0) { V.Y = -338; buffer = coyote = 0; Ground = false; slideT = 0; An.Punch(-4); Snd.Play("jump", .5f, .95f + M.Hash(Environment.TickCount, 4) * .12f); g.Life.Dust(P, Surface(), 4, 0); EmoteT = 0; }
@@ -66,7 +72,7 @@ public sealed class Player
         if (!Ground && V.Y > 20 && mx != 0 && slideT <= 0) { int wx = (int)MathF.Floor((P.X + mx * (HW + 4)) / 24), wy = (int)MathF.Floor((P.Y - 56) / 24); if (w.Solid(wx, wy) && !w.Solid(wx, wy - 1) && !w.Solid(wx, wy - 2) && !w.Solid(wx, wy - 3) && !w.Solid(tx, wy - 1) && !w.Solid(tx, wy)) { ledgeA = new(P.X, wy * 24 + 58); ledgeB = new(wx * 24 + 12, wy * 24); ledgeT = 0; V = default; Snd.Play("climb", .6f, .8f); } }
         An.Dir = Dir; An.Vel = V; if (!Frozen)
         {
-            if (slideT > 0) An.Set(Anim.Slide); else if (!Ground) { if (V.Y < 40 || P.Y - fallPeak < 8 && coyote > -.12f) { if (coyote < -.04f || V.Y < -60) An.Set(V.Y < 40 ? Anim.Jump : Anim.Fall); } else An.Set(Anim.Fall); } else if (landT > 0 && MathF.Abs(V.X) < 30) An.Set(Anim.Land); else if (Crouch) An.Set(MathF.Abs(V.X) > 8 ? Anim.CrouchWalk : Anim.Crouch); else if (MathF.Abs(V.X) > 92) An.Set(Anim.Run); else if (MathF.Abs(V.X) > 6) An.Set(Anim.Walk); else if (EmoteT > 0) An.Set(Emote); else An.Set(Anim.Idle);
+            if (slideT > 0) An.Set(Anim.Slide); else if (!Ground) { if (V.Y < 40 || P.Y - fallPeak < 8 && coyote > -.12f) { if (coyote < -.04f || V.Y < -60) An.Set(V.Y < 40 ? Anim.Jump : Anim.Fall); } else An.Set(Anim.Fall); } else if (landT > 0 && MathF.Abs(V.X) < 30) An.Set(Anim.Land); else if (Crouch) An.Set(MathF.Abs(V.X) > 8 ? Anim.CrouchWalk : Anim.Crouch); else if (MathF.Abs(V.X) > 114 || (run && MathF.Abs(V.X) > 84 && mx != 0)) An.Set(Anim.Run); else if (MathF.Abs(V.X) > 6) An.Set(Anim.Walk); else if (EmoteT > 0) An.Set(Emote); else An.Set(Anim.Idle);
         }
         Tick(dt);
     }
