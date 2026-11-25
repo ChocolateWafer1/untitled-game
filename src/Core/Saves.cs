@@ -5,7 +5,7 @@ namespace UntitledGame;
 public struct ItemStack { public int Id { get; set; } public int N { get; set; } public readonly bool Empty => Id <= 0 || N <= 0; public ItemStack(int id, int n) { Id = id; N = n; } }
 public sealed class DropData { public int Id { get; set; } public int N { get; set; } public float X { get; set; } public float Y { get; set; } }
 
-/// One character's whole life in one world. The character and the seed are set when the save is made and never change.
+/// One character's whole life in one world. The seed is set when the save is made and never changes.
 public sealed class SaveData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
@@ -53,7 +53,15 @@ public static class Saves
         All = All.OrderBy(s => s.Data.Created).Take(Max).ToList();
     }
     public static bool Full => All.Count >= Max;
-    public static bool NameTaken(string n) => All.Any(s => string.Equals(s.Data.Avatar.Name, n.Trim(), StringComparison.OrdinalIgnoreCase)) || File.Exists(FileFor(n));
+    /// A save being edited may keep its own name.
+    public static bool NameTaken(string n, Slot own = null) { string f = FileFor(n); return All.Any(s => s != own && string.Equals(s.Data.Avatar.Name, n.Trim(), StringComparison.OrdinalIgnoreCase)) || (File.Exists(f) && !(own != null && string.Equals(Path.GetFullPath(f), Path.GetFullPath(own.File), StringComparison.OrdinalIgnoreCase))); }
+    /// Changes how a save's character looks. If the name changed, the file is renamed to match.
+    public static bool Edit(Slot s, AvatarData a)
+    {
+        if (NameTaken(a.Name, s)) return false; s.Data.Avatar = a.Clone(); s.Data.Validate(); string to = FileFor(s.Data.Avatar.Name), from = s.File; s.File = to; if (Locked) return true;
+        if (!Write(s)) { s.File = from; return false; } try { if (!string.Equals(Path.GetFullPath(from), Path.GetFullPath(to), StringComparison.OrdinalIgnoreCase)) { if (File.Exists(from)) File.Delete(from); } else if (from != to) File.Move(from, to, true); } catch { }
+        return true;
+    }
     /// A seed no other save is using.
     static int NewSeed() { for (; ; ) { int s = Random.Shared.Next(1, int.MaxValue); if (All.All(q => q.Data.Seed != s)) return s; } }
     public static Slot Create(AvatarData a)

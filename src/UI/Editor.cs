@@ -24,15 +24,15 @@ sealed class Puffs
 /// The avatar wardrobe: room and character on the left, item drawers on the right.
 public sealed class EditorScreen
 {
-    public AvatarData D; public Action Done; public Action Back; public bool CanBack; readonly AvatarPainter ap = new(); readonly Painter pt = new(250, 350); Texture2D tex, room; readonly AvatarAnim an = new() { Fps = 12 }; readonly Puffs fx = new(); readonly Rng rng = new(Environment.TickCount);
+    public AvatarData D; public Action Done; public Action Back; public bool CanBack; public Saves.Slot Editing; readonly AvatarPainter ap = new(); readonly Painter pt = new(250, 350); Texture2D tex, room; readonly AvatarAnim an = new() { Fps = 12 }; readonly Puffs fx = new(); readonly Rng rng = new(Environment.TickCount);
     const float S = 2.62f; int tab; readonly int[] sub = new int[12]; float scroll, scrollT; int chip; bool fan; float fanSpin, fanPow; int preview; float poseT; float tabSlide = 1; string name; bool typing; float shake; float finishT = -1; readonly List<AvatarData> undo = new(), redo = new(); readonly HashSet<string> locks = new(); bool outfits; float diceRot; float introT, taken; bool sliderUndo; float avX;
     static readonly string[] Tabs = ["Body", "Face", "Hair", "Tops", "Jackets", "Bottoms", "Shoes", "Hats", "Extras", "Style"]; static readonly string[] TabIcons = ["body", "face", "hair", "top", "jacket", "pants", "shoes", "hat", "extras", "style"];
     readonly Dictionary<string, (Texture2D t, int hash)> thumbs = new(); readonly Painter tp = new(96, 92); int budget;
 
     public EditorScreen() { tex = pt.ToTexture(); room = Room.Paint().ToTexture(); }
-    public void Open(AvatarData d, bool canBack)
+    public void Open(AvatarData d, bool canBack, Saves.Slot editing = null)
     {
-        D = d.Clone(); CanBack = canBack; name = D.Name ?? ""; undo.Clear(); redo.Clear(); finishT = -1; introT = 0; typing = false; outfits = false; tab = 0; chip = 0; preview = 0; an.Vel = default; Redraw();
+        Editing = editing; D = d.Clone(); CanBack = canBack; name = D.Name ?? ""; undo.Clear(); redo.Clear(); finishT = -1; introT = 0; typing = false; outfits = false; tab = 0; chip = 0; preview = 0; an.Vel = default; Redraw();
     }
     public void SetNameForTest(string s) => name = s;
     public Vector2 AvatarCenter => new(avX, 190);
@@ -70,7 +70,7 @@ public sealed class EditorScreen
     void Redo() { if (redo.Count == 0) return; undo.Add(D.Clone()); D = redo[^1]; redo.RemoveAt(redo.Count - 1); Snd.Play("undo", 1, 1.2f); Changed(-1); }
     void Finish()
     {
-        if (ValidName(name) && Saves.NameTaken(name)) { shake = .45f; taken = 3; Snd.Play("error"); typing = true; return; }
+        if (ValidName(name) && Saves.NameTaken(name, Editing)) { shake = .45f; taken = 3; Snd.Play("error"); typing = true; return; }
         if (!ValidName(name)) { shake = .45f; Snd.Play("error"); typing = true; return; }
         D.Name = name.Trim(); typing = false; finishT = 0; an.Set(Anim.ShowOff); an.Punch(9); Snd.Play("finish"); var cols = new[] { Ui.Gold, Ui.Orange, Ui.Green, new Color(216, 111, 134, 255), new Color(126, 168, 201, 255) };
         for (int i = 0; i < 70; i++) fx.Add(new(avX + rng.R(-30, 30), 200), new(rng.R(-190, 190), rng.R(-260, -60)), rng.R(.9f, 1.6f), rng.R(3, 6), cols[i % 5], 2);
@@ -156,7 +156,7 @@ public sealed class EditorScreen
             case 9: StyleTab(x, y, w); break;
         }
         Rlgl.PopMatrix();
-        if (Ui.Button("finish", "Create", px + pw - 108, py + ph - 37, 92, 26, "btnG", "check", ValidName(name) ? null : "Pick a name first", text: 2)) Finish();
+        if (Ui.Button("finish", Editing != null ? "Save" : "Create", px + pw - 108, py + ph - 37, 92, 26, "btnG", "check", ValidName(name) ? null : "Pick a name first", text: 2)) Finish();
     }
     int Subs(string[] n, float x, float y, float w)
     {

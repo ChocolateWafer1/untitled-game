@@ -31,7 +31,8 @@ public sealed class SelectScreen
         var s = Saves.All[i]; var d = s.Data; var a = Ui.A("sel" + i); bool over = Ui.Over(x, y, CW, CH); a.Hover.Update(over ? 1 : 0, 300, 18, Ui.DT); if (over && !a.Was) { Snd.Play("hover", .4f); an[i].Set(Anim.Wave); an[i].StateT = 0; wave[i] = 1.5f; } a.Was = over; y += MathF.Round(-a.Hover.X * 3 * (Store.Cfg.ReduceMotion ? 0 : 1));
         Ui.Nine("panel", x, y, CW, CH, Color.White); Raylib.DrawRectangleGradientV((int)x + 12, (int)y + 12, 66, (int)CH - 24, new Color(250, 222, 170, 255), new Color(224, 176, 124, 255)); Raylib.BeginBlendMode(BlendMode.Additive); Ui.GlowAt(x + 45, y + 54, 48, new Color(255, 220, 150, (int)(50 + 40 * M.Clamp(a.Hover.X)))); Raylib.EndBlendMode(); Raylib.DrawEllipse((int)x + 45, (int)(y + CH - 19), 20, 3.4f, new Color(90, 50, 40, 100)); Ui.Clip(x + 11, y + 4, 68, CH - 14); Ui.Tex(tex[i], x + 45 - 55, y + CH - 18 - 142, 1, Color.White); Ui.Unclip();
         Font.Draw(d.Avatar.Name, x + 88, y + 14, Ui.Ink, Font.Width(d.Avatar.Name, 1.75f) > CW - 102 ? 1.25f : 1.75f); Font.Draw("Day " + d.Day, x + 88, y + 34, Ui.Soft); Font.Draw(d.Mined + " blocks dug", x + 88, y + 46, Ui.Soft); Font.Draw(Time(d.Seconds), x + 88, y + 58, Ui.Soft);
-        if (Ui.Button("play" + i, "Play", x + 86, y + CH - 45, 64, 28, "btnG", "right", text: 1.25f)) { an[i].Set(Anim.Cheer); wave[i] = 3; Program.PlaySave(s, new(x + 45, y + CH / 2)); }
+        if (Ui.Button("play" + i, "Play", x + 85, y + CH - 45, 38, 28, "btnG", text: 1.25f)) { an[i].Set(Anim.Cheer); wave[i] = 3; Program.PlaySave(s, new(x + 45, y + CH / 2)); }
+        if (Ui.Button("edit" + i, null, x + 126, y + CH - 43, 24, 24, "btnB", "top", "Edit avatar")) Program.EditAvatar(s, new(x + 45, y + CH / 2), false);
         if (Ui.Button("del" + i, null, x + CW - 36, y + CH - 43, 24, 24, "btnR", "x", "Delete")) { asking = s; askT = 0; Snd.Play("open", .7f); }
     }
     void Empty(int i, float x, float y)
