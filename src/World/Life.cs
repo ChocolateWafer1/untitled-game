@@ -36,7 +36,7 @@ public sealed class Life
         if (e.Rain > .05f && !under) { rainT += dt * e.Rain * vw * .55f; while (rainT > 1) { rainT -= 1; float x = cx + r.R(-80, vw + 80) - wind * 50; Add(new(x, cy - 14), new(wind * 110 - 14, r.R(430, 540)), 1.4f, r.R(6, 11), new Color(190, 212, 230, 120), 9, 0, 0); } for (int i = pts.Count - 1; i >= 0; i--) { if (pts[i].K != 9) continue; var p = pts[i].P; int tx = (int)(p.X / 24), ty = (int)(p.Y / 24); if (w.Solid(tx, ty) || w.PoolAt(p.X, p.Y) != null || (w.PlatAt(tx, ty) && r.P(.5f))) { if (r.P(.55f)) { Add(new(p.X, w.Solid(tx, ty) ? ty * 24 - 1 : p.Y - 2), new(r.R(-22, 22), -r.R(16, 46)), .28f, 1, new Color(206, 226, 240, 170), 3, 220, 0); } pts[i] = pts[^1]; pts.RemoveAt(pts.Count - 1); } } }
         // grass springs
         int g0 = Math.Max(0, (int)(cx / 24) - 2) * 3, g1 = Math.Min(World.W - 1, (int)((cx + vw) / 24) + 2) * 3; for (int i = g0; i < g1; i++) { float gx = i * 8 + 4, d = gx - pl.P.X, gy = w.Top[i / 3] * 24; float push = 0; if (MathF.Abs(d) < 15 && MathF.Abs(gy - pl.P.Y) < 30) { push = MathF.Sign(d) * (1 - MathF.Abs(d) / 15) * 9 + pl.V.X * .03f; if (MathF.Abs(pl.V.X) > 40 && r.P(dt * 1.2f)) { Snd.Play("rustle", .10f, 1.2f + r.F() * .4f); Add(new(gx, gy - 5), new(pl.V.X * .2f + r.R(-20, 20), -r.R(10, 40)), .6f, 1, World.GrassCol(gx / 24).Shade(.1f).Rl(), 1, 60, 1); } } bv[i] += ((push - bend[i]) * 130 - bv[i] * 9) * dt; bend[i] += bv[i] * dt; }
-        Animals(dt, pl, cx, cy, vw, vh);
+        Animals(dt, pl, cx, cy, vw, vh); Extras(dt, cx, cy, vw);
     }
     public void DrawGrass(int cx, int cy, int vw, int vh, bool front)
     {
@@ -66,9 +66,16 @@ public sealed class Life
     public void Foam(Vector2 p) => Add(p, new(r.R(-34, 34), -r.R(10, 60)), r.R(.4f, .9f), r.R(1, 2), new Color(236, 246, 250, 190), 3, 160, 1);
     public int CrittersAhead(Vector2 p, int dir, float range) { int n = 0; foreach (var a in animals) if (a.K is Kind.Bunny or Kind.Squirrel && a.S != 2 && (a.P.X - p.X) * dir is > -20 and var q && q < range) n++; return n; }
     public void Scatter(float cx, float cy, int vw) { foreach (var a in animals) if (a.K == Kind.Bird && a.P.X > cx - 200 && a.P.X < cx + vw + 200 && a.S == 0) { a.S = 1; a.Dir = r.P(.5f) ? 1 : -1; a.V = new(a.Dir * r.R(60, 120), -r.R(90, 150)); } Snd.Play("flap", .7f); }
-    public void Flock(float cx, float cy, int vw) { int n = 0; foreach (var a in animals) if (a.K == Kind.Bird && n++ < 26) { a.Home = a.P; a.P = new(cx - r.R(20, 260), cy + r.R(20, 110)); a.S = 1; a.Dir = 1; a.V = new(r.R(90, 130), r.R(-8, 6)); } }
-    public void Petals(float cx, float cy, int vw, int kind) { for (int i = 0; i < 160; i++) Add(new(cx + r.R(-260, vw), cy - r.R(0, 160)), new(r.R(20, 60), r.R(10, 30)), 12, 2, (kind == 0 ? (r.P(.5f) ? (Col)0xf2bcc8 : 0xf8d8de) : r.P(.4f) ? (Col)0xd8743a : r.P(.5f) ? 0xe0a83e : 0xc4523a).Rl(), 1, 16, .4f); }
-    public void Swarm(Vector2 c) { for (int i = 0; i < 60; i++) Add(c + new Vector2(r.R(-240, 240), r.R(-110, 10)), new(r.R(-12, 12), r.R(-14, 6)), r.R(8, 16), 2, new Color(230, 255, 120, 220), 8, 0, .1f); }
+    float showerT, showerLen, showerAcc; int showerKind; readonly List<(Vector2 p, float t, float ph, float life)> glowers = new(); sealed class Flier { public Vector2 P, V; public float Ph, Off; public int Var; } readonly List<Flier> fliers = new();
+    public void Petals(int kind, float seconds) { showerKind = kind; showerT = 0; showerLen = seconds; }
+    public void Flock(float cx, float cy, int vw) { int n = 13 + r.I(6); float y = cy + r.R(50, 110); for (int i = 0; i < n; i++) { int row = (i + 1) / 2, side = i % 2 == 0 ? 1 : -1; fliers.Add(new Flier { P = new(cx - 50 - row * 17 - r.R(0, 6), y + row * side * 8 + r.R(-3, 3)), V = new(r.R(84, 92), 0), Ph = r.F() * 6, Off = row * side * 8, Var = 0 }); } Snd.Play("flap", .4f); }
+    public void Swarm(Vector2 c) { for (int i = 0; i < 54; i++) glowers.Add((c + new Vector2(r.R(-260, 260), r.R(-120, 20)), -r.R(0, 5), r.R(0, 6.28f), r.R(18, 34))); }
+    void Extras(float dt, float cx, float cy, int vw)
+    {
+        if (showerT < showerLen) { showerT += dt; float k = M.Smooth(0, 3, showerT) * (1 - M.Smooth(showerLen - 4, showerLen, showerT)); showerAcc += dt * 26 * k; while (showerAcc > 1) { showerAcc -= 1; Col c = showerKind == 0 ? (r.P(.5f) ? 0xf2bcc8 : 0xf8d8de) : r.P(.4f) ? 0xd8743a : r.P(.5f) ? 0xe0a83e : 0xc4523a; Add(new(cx + r.R(-160, vw + 20), cy - r.R(4, 30)), new(r.R(10, 40), r.R(12, 30)), r.R(9, 14), 2, c.Rl(), 1, 16, .4f); } }
+        for (int i = fliers.Count - 1; i >= 0; i--) { var f = fliers[i]; f.Ph += dt; f.P += new Vector2(f.V.X + M.Sin(f.Ph * .7f) * 5, M.Sin(f.Ph * .9f + f.Off) * 6) * dt; if (f.P.X > cx + vw + 140) fliers.RemoveAt(i); }
+        for (int i = glowers.Count - 1; i >= 0; i--) { var q = glowers[i]; q.t += dt; q.p += new Vector2(M.Sin(q.t * .8f + q.ph * 3) * 13, M.Sin(q.t * 1.2f + q.ph) * 10) * dt; if (q.t > q.life) glowers.RemoveAt(i); else glowers[i] = q; }
+    }
 
     // ---------------------------------------------------------------- animals
     void Art()
@@ -134,7 +141,7 @@ public sealed class Life
     }
     public void DrawAnimals(int cx, int cy, int vw, bool water)
     {
-        var e = g.Env; foreach (var a in animals)
+        var e = g.Env; if (!water) foreach (var f in fliers) { var ft = an["gull" + ((int)(f.Ph * 6) % 4 is var fq && fq == 3 ? 1 : fq)]; Ui.Tex(ft, MathF.Round(f.P.X - cx - 11), MathF.Round(f.P.Y - cy - 7), .75f, new Color(236, 234, 240, 255)); } foreach (var a in animals)
         {
             float x = a.P.X - cx, y = a.P.Y - cy; if (x < -40 || x > vw + 40) continue; bool isW = a.K is Kind.Fish; if (isW != water) continue; string n; float oy = 0;
             switch (a.K)
@@ -154,7 +161,7 @@ public sealed class Life
     }
     public void DrawGlows(int cx, int cy, int vw, Render R)
     {
-        var e = g.Env; foreach (var a in animals)
+        var e = g.Env; foreach (var q in glowers) { if (q.t < 0) continue; float b = M.Smooth(0, 2.5f, q.t) * (1 - M.Smooth(q.life - 4, q.life, q.t)) * (.25f + .75f * MathF.Pow(MathF.Max(0, M.Sin(q.t * 1.9f + q.ph)), 2)); float x = q.p.X - cx, y = q.p.Y - cy; Ui.GlowAt(x, y, 13, new Color(230, 255, 120, (int)(95 * b))); Raylib.DrawRectangle((int)x, (int)y, 2, 2, new Color(240, 255, 160, (int)(235 * b))); } foreach (var a in animals)
         {
             if (a.K is not (Kind.Firefly or Kind.Moth)) continue; float x = a.P.X - cx, y = a.P.Y - cy; if (x < -20 || x > vw + 20) continue; float on = a.K == Kind.Moth ? .7f : e.Night * (1 - e.Rain); if (on < .05f) continue; float b = MathF.Pow(MathF.Max(0, M.Sin(a.T * 1.7f + a.Home.X)), 2) * on; if (b < .03f) continue; var c = a.K == Kind.Moth ? new Color(140, 245, 230, (int)(180 * b)) : new Color(230, 255, 120, (int)(200 * b)); Ui.GlowAt(x, y, 13, Raylib.Fade(c, b * .5f)); Raylib.DrawRectangle((int)x, (int)y, 2, 2, c);
         }

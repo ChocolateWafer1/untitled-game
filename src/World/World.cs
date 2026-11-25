@@ -219,8 +219,9 @@ public sealed class World
         Add("fountain", 760 * TS, g + 2, 1, false, 13); Lamp(760 * TS, g - 40, 110, 0x9ad8ff, .05f);
         Add("aquarium", 785 * TS, g + 2, 1, false, 14); Lamp(785 * TS, g - 40, 130, 0x7ad0f0, .04f);
         Add("board", 750 * TS, g + 2, 2, false, 15); Add("bench", 771 * TS, g + 2, 2, false, 10); Add("well", 718 * TS, g + 2, 1); Add("barrel", 809.4f * TS, g + 2, 2);
-        foreach (float x in new[] { 711f, 741, 777, 794, 826, 845 }) L(x);
-        Add("bunting", 765.5f * TS, g - 78, 1, false, 16); Add("bunting", 754.9f * TS, g - 78, 1, false, 16); L(749.6f - 3.6f);
+        foreach (float x in new[] { 711f, 741, 780, 796, 826, 845 }) L(x);
+        // strings of bunting, each end tied to a post
+        float b0 = 744.6f * TS; for (int i = 0; i < 4; i++) Add("post", b0 + i * 248, g + 2, 0); for (int i = 0; i < 3; i++) Add("bunting", b0 + 124 + i * 248, g - 80, 1, false, 16);
         Add("flowerbox0", 708.6f * TS, g + 2, 2, false, 2); Add("flowerbox1", 798.6f * TS, g + 2, 2, false, 2);
         Add("oak1", 692 * TS, g + 2, 1, false, 1); Add("blossom0", 723.6f * TS, g + 2, 0, false, 1); Add("blossom1", 814 * TS, g + 2, 0, true, 1); Add("oak0", 850 * TS, g + 2, 1, true, 1);
         Add("signpost", 843 * TS, g + 2, 2); Add("signpost", 698 * TS, g + 2, 2, true);
