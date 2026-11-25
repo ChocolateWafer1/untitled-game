@@ -55,7 +55,7 @@ public sealed partial class AvatarPainter
     int near; // which side (-1 left, +1 right) is drawn last
     Col skin, ink;
     public Vector2 HandL => haL; public Vector2 HandR => haR; public Vector2 HeadC => HC; public Rig Rig => r;
-    static readonly AvatarData mannequin = new() { Skin = 0xd9c7ad, Hair = new HairData { Id = Catalog.Hair.Length - 1 } };
+    static readonly AvatarData mannequin = new() { Skin = 0xd9c7ad, Hair = new HairData { Id = Catalog.BaldHair } };
 
     Vector2 Tp(float x, float up)
     {

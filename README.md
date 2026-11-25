@@ -25,7 +25,7 @@ Download the zip from Releases, unzip it and run `Untitled Game.exe`. Windows 10
 Keys can be rebound.
 
 ## What is inside
-- Avatar creator: body sliders, 46 hair styles with streaks, split dye, tips, roots and underlayers, 32 tops, 30 jackets, 30 pants, 30 shorts, 30 skirts, 30 shoes, 30 hats, accessories, 3 colors and 20 patterns per piece. Clothes and hair move in the wind.
+- Avatar creator: body sliders, 96 hair styles with streaks, split dye, tips, roots and underlayers, 32 tops, 30 jackets, 30 pants, 30 shorts, 30 skirts, 30 shoes, 30 hats, accessories, 3 colors and 20 patterns per piece. Clothes and hair move in the wind.
 - Six save files. Each one belongs to one character, is named after them, and has its own world grown from its own seed.
 - 20 biomes in every world, 16 above ground and 4 below, each with its own ground, plants, sky, horizon and drifting air. Caves, lakes, waterfalls, floating islands, hot springs.
 - 27 kinds of block to dig by hand, each with its own hardness. Blocks fracture from where you hit them, and water runs into what you open up.
