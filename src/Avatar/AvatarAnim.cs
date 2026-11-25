@@ -61,7 +61,7 @@ public sealed class AvatarAnim
         Pose r = b; float L(float x, float y) => x + (y - x) * k;
         r.RootX = L(a.RootX, b.RootX); r.Lift = L(a.Lift, b.Lift); r.Lean = L(a.Lean, b.Lean); r.HeadTilt = L(a.HeadTilt, b.HeadTilt); r.HeadX = L(a.HeadX, b.HeadX); r.HeadY = L(a.HeadY, b.HeadY); r.Breath = L(a.Breath, b.Breath);
         r.ArmL0 = L(a.ArmL0, b.ArmL0); r.ArmL1 = L(a.ArmL1, b.ArmL1); r.ArmR0 = L(a.ArmR0, b.ArmR0); r.ArmR1 = L(a.ArmR1, b.ArmR1); r.LegL0 = L(a.LegL0, b.LegL0); r.LegL1 = L(a.LegL1, b.LegL1); r.LegR0 = L(a.LegR0, b.LegR0); r.LegR1 = L(a.LegR1, b.LegR1); r.FootL = L(a.FootL, b.FootL); r.FootR = L(a.FootR, b.FootR);
-        r.LookX = L(a.LookX, b.LookX); r.LookY = L(a.LookY, b.LookY); r.Brow = L(a.Brow, b.Brow); r.Mouth = L(a.Mouth, b.Mouth); r.RootY = L(a.RootY, b.RootY); r.WristL = L(a.WristL, b.WristL); r.WristR = L(a.WristR, b.WristR); r.OpenL = b.OpenL; r.OpenR = b.OpenR; r.ForeL = L(a.ForeL, b.ForeL); r.ForeR = L(a.ForeR, b.ForeR); r.ForeS = L(a.ForeS, b.ForeS); r.Bend = L(a.Bend, b.Bend); return r;
+        r.LookX = L(a.LookX, b.LookX); r.LookY = L(a.LookY, b.LookY); r.Brow = L(a.Brow, b.Brow); r.Mouth = L(a.Mouth, b.Mouth); r.RootY = L(a.RootY, b.RootY); r.WristL = L(a.WristL, b.WristL); r.WristR = L(a.WristR, b.WristR); r.OpenL = b.OpenL; r.OpenR = b.OpenR; r.ForeL = L(a.ForeL, b.ForeL); r.ForeR = L(a.ForeR, b.ForeR); r.ForeS = L(a.ForeS, b.ForeS); r.Bend = L(a.Bend, b.Bend); r.Seat = L(a.Seat, b.Seat); r.Plant = L(a.Plant, b.Plant); if (b.Plant < .01f) { r.PlantL = a.PlantL; r.PlantR = a.PlantR; } return r;
     }
 
     void Gait(ref Pose p, float amp, float flex, float arm, float elbow, float lean)
@@ -98,7 +98,13 @@ public sealed class AvatarAnim
                 }
             case Anim.Crouch: // a tidy front-on squat: thighs point at the camera, hands rest on the knees
                 p.ForeL = p.ForeR = .74f; p.ForeS = .16f; p.LegL0 = -.34f; p.LegL1 = .06f; p.LegR0 = .34f; p.LegR1 = -.06f; p.Bend = .34f; p.ArmL0 = -.34f; p.ArmL1 = .22f; p.ArmR0 = .34f; p.ArmR1 = -.22f; p.LookX = d * .4f; p.HeadY = br * .15f; break;
-            case Anim.Slide: p.LegL0 = d * 1.35f; p.LegL1 = d * 1.2f; p.LegR0 = d * 1.2f; p.LegR1 = d * .2f; p.Lean = -d * .75f; p.ArmL0 = -d * 1.1f; p.ArmL1 = -d * .9f; p.ArmR0 = -d * .7f; p.ArmR1 = d * .4f; p.HeadTilt = d * .3f; p.Brow = 1; p.Mouth = .5f; break;
+            case Anim.Slide:
+                {
+                    // feet-first slide: seat on the ground, one leg long, one knee up, back propped, head up, both hands trailing on the ground
+                    float j = M.Sin(t * 31) * .02f; p.Seat = 1; p.RootX = d * -3; p.Lean = -d * (.86f + j); p.HeadTilt = d * .36f; p.HeadX = d * 3.6f; p.HeadY = -1.4f - j * 8; p.LookX = d; p.LookY = -.1f; p.Brow = .6f; p.Mouth = .42f;
+                    float la = d * (1.56f + j), lb = d * 1.60f, ka = d * 2.02f, kb = d * (1.06f + j * 2); if (d > 0) { p.LegL0 = la; p.LegL1 = lb; p.FootL = -1.28f; p.LegR0 = ka; p.LegR1 = kb; p.FootR = -.12f; } else { p.LegR0 = la; p.LegR1 = lb; p.FootR = -1.28f; p.LegL0 = ka; p.LegL1 = kb; p.FootL = -.12f; }
+                    p.Plant = 1; var back = new Vector2(-d * 48, -2.2f); var fwd = new Vector2(-d * 34, -2.2f); p.PlantL = d > 0 ? back : fwd; p.PlantR = d > 0 ? fwd : back; float w = d * 1.15f; p.WristL = w; p.WristR = w; break;
+                }
             case Anim.Jump: case Anim.Fall:
                 {
                     // u: -1 rising fast, 0 apex, +1 falling fast. Poses blend through the arc instead of one held shape.

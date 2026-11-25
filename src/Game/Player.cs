@@ -53,9 +53,9 @@ public sealed class Player
             Move(dt); if (mx != 0) Dir = (int)mx; An.Dir = Dir; An.Vel = V; An.Set(MathF.Abs(V.X) > 26 || MathF.Abs(V.Y) > 55 ? Anim.Swim : Anim.Tread); if (sub > 56) { Air += dt; if (M.Hash((int)(g.Env.T * 8), 2) > .72f) g.Life.Bubble(new(P.X + Dir * 6, P.Y - 48)); } else Air = 0; fallPeak = P.Y; Tick(dt); return;
         }
         // ground and air
-        bool wantCrouch = Dn && Ground && below == 0 && !Frozen; if (Ground && wantCrouch && run && MathF.Abs(V.X) > 110 && slideT <= 0 && !Crouch) { slideT = .62f; V.X = Dir * 205; Snd.Play("slide", .6f); }
+        bool wantCrouch = Dn && Ground && below == 0 && !Frozen; if (Ground && wantCrouch && run && MathF.Abs(V.X) > 110 && slideT <= 0 && !Crouch) { slideT = .78f; V.X = Dir * 225; Snd.Play("slide", .6f); }
         if (!wantCrouch && Crouch && !Free(P.X, P.Y, 62)) wantCrouch = true; Crouch = wantCrouch || (slideT > 0 && Ground);
-        if (slideT > 0) { slideT -= dt; V.X = M.Approach(V.X, 0, 230 * dt); if (!Ground || MathF.Abs(V.X) < 40) slideT = 0; if (M.Hash((int)(g.Env.T * 30), 4) > .6f) g.Life.Dust(P, Surface(), 1, -Dir); }
+        if (slideT > 0) { slideT -= dt; V.X = M.Approach(V.X, 0, 230 * dt); if (!Ground || MathF.Abs(V.X) < 40) slideT = 0; if (M.Hash((int)(g.Env.T * 40), 4) > .35f) g.Life.Dust(P + new Vector2(Dir * 22, 0), Surface(), 1, -Dir); }
         else { float spd = Crouch ? 38 : run ? 138 : 66; float acc = Ground ? (mx != 0 ? 900 : 1100) : 620; V.X = M.Approach(V.X, mx * spd, acc * dt); }
         if (mx != 0 && slideT <= 0) Dir = (int)mx; V.Y = MathF.Min(V.Y + (V.Y < 0 && control && In.Down(Act.Jump) ? 760 : 1080) * dt, 620); if (Ground) coyote = .1f;
         if (buffer > 0 && coyote > 0 && Dn && w.PlatAt(tx, (int)((P.Y + 2) / 24)) && !w.Solid(tx, (int)((P.Y + 2) / 24))) { dropT = .22f; buffer = 0; P.Y += 2; Ground = false; coyote = 0; }

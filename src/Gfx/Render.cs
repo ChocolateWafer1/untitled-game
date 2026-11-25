@@ -13,10 +13,10 @@ float ch(vec2 p){ return h21(p+.37); }
 // one layer of procedural cumulus: each cell grows its own cloud from a row of puffs with a flat base
 vec4 cumulus(vec2 p,float seed,float cw,float base,float scale,float cover){
  float cell=floor(p.x/cw); float best=-9.; vec2 nrm=vec2(0.,-1.); float hgt=0.; float rid=0.;
- for(int k=-1;k<=1;k++){ float id=cell+float(k); vec2 hs=vec2(id,seed); if(ch(hs)>cover) continue;
+ for(int k=-1;k<=1;k++){ float id=cell+float(k); vec2 hs=vec2(id,seed); float gate=cover+.10*sin(t*.011+ch(hs+7.)*6.283)-ch(hs); if(gate<=0.) continue; float gr=clamp(gate/.46,0.,1.); gr=gr*(1.6-.6*gr);
   float len=(.10+.13*ch(hs+3.))*scale; vec2 c=vec2((id+.5+(ch(hs+1.)-.5)*.45)*cw, base+(ch(hs+2.)-.5)*.09); vec2 q=p-c; if(abs(q.x)>len*1.7||q.y>.06||q.y<-.26*scale) continue;
   float wob=(vn(q*46.+seed)-.5)*.012+(vn(q*17.+id*3.)-.5)*.022;
-  for(int i=0;i<9;i++){ float fi=float(i); float u=(fi/8.-.5)*2.; float arch=1.-u*u*.82; float r=(.024+.040*ch(hs+fi*1.7+5.))*arch*scale+.012*scale; float lift=arch*(.022+.098*ch(hs+fi*2.3+9.))*scale; vec2 pc=vec2(u*len+(ch(hs+fi+20.)-.5)*.02, -lift+r*.2); pc.y+=sin(t*.05+fi*1.9+id)*.0035; vec2 dd=q-pc; float d=r-length(dd*vec2(.92,1.))+wob; if(d>best){ best=d; nrm=dd/max(r,.001); hgt=-q.y; rid=id; } }
+  for(int i=0;i<9;i++){ float fi=float(i); float u=(fi/8.-.5)*2.; float arch=1.-u*u*.82; float r=(.024+.040*ch(hs+fi*1.7+5.))*arch*scale+.012*scale; float ord=abs(u)*.46+ch(hs+fi*4.1+31.)*.30; float pg=smoothstep(ord,ord+.30,gr); if(pg<=.01) continue; r*=.18+.82*pg; float lift=arch*(.022+.098*ch(hs+fi*2.3+9.))*scale*(.25+.75*pg); vec2 pc=vec2(u*len+(ch(hs+fi+20.)-.5)*.02, -lift+r*.2); pc.y+=sin(t*.05+fi*1.9+id)*.0035; vec2 dd=q-pc; float d=r-length(dd*vec2(.92,1.))+wob-(1.-pg)*(.004+.030*vn(q*62.+fi*9.+seed)); if(d>best){ best=d; nrm=dd/max(r,.001); hgt=-q.y; rid=id; } }
   float fl=.012*scale-q.y+(vn(vec2(q.x*30.,id))-.5)*.010; if(best>fl){ best=fl; nrm=vec2(nrm.x*.3,.9);} }
  return vec4(best,nrm,hgt); }
 void main(){ vec2 uv=vec2(fragTexCoord.x,1.-fragTexCoord.y); float y=uv.y; vec3 c=y<.42?mix(top,mid,smoothstep(0.,.42,y)):mix(mid,hor,smoothstep(.42,.74,y));

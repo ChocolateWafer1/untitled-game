@@ -22,7 +22,7 @@ public sealed class Env
     public string WeatherIcon => Storm > .5f ? "storm" : Rain > .3f ? "rain" : Mist > .4f ? "mist" : Cloud > .6f ? "cloud" : Night > .6f ? "moon" : "sun";
     public void SetWeather(Weather w, bool instant = false)
     {
-        Now = w; WeatherT = r.R(110, 240) * (w == Weather.Clear ? 1.4f : 1); if (instant) { Cloud = TgtCloud; Rain = TgtRain; Mist = TgtMist; WindBase = TgtWind; Storm = w == Weather.Storm ? 1 : 0; }
+        Now = w; WeatherT = r.R(170, 320) * (w == Weather.Clear ? 1.4f : 1); if (instant) { Cloud = TgtCloud; Rain = TgtRain; Mist = TgtMist; WindBase = TgtWind; Storm = w == Weather.Storm ? 1 : 0; }
     }
     float TgtCloud => Now switch { Weather.Clear => .22f, Weather.Breezy => .38f, Weather.Cloudy => .78f, Weather.Mist => .5f, Weather.Rain => .9f, Weather.Snow => .82f, _ => 1 }; float TgtRain => Now == Weather.Rain ? .65f : Now == Weather.Storm ? 1 : 0; float TgtMist => Now == Weather.Mist ? 1 : Now == Weather.Rain ? .25f : 0; float TgtWind => Now switch { Weather.Breezy => .55f, Weather.Storm => .8f, Weather.Rain => .42f, Weather.Mist => .12f, _ => .28f };
     public void Update(float dt)
@@ -32,9 +32,9 @@ public sealed class Env
         {
             bool wasWet = Rain > .4f; float q = r.F(); bool morning = Clock > .18f && Clock < .32f; SetWeather(wasWet ? (q < .7f ? Weather.Clear : Weather.Cloudy) : morning && q < .4f ? Weather.Mist : q < .42f ? Weather.Clear : q < .62f ? Weather.Breezy : q < .76f ? Weather.Cloudy : q < .93f ? Weather.Rain : Weather.Storm); if (wasWet && Clock > .24f && Clock < .76f) Rainbow = 1.6f;
         }
-        Cloud = M.Damp(Cloud, TgtCloud, .12f, dt); Rain = M.Damp(Rain, TgtRain, .16f, dt); Mist = M.Damp(Mist, TgtMist, .10f, dt); WindBase = M.Damp(WindBase, TgtWind, .05f, dt); Storm = M.Damp(Storm, Now == Weather.Storm ? 1 : 0, .2f, dt); Wet = M.Damp(Wet, Rain > .2f ? 1 : 0, Rain > .2f ? .2f : .03f, dt); Rainbow = MathF.Max(0, Rainbow - dt * .016f);
+        Cloud = M.Approach(M.Damp(Cloud, TgtCloud, .012f, dt), TgtCloud, .0065f * dt); Rain = M.Damp(Rain, TgtRain * M.Smooth(.45f, .68f, Cloud), .16f, dt); Mist = M.Damp(Mist, TgtMist, .10f, dt); WindBase = M.Damp(WindBase, TgtWind, .05f, dt); Storm = M.Damp(Storm, Now == Weather.Storm ? M.Smooth(.55f, .8f, Cloud) : 0, .2f, dt); Wet = M.Damp(Wet, Rain > .2f ? 1 : 0, Rain > .2f ? .2f : .03f, dt); Rainbow = MathF.Max(0, Rainbow - dt * .016f);
         float g = M.Noise(T * .035f, 3) * .28f + M.Noise(T * .09f, 9) * .10f; float want = WindForce >= 0 ? WindForce : WindBase * (1 + g); Wind = M.Damp(Wind, want, .35f, dt); CloudX += dt * (.0010f + Wind * .0016f); // always the same way, drifting slowly between calm and breezy
-        Snow = M.Damp(Snow, Now == Weather.Snow ? 1 : 0, .25f, dt); SnowCover = M.Damp(SnowCover, Snow > .3f ? 1 : 0, Snow > .3f ? .06f : .035f, dt); EclipseT = MathF.Max(0, EclipseT - dt); Eclipse = M.Damp(Eclipse, EclipseT > 0 ? 1 : 0, .7f, dt); MeteorT = MathF.Max(0, MeteorT - dt); if (MeteorT > 0 && ShootT > .55f) { ShootT = 0; ShootP = new(r.R(.0f, .85f), r.R(.02f, .34f)); }
+        Snow = M.Damp(Snow, Now == Weather.Snow ? M.Smooth(.45f, .65f, Cloud) : 0, .25f, dt); SnowCover = M.Damp(SnowCover, Snow > .3f ? 1 : 0, Snow > .3f ? .06f : .035f, dt); EclipseT = MathF.Max(0, EclipseT - dt); Eclipse = M.Damp(Eclipse, EclipseT > 0 ? 1 : 0, .7f, dt); MeteorT = MathF.Max(0, MeteorT - dt); if (MeteorT > 0 && ShootT > .55f) { ShootT = 0; ShootP = new(r.R(.0f, .85f), r.R(.02f, .34f)); }
         Colors();
         Flash = M.Damp(Flash, 0, 5, dt); BoltT += dt; if (Storm > .6f) { nextBolt -= dt; if (nextBolt <= 0) { nextBolt = r.R(5, 14); Flash = r.R(.7f, 1.1f); BoltX = r.F(); BoltSeed = r.I(9999); BoltT = 0; thunderIn = r.R(.25f, 1.8f); } }
         if (thunderIn > 0) { thunderIn -= dt; if (thunderIn <= 0) Thunder?.Invoke(1); }

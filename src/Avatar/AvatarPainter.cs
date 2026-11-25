@@ -8,6 +8,7 @@ public struct Pose
     public float LegL0, LegL1, LegR0, LegR1, FootL, FootR;
     public float WristL, WristR, OpenL, OpenR; // wrist turn and how open the hand is
     public float ForeL, ForeR, ForeS, Bend; // foreshortening: thighs and shins toward the camera, torso folding forward
+    public float Seat, Plant; public Vector2 PlantL, PlantR; // Seat: hips on the ground. Plant: hands pressed to ground points
     public bool Back; // drawn from behind (climbing)
     public float Blink, Mouth, LookX, LookY, Brow;
     public float HemX, HemY, HairX, HairY, SleeveX, SleeveY, T, Wind;
@@ -85,11 +86,18 @@ public sealed partial class AvatarPainter
             float low = MathF.Max(Low(anL, po.FootL), Low(anR, po.FootR));
             float dy = -low - po.Lift; P.Y += dy; hpL.Y += dy; knL.Y += dy; anL.Y += dy; hpR.Y += dy; knR.Y += dy; anR.Y += dy;
         }
-        else { P.Y += po.RootY; hpL.Y += po.RootY; knL.Y += po.RootY; anL.Y += po.RootY; hpR.Y += po.RootY; knR.Y += po.RootY; anR.Y += po.RootY; }
+        if (po.Seat > .01f) { float dy = (-(r.ThighR + 1.2f) - P.Y) * po.Seat; P.Y += dy; hpL.Y += dy; knL.Y += dy; anL.Y += dy; hpR.Y += dy; knR.Y += dy; anR.Y += dy; }
+        if (po.FreeRoot) { P.Y += po.RootY; hpL.Y += po.RootY; knL.Y += po.RootY; anL.Y += po.RootY; hpR.Y += po.RootY; knR.Y += po.RootY; anR.Y += po.RootY; }
         float sy = r.Torso * .865f, sx2 = (r.ShX - r.ArmR * 1.05f) * (1 - .22f * at);
         shL = Tp(-sx2, sy); shR = Tp(sx2, sy);
         elL = shL + M.Dir(po.ArmL0, r.UArm); haL = elL + M.Dir(po.ArmL1, r.LArm);
         elR = shR + M.Dir(po.ArmR0, r.UArm); haR = elR + M.Dir(po.ArmR1, r.LArm);
+        if (po.Plant > .01f)
+        {
+            // reach each wrist to its ground point with the elbow bending away from the body
+            void Solve(Vector2 sh, Vector2 goal, ref Vector2 el, ref Vector2 ha) { var v = goal - sh; float D = M.Clamp(v.Length(), 4, r.UArm + r.LArm - .4f); v = Vector2.Normalize(v); float a = (r.UArm * r.UArm + D * D - r.LArm * r.LArm) / (2 * D), hh = MathF.Sqrt(MathF.Max(0, r.UArm * r.UArm - a * a)); var n = new Vector2(v.Y, -v.X); if (n.X * MathF.Sign(po.Turn) > 0) n = -n; el = Vector2.Lerp(el, sh + v * a + n * hh, po.Plant); ha = Vector2.Lerp(ha, sh + v * D, po.Plant); }
+            Solve(shL, po.PlantL, ref elL, ref haL); Solve(shR, po.PlantR, ref elR, ref haR);
+        }
         HC = Tp(0, r.Torso + r.NeckLen + r.HeadRy * .80f) + new Vector2(po.HeadX + po.Turn * .9f, po.HeadY + (d.Age == 3 ? .8f : 0) + po.Bend * r.HeadRy * .75f);
         near = po.Turn >= 0 ? -1 : 1;
     }
@@ -131,6 +139,7 @@ public sealed partial class AvatarPainter
         if (Vis(Slot.Hat)) Hat();
         if (Vis(Slot.Neck)) NeckwearFront();
         if (side) Arm(near, true); else { if (overL) Arm(-1, true); if (overR) Arm(1, true); }
+        if (po.Seat > .5f) { p.Begin().Rect(-120, .9f, 240, 120); p.Erase(); } // cloth rests on the ground instead of sinking in
         if (outlinePx > 0) p.Outline(d.OutlineCol, outlinePx);
     }
     /// The character from behind: arms reach past the body, hair covers the head, packs sit on top.
@@ -640,7 +649,8 @@ public sealed partial class AvatarPainter
     }
     void Skirt(SkirtDef t)
     {
-        var pc = d[Slot.Bottom]; Col A = pc.A, B = pc.B, C = pc.C; float legLen = r.Thigh + r.Shin, len = t.Len * legLen, up = 5.5f, wT = r.Half(up) + .6f, wH = r.Hip + .9f;
+        if (po.Seat > .5f) { SkirtSeated(t); return; }
+        var pc = d[Slot.Bottom]; Col A = pc.A, B = pc.B, C = pc.C; float legLen = r.Thigh + r.Shin, len = MathF.Max(6, MathF.Min(t.Len * legLen, -.6f - P.Y)), up = 5.5f, wT = r.Half(up) + .6f, wH = r.Hip + .9f;
         float flare = t.Flare * (3 + t.Len * 5);
         if (t.Kind == SkirtKind.Pencil) flare = .5f;
         // the legs shape the cloth: gather how far they reach at every height under the skirt
@@ -720,6 +730,13 @@ public sealed partial class AvatarPainter
         }
         p.Begin().Poly(Tp(-wT - .2f, up + .5f), Tp(wT + .2f, up + .5f), Tp(wT + .7f, up - 2), Tp(-wT - .7f, up - 2)); p.Shade(new Ink(t.Belt ? C : t.Kind == SkirtKind.Tulle ? A : B, 1.2f, .4f) { Ao = .6f });
         if (t.Belt) { var q = Tp(po.Turn, up - .8f); p.Begin().Rect(q.X - 1.6f, q.Y - 1.2f, 3.2f, 2.4f); p.Shade(new Ink(0xd9b25a, .9f, .5f) { Ao = 0 }); }
+    }
+    /// With the hips on the ground the cloth lies along both legs.
+    void SkirtSeated(SkirtDef t)
+    {
+        var pc = d[Slot.Bottom]; Col A = pc.A, B = pc.B; var f = TorsoPat(pc, A); bool kilt = t.Kind == SkirtKind.Kilt; float ex = 1.6f + t.Flare * 1.1f;
+        for (int i = 0; i < 2; i++) { bool L = i == 0 ? -near < 0 : near < 0; p.Begin(); Limb(L ? hpL : hpR, L ? knL : knR, L ? anL : anR, M.Clamp(t.Len, .24f, .92f), s => LegRad(s) + ex * (.5f + s), default); if (i == 1) p.Poly(Tp(-r.Hip - .8f, 5.5f), Tp(r.Hip + .8f, 5.5f), Tp(r.Hip + 1.4f, -3), Tp(-r.Hip - 1.4f, -3)); float dk = i == 0 ? -.14f : 0; p.Shade(new Ink((x, y) => kilt && pc.Pat == 0 ? Patterns.Get(4, x, y, A, B, pc.C) : f(x, y), 4, .5f) { Tone = (x, y) => dk + M.Sin(x * .9f + y * .3f) * .05f }); }
+        float up = 5.5f, wT = r.Half(up) + .6f; p.Begin().Poly(Tp(-wT, up + .5f), Tp(wT, up + .5f), Tp(wT + .4f, up - 2), Tp(-wT - .4f, up - 2)); p.Shade(new Ink(B, 1.2f, .4f) { Ao = .4f });
     }
     void SkirtStraps()
     {

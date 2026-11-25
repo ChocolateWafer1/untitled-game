@@ -15,7 +15,7 @@ public sealed partial class GameScreen
         switch (admTab)
         {
             case 0:
-                foreach (var q in Enum.GetValues<Weather>()) if (B(q.ToString(), Env.Now == q ? "btnG" : "btnB")) { Env.SetWeather(q); Env.WeatherT = 600; Toast(q + " rolling in"); }
+                foreach (var q in Enum.GetValues<Weather>()) if (B(q.ToString(), Env.Now == q ? "btnG" : "btnB")) { Env.SetWeather(q); Env.WeatherT = 600; Toast(q + " is building. Use Instant to skip ahead"); }
                 if (B("Instant", "btnP", "Skip the slow change")) { var now = Env.Now; Env.SetWeather(now, true); }
                 Gap("Wind"); { float v = Env.WindForce < 0 ? Env.Wind / 1.6f : Env.WindForce / 1.6f; if (Ui.Slider("adw", ref v, cx + 2, cy, cw - 6)) Env.WindForce = v * 1.6f; cy += 16; } if (B("Natural wind", "btnP")) Env.WindForce = -1; if (B("Gentle gust")) { P.An.Gust(1.4f); Life.Leaves(P.P + new Vector2(-60, -50), 16, World.GrassCol(P.P.X / 24)); Snd.Play("whoosh", .6f, .7f); }
                 Gap("Events"); if (B("Lightning")) { Env.Flash = 1.1f; Env.BoltT = 0; Env.BoltX = .15f + rng.F() * .7f; Env.BoltSeed = rng.I(9999); Snd.Play("thunder", .9f); Shake(2); } if (B("Rainbow")) Env.Rainbow = 1.8f; if (B("Petal shower")) Life.Petals(CamX, CamY, (int)Ui.VW, 0); if (B("Leaf storm")) Life.Petals(CamX, CamY, (int)Ui.VW, 1); if (B("Earthquake", "btnR")) { quakeT = 2.4f; Snd.Play("thunder", .8f, .5f); Life.Scatter(CamX, CamY, (int)Ui.VW); } if (B("Melt snow", "btnP")) { Env.SnowCover = 0; Env.Snow = 0; if (Env.Now == Weather.Snow) Env.SetWeather(Weather.Clear, true); } break;
