@@ -288,7 +288,7 @@ public sealed partial class AvatarPainter
         if (t.Sleeve <= 0) return;
         var pc = d[Slot.Top]; Col ca = t.Raglan || t.ContrastSleeve ? pc.B : pc.A;
         float end = t.Sleeve * (t.Sleeve >= 1 ? .99f : 1), loose = .4f + t.Fit * .42f;
-        var fl = new Vector2(po.SleeveX, po.SleeveY) * (t.Flare ? 1.5f : .75f) * (.35f + t.Fit * .5f) + new Vector2(M.Sin(po.T * 7 + sd) * po.Wind * .45f, 0);
+        Vector2 fl = default; // cuffs stay on the wrist
         float off = t.Neck == Neckline.OffShoulder ? .15f : 0;
         p.Begin();
         Limb(a, b, c, end, s =>
@@ -405,7 +405,7 @@ public sealed partial class AvatarPainter
     {
         var t = Catalog.Tops[d[Slot.Top].Id]; var pc = d[Slot.Top]; float T = r.Torso; Col A = pc.A, B = pc.B, C = pc.C;
         bool tk = Tucked; float hem = tk ? 1 : t.Hem; bool sl = t.Sleeve <= 0; float rib = t.RibCuff && hem > 0 && t.Knit != Knit.Flat ? .7f : 0;
-        p.Begin(); TorsoShape(t.Fit, hem, t.Neck, t.Flare, sl, rib, tk ? 0 : .5f + t.Fit * .45f);
+        p.Begin(); TorsoShape(t.Fit, hem, t.Neck, t.Flare, sl, rib, 0);
         var f = TorsoPat(pc, A); Vector2 o = P; float hipY = P.Y; float cx = po.Turn * 1.3f;
         bool stripe = t.G == Graphic.Stripe, flan = t.Knit == Knit.Flannel, rag = t.Raglan, yoke = t.G == Graphic.Yoke, fair = t.G == Graphic.Fair, two = t.G == Graphic.TwoStripe, sail = t.G == Graphic.Wave;
         float hy = P.Y + hem; float ribH = rib > 0 ? 2.8f : 0; bool ribC = t.Knit is Knit.Cable or Knit.Rib && t.G != Graphic.TwoStripe;
@@ -447,7 +447,7 @@ public sealed partial class AvatarPainter
         if (t.Buttons || t.Neck is Neckline.Henley or Neckline.Polo)
         {
             float y0 = T - (t.Neck == Neckline.Henley ? 2.6f : 4.5f), y1 = t.Buttons ? -hem : T * .62f;
-            p.Begin(); TorsoShape(t.Fit, hem, t.Neck, t.Flare, sl, rib, .5f);
+            p.Begin(); TorsoShape(t.Fit, hem, t.Neck, t.Flare, sl, rib, 0);
             if (fine) { p.Crease(Tp(cx - 1.1f, y0), Tp(cx - 1.1f, y1), .3f, .8f); p.Crease(Tp(cx + 1.1f, y0), Tp(cx + 1.1f, y1), .3f, .8f); } else p.Crease(Tp(cx + .9f, y0), Tp(cx + .9f, y1), .3f, .78f);
             for (float y = y0 - 1.6f; y > y1 + .8f; y -= t.Buttons ? 4.2f : 2.4f) { var b = Tp(cx, y); if (fine) { p.Begin().Ellipse(b.X, b.Y, .6f, .6f); p.Shade(new Ink(C, .5f, .4f, .9f) { Ao = 0 }); } else p.Dot(b.X, b.Y, C); }
         }
@@ -519,7 +519,7 @@ public sealed partial class AvatarPainter
 
     void PantLeg(PantsDef t, Piece pc, int sd, Vector2 a, Vector2 b, Vector2 c, float dk)
     {
-        var fl = new Vector2(po.HemX * .16f + M.Sin(po.T * 6 + sd * 2) * po.Wind * .3f, 0) * M.Clamp(t.Hem, 0, 3) * .55f;
+        Vector2 fl = default; // trouser cuffs stay on the leg
         float end = MathF.Min(t.Len, 1.04f); float th = t.Thigh, kn = t.Knee, hm = t.Hem;
         p.Begin();
         Limb(a, b, c, end, s =>
@@ -644,7 +644,9 @@ public sealed partial class AvatarPainter
             if (t.Name.StartsWith("Bubble") && q > .85f) h -= (q - .85f) * 18;
             h = MathF.Max(h, Ext(q, x < 0));
             var b = Tp(0, up); float y = b.Y + (len + up) * q + MathF.Sqrt(MathF.Max(0, 1 - x * x)) * (.6f + q * 1.6f);
-            return new Vector2(b.X - sinL * (up * q) + x * h * (1 - .08f * at), y) + HemOff(x * 3 + q * 2, FlutterAmt(q) * 1.5f);
+            var v = new Vector2(b.X - sinL * (up * q) + x * h * (1 - .08f * at), y) + HemOff(x * 3 + q * 2, FlutterAmt(q) * 1.1f);
+            if (x <= -.99f) v.X = MathF.Min(v.X, P.X - Ext(q, true)); else if (x >= .99f) v.X = MathF.Max(v.X, P.X + Ext(q, false)); // never blows off the legs
+            return v;
         }
         for (int ti = tiers - 1; ti >= 0; ti--)
         {
@@ -797,14 +799,14 @@ public sealed partial class AvatarPainter
     }
     void JacketBack(JacketDef t)
     {
-        var pc = d[Slot.Jacket]; float T = r.Torso, w = ClothHalf(0, t.Fit, -t.Hem, t.Hem > 8) + 1.2f + t.Hem * .14f;
-        p.Begin().Poly(Tp(-r.ShX, T * .8f), Tp(r.ShX, T * .8f), Tp(w, -t.Hem + 1) + HemOff(1, 1.6f), Tp(0, -t.Hem - .4f) + HemOff(2, 1.6f), Tp(-w, -t.Hem + 1) + HemOff(3, 1.6f)); Col A = pc.A; p.Shade(new Ink(A.Shade(-.45f), 3, .3f) { Ao = 0 });
+        float bk = t.Cape ? 1.5f : .35f + t.Hem * .04f; var pc = d[Slot.Jacket]; float T = r.Torso, w = ClothHalf(0, t.Fit, -t.Hem, t.Hem > 8) + 1.2f + t.Hem * .14f;
+        p.Begin().Poly(Tp(-r.ShX, T * .8f), Tp(r.ShX, T * .8f), Tp(w, -t.Hem + 1) + HemOff(3, bk), Tp(0, -t.Hem - .4f) + HemOff(1.5f, bk), Tp(-w, -t.Hem + 1) + HemOff(0, bk)); Col A = pc.A; p.Shade(new Ink(A.Shade(-.45f), 3, .3f) { Ao = 0 });
     }
     void JacketSleeve(JacketDef t, int sd)
     {
         if (t.Sleeve <= 0) return; var pc = d[Slot.Jacket]; Vector2 a = sd < 0 ? shL : shR, b = sd < 0 ? elL : elR, c = sd < 0 ? haL : haR; float dk = at > .3f && sd == -near ? -.12f : 0;
         float end = t.Sleeve * .97f, loose = .7f + t.Fit * .4f; bool kim = t.Name.StartsWith("Kimono");
-        var fl = new Vector2(po.SleeveX, po.SleeveY) * (kim ? 2 : .9f) + new Vector2(M.Sin(po.T * 7 + sd) * po.Wind * .4f, 0);
+        Vector2 fl = default;
         p.Begin(); Limb(a, b, c, end, s => { float q = s / end, rad = (ArmRad(s) + loose) * M.Lerp(.95f, 1, M.Smooth(0, .16f, s)); if (kim) rad += q * 3; if (t.Quilt) rad += MathF.Abs(M.Sin(q * 9)) * .9f - .2f; if (t.RibHem) rad += M.Smooth(.6f, .86f, q) * .7f - M.Smooth(.88f, .92f, q) * 1.7f; return rad; }, fl);
         Col A = pc.A, B = pc.B, C = pc.C, ca = t.ContrastSleeve ? B : A; var uv = LimbUv(a, b, c); var f = LimbPat(pc, a, b, c, ca); float L = r.UArm + r.LArm; bool flan = t.Knit == Knit.Flannel;
         Func<float, float, Col> fn = (x, y) => { var (u, v) = uv(x, y); float s = v / L / end; if (t.RibHem && s > .9f) return t.Knit == Knit.Flat || t.Knit == Knit.Cable ? (t.ContrastSleeve ? A : B) : A; if (t.Lapel is Lapel.Shearling && s > .88f) return B; if (t.Stripe && u * -sd > .6f && u * -sd < 2.2f) return C; if (flan && pc.Pat == 0) return Patterns.Get(4, u, v, ca, B, C); return f(x, y); };
@@ -832,11 +834,12 @@ public sealed partial class AvatarPainter
             if (t.Fringe) for (int i = 0; i <= 16; i++) { float s = i / 16f; var b = Tp(M.Lerp(-w1 + 1, w1 - 1, s), -hem + .4f) + HemOff(s * 4, 1.7f); p.Line(b, b + new Vector2(po.HemX * .4f, 2.4f), .5f, B, false); }
             return;
         }
+        float coat = hem > 8 ? .35f + hem * .04f : 0; // only long coat tails drift; short hems stay put
         var nk = t.Lapel == Lapel.None && t.Open < .05f ? Neckline.V : t.Open < .15f && t.Lapel != Lapel.Notch ? Neckline.Crew : Neckline.V;
-        p.Begin(); TorsoShape(t.Fit, hem, nk, hem > 8, t.Sleeve <= 0, t.RibHem ? .9f : 0, .6f + t.Fit * .3f + hem * .07f);
+        p.Begin(); TorsoShape(t.Fit, hem, nk, hem > 8, t.Sleeve <= 0, t.RibHem ? .9f : 0, coat);
         // opening shows whatever is underneath
         float oT = 1.1f + t.Open * 4.2f, oB = t.Open < .15f ? -1 : t.Open * (6.4f + hem * .14f), vT = T - (t.Lapel is Lapel.Notch or Lapel.Shawl ? 9 + (t.Close == Close.Double ? -1 : 0) : 5.5f);
-        if (t.Open >= .15f) { p.Cut(Tp(cx - oT, T + 2), Tp(cx + oT, T + 2), Tp(cx + M.Lerp(oT, oB, .4f), T * .45f), Tp(cx + oB, -hem - 4) + HemOff(1, 1.2f), Tp(cx - oB, -hem - 4) + HemOff(2, 1.2f), Tp(cx - M.Lerp(oT, oB, .4f), T * .45f)); }
+        if (t.Open >= .15f) { p.Cut(Tp(cx - oT, T + 2), Tp(cx + oT, T + 2), Tp(cx + M.Lerp(oT, oB, .4f), T * .45f), Tp(cx + oB, -hem - 4) + HemOff(1, coat), Tp(cx - oB, -hem - 4) + HemOff(2, coat), Tp(cx - M.Lerp(oT, oB, .4f), T * .45f)); }
         var k = Cloth(fn, t.Knit, BodyUv, 4.5f); k.Ao = 1.4f; if (t.Sleeve > 0) k.Merge = TorsoMerge(); p.Shade(k);
         if (t.Quilt) for (float u = -hem + 3; u < T * .9f; u += 4.2f) { p.Curve(Tp(-r.ShX - 6, u + .8f), Tp(0, u - .6f), Tp(r.ShX + 6, u + .8f), .5f, default, true, 1, .70f); if (fine) p.Curve(Tp(-r.ShX - 6, u + 2.1f), Tp(0, u + .8f), Tp(r.ShX + 6, u + 2.1f), .5f, default, true, 1, 1.1f); }
         else Folds(t.Fit, hem, 40 + d[Slot.Jacket].Id);

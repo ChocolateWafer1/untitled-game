@@ -50,7 +50,13 @@ public sealed partial class AvatarPainter
         p.Cut(a, c, c - new Vector2(0, up), a - new Vector2(0, up)); p.Cut(e, b, b - new Vector2(0, up), e - new Vector2(0, up));
         var q = H(0, -1.1f); p.Cut(q + new Vector2(-40, 0), q + new Vector2(40, 0), q + new Vector2(40, -40), q + new Vector2(-40, -40));
     }
-    Vector2 HairSway(float len) => new((po.HairX * .22f + M.Sin(po.T * 4.2f + len) * po.Wind * .22f) * len, (po.HairY * .16f - MathF.Abs(po.HairX) * .05f) * len);
+    /// Wind on hair. Roots never move; the offset grows with strand length and each strand has its own rhythm.
+    Vector2 HairSway(float len, float id = 0)
+    {
+        float w = po.Wind, br = MathF.Min(1, w * 3.5f); float g = M.Sin(po.T * 3.1f + id * 1.3f - len * .55f) * (.34f * br + w * .42f) + M.Sin(po.T * 6.7f + id * 2.9f - len) * w * .22f;
+        float x = (po.HairX * .30f + g) * len; float m = 2.2f + len * 1.5f; x = m * MathF.Tanh(x / m);
+        return new(x, (po.HairY * .18f - MathF.Abs(po.HairX) * .06f + M.Cos(po.T * 4.1f + id * 2.1f) * w * .12f) * len);
+    }
 
     /// One lock of hair along a quadratic curve, styled by hair texture.
     void Lock(Vector2 a, Vector2 m, Vector2 b, float w0, float w1, float w2, int id)
@@ -96,7 +102,7 @@ public sealed partial class AvatarPainter
             for (int i = 0; i < n; i++)
             {
                 float u = n == 1 ? 0 : i / (n - 1f) * 2 - 1, au = MathF.Abs(u); if (seps) p.Begin();
-                float tip = L * (1 - au * au * (hd.Tex == 0 && L > 2 ? .04f : .14f) - M.Hash(i, 3) * .06f); var sw = HairSway(MathF.Max(0, tip) * 1.6f);
+                float tip = L * (1 - au * au * (hd.Tex == 0 && L > 2 ? .04f : .14f) - M.Hash(i, 3) * .06f); var sw = HairSway(MathF.Max(.3f, tip) * 1.6f, i);
                 var a = H(u * .75f, -.45f); var m = H(u * (bw + hSide * .55f), tip * .42f) + sw * .35f; var b = H(u * bw * (L > 1.2f ? .98f : .9f), tip) + sw;
                 // never let hair droop through the floor
                 if (b.Y > -6) b.Y = -6;
@@ -106,7 +112,7 @@ public sealed partial class AvatarPainter
             if (!seps)
             {
                 HairClip(); p.Shade(HairInk(-1, true, -.13f, 3.4f));
-                for (int i = 0; i < 6; i++) { float u = (i + .5f) / 6 * 2 - 1; var sw = HairSway(L * 1.6f); StrandLines(H(u * .8f, .2f), H(u * (bw + hSide * .4f), L * .5f) + sw * .4f, H(u * bw * .93f, L * .96f) + sw, .74f); }
+                for (int i = 0; i < 6; i++) { float u = (i + .5f) / 6 * 2 - 1; var sw = HairSway(L * 1.6f, i * 1.2f); StrandLines(H(u * .8f, .2f), H(u * (bw + hSide * .4f), L * .5f) + sw * .4f, H(u * bw * .93f, L * .96f) + sw, .74f); }
             }
         }
         Updos();
@@ -352,7 +358,7 @@ public sealed partial class AvatarPainter
         {
             for (int s = -1; s <= 1; s += 2)
             {
-                float L = hd.SideLen; var sw = HairSway(L * 1.2f); int n = hd.Tex >= 4 ? 3 : 1;
+                float L = hd.SideLen; var sw = HairSway(MathF.Max(.7f, L * 1.3f), s * 2); int n = hd.Tex >= 4 ? 3 : 1;
                 for (int i = 0; i < n; i++)
                 {
                     float off = n > 1 ? (i - 1) * .17f : 0; p.Begin();
@@ -365,7 +371,7 @@ public sealed partial class AvatarPainter
         var f = hd.F;
         if (hd.U == Updo.Mohawk && !hatCover)
         {
-            p.Begin(); for (int i = 0; i < 7; i++) { float u = i / 6f * 2 - 1; Lock(H(u * .24f, -.72f), H(u * .3f, -1.1f - T * .6f), H(u * .5f + (po.HairX * -.01f), -1.1f - T * (1 - u * u * .3f)), rx * .13f, rx * .1f, .2f, i); }
+            p.Begin(); for (int i = 0; i < 7; i++) { float u = i / 6f * 2 - 1; Lock(H(u * .24f, -.72f), H(u * .3f, -1.1f - T * .6f), H(u * .5f, -1.1f - T * (1 - u * u * .3f)) + HairSway(.8f, i), rx * .13f, rx * .1f, .2f, i); }
             p.Ellipse(H(0, -.75f).X, H(0, -.75f).Y, rx * .34f, ry * .26f); p.Shade(HairInk()); for (int i = 0; i < 4; i++) StrandLines(H(-.2f + i * .13f, -.7f), H(-.22f + i * .14f, -1.1f), H(-.3f + i * .2f, -1 - T), .75f); return;
         }
         // skull cap with hairline
@@ -373,12 +379,12 @@ public sealed partial class AvatarPainter
         float hl = f switch { Fringe.Slick => -.6f, Fringe.Crop => -.5f, Fringe.Puff => -.48f, Fringe.Pomp or Fringe.Quiff => -.56f, _ => -.5f };
         p.Begin();
         bool bumpy = hd.Tex is 2 or 3 && T + SV > .15f;
-        Span<Vector2> cap = [H(-side, low), H(-side - .02f, -.35f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1.0f - T * .92f), H(0, -1.04f - T), H(.42f, -1.0f - T * .92f), H(.82f + SV * .3f, -.82f - T * .55f), H(side + .02f, -.35f), H(side, low), H(.86f, low - .02f), H(.8f, -.3f), H(.5f + fx * .5f, hl - .02f), H(fx, hl + .02f), H(-.5f + fx * .5f, hl - .02f), H(-.8f, -.3f), H(-.86f, low - .02f)];
+        var cv = HairSway(.45f * M.Clamp(T * 4)); Span<Vector2> cap = [H(-side, low), H(-side - .02f, -.35f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1.0f - T * .92f) + cv, H(0, -1.04f - T) + cv, H(.42f, -1.0f - T * .92f) + cv, H(.82f + SV * .3f, -.82f - T * .55f) + cv * .5f, H(side + .02f, -.35f), H(side, low), H(.86f, low - .02f), H(.8f, -.3f), H(.5f + fx * .5f, hl - .02f), H(fx, hl + .02f), H(-.5f + fx * .5f, hl - .02f), H(-.8f, -.3f), H(-.86f, low - .02f)];
         if (hd.Name == "High Top Fade" && !hatCover) { p.Poly(H(-.86f, -.45f), H(-.92f, -1.0f - T * .9f), H(-.8f, -1.05f - T), H(.8f, -1.05f - T), H(.92f, -1.0f - T * .9f), H(.86f, -.45f), H(.6f, hl), H(-.6f, hl)); }
         else p.Blob(cap, 1, 4);
         if (bumpy && !hatCover)
         {
-            int n = 13; for (int i = 0; i < n; i++) { float an = M.Lerp(-2.1f, 2.1f, i / (n - 1f)); float rr = .30f + .16f * T + SV * .1f; float ex = MathF.Sin(an) * (1 + SV * .75f), ey = -MathF.Cos(an) * (1 + T * .85f) - (hd.Tex == 3 && T > .5f ? .05f : 0); if (fade && MathF.Abs(an) > 1.25f) continue; if (ey > .35f + hd.SideLen * .3f) continue; var c = H(ex, ey) + HairSway(.12f); p.Ellipse(c.X, c.Y, rx * rr * .72f, ry * rr * .62f); }
+            int n = 13; for (int i = 0; i < n; i++) { float an = M.Lerp(-2.1f, 2.1f, i / (n - 1f)); float rr = .30f + .16f * T + SV * .1f; float ex = MathF.Sin(an) * (1 + SV * .75f), ey = -MathF.Cos(an) * (1 + T * .85f) - (hd.Tex == 3 && T > .5f ? .05f : 0); if (fade && MathF.Abs(an) > 1.25f) continue; if (ey > .35f + hd.SideLen * .3f) continue; var c = H(ex, ey) + HairSway(.35f + MathF.Max(0, -ey - .6f) * .5f, i * .6f); p.Ellipse(c.X, c.Y, rx * rr * .72f, ry * rr * .62f); }
             p.CutBlob(H(.8f, -.2f), H(.5f, hl + .02f), H(0, hl + .04f), H(-.5f, hl + .02f), H(-.8f, -.2f), H(-.84f, .5f), H(0, .9f), H(.84f, .5f));
         }
         HairClip(); p.Shade(HairInk(-1, false, 0, 3.4f));
@@ -392,9 +398,9 @@ public sealed partial class AvatarPainter
 
     void Fringes(Fringe f, float fx, float hl, float T, float SV)
     {
-        float rx = r.HeadRx; var sw = HairSway(.5f); bool hat = hatCover; float lift = hat ? 0 : T; float w = rx * .2f;
+        float rx = r.HeadRx; var sw0 = HairSway(.95f); var sw = sw0; bool hat = hatCover; float lift = hat ? 0 : T; float w = rx * .2f;
         void L(float x0, float y0, float x1, float y1, float x2, float y2, float w0, float w1, float w2, int id)
-        { p.Begin(); Lock(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, w0, w1, w2, id); HairClip(); p.Shade(HairInk(hd.Tex >= 4 ? id : -1)); if (hd.Tex < 2 && fine) StrandLines(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, .8f); }
+        { float len = Vector2.Distance(H(x0, y0), H(x2, y2)) / r.HeadRy; var sw = HairSway(MathF.Min(1.5f, .35f + len * .8f), id); p.Begin(); Lock(H(x0 + fx * .5f, y0), H(x1 + fx, y1) + sw * .25f, H(x2 + fx, y2) + sw, w0, w1, w2, id); HairClip(); p.Shade(HairInk(hd.Tex >= 4 ? id : -1)); if (hd.Tex < 2 && fine) StrandLines(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, .8f); }
         float top = hat ? -.62f : -.95f - lift * .75f;
         switch (f)
         {
@@ -407,7 +413,7 @@ public sealed partial class AvatarPainter
             case Fringe.Wispy: for (int i = 0; i < 5; i++) { float u = i / 4f * 2 - 1; L(u * .35f, top + .1f, u * .6f, -.66f, u * .68f, -.16f + MathF.Abs(u) * .2f, w * .55f, w * .5f, w * .08f, 30 + i); } for (int s = -1; s <= 1; s += 2) L(s * .4f, top + .12f, s * .95f, -.6f, s * 1.0f, .3f, w * .7f, w * .6f, w * .1f, 40 + s); break;
             case Fringe.Spiky: if (hat) { for (int i = 0; i < 5; i++) { float u = i / 4f * 2 - 1; L(u * .5f, -.6f, u * .7f, -.45f, u * .75f, -.2f, w * .7f, w * .6f, w * .1f, i); } break; } for (int i = 0; i < 9; i++) { float u = i / 8f * 2 - 1; L(u * .7f, -.72f, u * .95f, -1.1f - T * .4f, u * 1.05f + .12f, -1.12f - T * (1.05f - u * u * .7f), w * .8f, w * .6f, .15f, 50 + i); } for (int i = 0; i < 5; i++) { float u = i / 4f * 2 - 1; L(u * .5f, -.75f, u * .6f, -.6f, u * .66f, -.28f, w * .7f, w * .6f, .15f, 70 + i); } break;
             case Fringe.Quiff: if (hat) { L(.4f, -.6f, -.2f, -.5f, -.8f, -.22f, w, w, w * .3f, 3); break; } for (int i = 0; i < 6; i++) { float u = i / 5f * 2 - 1; L(u * .68f, hl + .02f, u * .85f - .1f, hl - .5f - T * .7f, u * .6f + .24f, -1.02f - T * (1.05f - MathF.Abs(u) * .35f), w * 1.1f, w * 1.2f, w * .4f, 60 + i); } break;
-            case Fringe.Pomp: if (hat) { L(.4f, -.6f, -.2f, -.5f, -.8f, -.22f, w, w, w * .3f, 3); break; } p.Begin().Blob(H(-.72f, hl), H(-.92f, -.95f - T * .4f), H(-.45f, -1.15f - T), H(.2f, -1.2f - T), H(.8f, -1 - T * .6f), H(.8f, -.62f), H(.4f, hl - .06f), H(0, hl + .02f), H(-.4f, hl)); p.Shade(HairInk(-1, false, .04f, 4.5f)); for (int i = 0; i < 5; i++) StrandLines(H(-.6f + i * .3f, hl), H(-.75f + i * .34f, -1 - T * .4f), H(-.1f + i * .16f, -1.1f - T * .9f), .78f); break;
+            case Fringe.Pomp: if (hat) { L(.4f, -.6f, -.2f, -.5f, -.8f, -.22f, w, w, w * .3f, 3); break; } p.Begin().Blob(H(-.72f, hl), H(-.92f, -.95f - T * .4f), H(-.45f, -1.15f - T) + sw * .5f, H(.2f, -1.2f - T) + sw * .6f, H(.8f, -1 - T * .6f) + sw * .4f, H(.8f, -.62f), H(.4f, hl - .06f), H(0, hl + .02f), H(-.4f, hl)); p.Shade(HairInk(-1, false, .04f, 4.5f)); for (int i = 0; i < 5; i++) StrandLines(H(-.6f + i * .3f, hl), H(-.75f + i * .34f, -1 - T * .4f), H(-.1f + i * .16f, -1.1f - T * .9f), .78f); break;
             case Fringe.Slick: for (int i = -3; i <= 3; i++) { var a = H(i * .22f + fx, hl); p.Begin().Ellipse(HC.X, HC.Y, rx * 1.2f, r.HeadRy * 1.4f); p.IntersectAlpha(); StrandLines(a, H(i * .27f, -.85f), H(i * .2f, -1.03f - T * .8f), .8f); } break;
             case Fringe.Emo: L(.55f, top + .06f, -.5f, -1.0f, -.72f, .34f, w * 1.2f, w * 1.9f, w * .3f, 12); L(.5f, top + .05f, -.15f, -.8f, -.3f, .1f, w, w * 1.6f, w * .25f, 14); L(.45f, top + .06f, .1f, -.7f, .12f, -.2f, w * .9f, w, w * .2f, 15); L(.52f, top + .06f, .9f, -.75f, .98f, .1f, w, w * 1.1f, w * .4f, 16); break;
             case Fringe.Puff:

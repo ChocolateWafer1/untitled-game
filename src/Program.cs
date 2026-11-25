@@ -84,6 +84,7 @@ public static class Dev
     public static bool Cpu(string[] a)
     {
         switch (a[0]) { case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--icon": { var pi = new Painter(64, 64); pi.View(1, 0, 0); pi.Begin().Ellipse(32, 32, 30, 30); pi.Shade(new Ink((x, y) => Col.Lerp(0xffd890, 0xe8804a, y / 64), 6, .5f, 1)); pi.Begin().Blob(new(2, 46), new(16, 40), new(32, 45), new(48, 39), new(62, 46), new(50, 60), new(32, 63), new(14, 60)); pi.IntersectAlpha(); pi.Shade(new Ink(0x4f9fb4, 4, .5f, .8f)); FishDex.Draw(pi, FishDex.All[3], .44f, 31, 31); pi.View(1, 0, 0); pi.Outline(0x33201f, 1); pi.Export(a[1]); return true; }
+            case "--wind": WindSheet(a[1]); return true;
             case "--wave": WaveSheet(a[1]); return true; case "--fish": FishSheet(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; }
         return false;
     }
@@ -128,6 +129,16 @@ public static class Dev
         {
             var d = AvatarData.Random(r); var an = new AvatarAnim { Dir = row % 2 == 0 ? 1 : -1 }; bool run = row >= 2; an.Stride = AvatarPainter.StrideOf(d); an.Vel = new(an.Dir * (run ? 138 : 64), 0); an.Set(run ? Anim.Run : Anim.Walk); for (int k = 0; k < 60; k++) an.Update(1 / 60f);
             for (int i = 0; i < 8; i++) { int g = 0; while (!an.Update(1 / 60f) && g++ < 20) { } sm.Clear(); ap.Draw(sm, d, an.Pose, AvatarAnim.PxPerUnit, 45, 86, outlinePx: 1); Blit(sm, big, i * 180, row * 180, 2); }
+        }
+        Finish(big, path);
+    }
+    static void WindSheet(string path)
+    {
+        int[] hair = [2, 19, 16, 9, 26, 34, 21, 3]; int[] jk = [0, 0, 1, 7, 23, 0, 4, 17]; int[] bt = [0, 2, 4, 12, 18, 65, 24, 39]; var big = new Painter(1520, 3 * 330); var ap = new AvatarPainter(); var one = new Painter(190, 330);
+        for (int c = 0; c < 8; c++)
+        {
+            var d = new AvatarData(); d.Hair.Id = hair[c]; d[Slot.Jacket].Id = jk[c]; d[Slot.Bottom].Id = bt[c]; d[Slot.Top].Id = c == 1 ? 10 : c == 5 ? 2 : c; d.Hair.Base = AvatarData.HairCols[c + 2]; var an = new AvatarAnim { Wind = 2.3f }; an.Set(Anim.Idle); for (int k = 0; k < 90; k++) an.Update(1 / 60f);
+            for (int row = 0; row < 3; row++) { if (row == 0) { var calm = new AvatarAnim(); for (int k = 0; k < 60; k++) calm.Update(1 / 60f); one.Clear(); ap.Draw(one, d, calm.Pose, 2.5f, 95, 318, outlinePx: 2); } else { for (int k = 0; k < 31; k++) an.Update(1 / 60f); one.Clear(); ap.Draw(one, d, an.Pose, 2.5f, 95, 318, outlinePx: 2); } Blit(one, big, c * 190, row * 330); }
         }
         Finish(big, path);
     }

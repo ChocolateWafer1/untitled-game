@@ -30,7 +30,7 @@ public sealed class Player
     public void SitOn(Prop b) { Sit = true; Seat = b; V = default; P = new(b.X, b.Y - 1); Snd.Play("sit"); EmoteT = 0; }
     public void Update(float dt, bool control)
     {
-        An.Wind = g.Env.Wind * (w.WallAt((int)(P.X / 24), (int)((P.Y - 30) / 24)) == T.Air ? .55f : .05f); An.Talk = Voice.Talking ? 1 : 0; WetT = MathF.Max(0, WetT - dt); StepY = M.Damp(StepY, 0, 18, dt); dropT -= dt; landT -= dt; coyote -= dt; buffer -= dt;
+        An.Wind = g.Env.Wind * (w.WallAt((int)(P.X / 24), (int)((P.Y - 30) / 24)) == T.Air ? .85f : .05f); An.Talk = Voice.Talking ? 1 : 0; WetT = MathF.Max(0, WetT - dt); StepY = M.Damp(StepY, 0, 18, dt); dropT -= dt; landT -= dt; coyote -= dt; buffer -= dt;
         if (ledgeT >= 0) { ledgeT += dt / .42f; float t = M.Clamp(ledgeT); P = t < .5f ? new(ledgeA.X, M.Lerp(ledgeA.Y, ledgeB.Y + 8, Ease.OutCubic(t * 2))) : new(M.Lerp(ledgeA.X, ledgeB.X, (t - .5f) * 2), M.Lerp(ledgeB.Y + 8, ledgeB.Y, (t - .5f) * 2)); An.Set(t < .55f ? Anim.Ledge : Anim.Crouch); if (t >= 1) { P = ledgeB; ledgeT = -1; V = default; Ground = true; } Tick(dt); return; }
         bool L = control && In.Down(Act.Left), R = control && In.Down(Act.Right), U = control && In.Down(Act.Up), Dn = control && In.Down(Act.Down), run = control && In.Down(Act.Run); float mx = (R ? 1 : 0) - (L ? 1 : 0); if (control && In.Press(Act.Jump)) buffer = .13f; if (In.Press(Act.Jump) == false && U && !Climb && !Swim && false) buffer = .1f;
         if (Sit) { if (mx != 0 || buffer > 0 || U) { StandUp(); buffer = 0; } else { An.Set(Anim.Sit); An.Vel = default; Tick(dt); return; } }

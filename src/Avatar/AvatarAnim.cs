@@ -39,7 +39,7 @@ public sealed class AvatarAnim
         Vector2 accel = (Vel - lastVel) / MathF.Max(dt, .001f); lastVel = Vel;
         float gust = Wind * (1 + .6f * M.Sin(t * 1.9f) + .35f * M.Sin(t * 4.3f + 1));
         float tx = M.Clamp(-Vel.X * .016f + gust * 1.1f, -4.2f, 4.2f), ty = M.Clamp(-Vel.Y * .012f, -4, 2.4f);
-        hemX.Update(tx * .8f, 120, 7.5f, dt); hemY.Update(ty, 130, 8, dt); hairX.Update(tx * 1.15f, 85, 6, dt); hairY.Update(ty * 1.2f, 90, 6, dt); slX.Update(tx * .65f, 150, 8, dt); slY.Update(ty * .6f, 150, 8, dt);
+        hemX.Update(tx * .8f, 120, 7.5f, dt); hemY.Update(ty, 130, 8, dt); hairX.Update(M.Clamp(-Vel.X * .018f + gust * 2.1f, -5.2f, 5.2f), 85, 6, dt); hairY.Update(ty * 1.2f, 90, 6, dt); slX.Update(tx * .65f, 150, 8, dt); slY.Update(ty * .6f, 150, 8, dt);
         hemX.V -= M.Clamp(accel.X, -2500, 2500) * .00004f; hairX.V -= M.Clamp(accel.X, -2500, 2500) * .00006f;
         squash.Update(0, 260, 13, dt);
         turn.Update(Moving ? Dir : State is Anim.RodHold or Anim.Cast or Anim.Reel or Anim.Slide || (State is Anim.Jump or Anim.Fall && v > 12) ? Dir * .9f : 0, 240, 26, dt);
