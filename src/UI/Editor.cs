@@ -24,15 +24,15 @@ sealed class Puffs
 /// The avatar wardrobe: room and character on the left, item drawers on the right.
 public sealed class EditorScreen
 {
-    public AvatarData D; public Action Done; public bool FromGame; readonly AvatarPainter ap = new(); readonly Painter pt = new(250, 350); Texture2D tex, room; readonly AvatarAnim an = new() { Fps = 12 }; readonly Puffs fx = new(); readonly Rng rng = new(Environment.TickCount);
-    const float S = 2.62f; int tab; readonly int[] sub = new int[12]; float scroll, scrollT; int chip; bool fan; float fanSpin, fanPow; int preview; float poseT; float tabSlide = 1; string name; bool typing; float shake; float finishT = -1; readonly List<AvatarData> undo = new(), redo = new(); readonly HashSet<string> locks = new(); bool outfits; float diceRot; float introT; bool sliderUndo; float avX;
+    public AvatarData D; public Action Done; public Action Back; public bool CanBack; readonly AvatarPainter ap = new(); readonly Painter pt = new(250, 350); Texture2D tex, room; readonly AvatarAnim an = new() { Fps = 12 }; readonly Puffs fx = new(); readonly Rng rng = new(Environment.TickCount);
+    const float S = 2.62f; int tab; readonly int[] sub = new int[12]; float scroll, scrollT; int chip; bool fan; float fanSpin, fanPow; int preview; float poseT; float tabSlide = 1; string name; bool typing; float shake; float finishT = -1; readonly List<AvatarData> undo = new(), redo = new(); readonly HashSet<string> locks = new(); bool outfits; float diceRot; float introT, taken; bool sliderUndo; float avX;
     static readonly string[] Tabs = ["Body", "Face", "Hair", "Tops", "Jackets", "Bottoms", "Shoes", "Hats", "Extras", "Style"]; static readonly string[] TabIcons = ["body", "face", "hair", "top", "jacket", "pants", "shoes", "hat", "extras", "style"];
     readonly Dictionary<string, (Texture2D t, int hash)> thumbs = new(); readonly Painter tp = new(96, 92); int budget;
 
     public EditorScreen() { tex = pt.ToTexture(); room = Room.Paint().ToTexture(); }
-    public void Open(AvatarData d, bool fromGame)
+    public void Open(AvatarData d, bool canBack)
     {
-        D = d.Clone(); FromGame = fromGame; name = D.Name ?? ""; undo.Clear(); redo.Clear(); finishT = -1; introT = 0; typing = false; outfits = false; tab = 0; chip = 0; preview = 0; an.Vel = default; Redraw();
+        D = d.Clone(); CanBack = canBack; name = D.Name ?? ""; undo.Clear(); redo.Clear(); finishT = -1; introT = 0; typing = false; outfits = false; tab = 0; chip = 0; preview = 0; an.Vel = default; Redraw();
     }
     public void SetNameForTest(string s) => name = s;
     public Vector2 AvatarCenter => new(avX, 190);
@@ -60,7 +60,7 @@ public sealed class EditorScreen
         else if (finishT < 0)
         {
             if (Raylib.IsKeyDown(KeyboardKey.LeftControl)) { if (Raylib.IsKeyPressed(KeyboardKey.Z)) Undo(); if (Raylib.IsKeyPressed(KeyboardKey.Y)) Redo(); }
-            if (FromGame && Raylib.IsKeyPressed(KeyboardKey.Escape)) Finish();
+            if (CanBack && Raylib.IsKeyPressed(KeyboardKey.Escape)) Back?.Invoke();
         }
         shake = MathF.Max(0, shake - dt);
         if (finishT >= 0) { finishT += dt; if (finishT > 1.25f) { finishT = -100; Done?.Invoke(); } }
@@ -70,6 +70,7 @@ public sealed class EditorScreen
     void Redo() { if (redo.Count == 0) return; undo.Add(D.Clone()); D = redo[^1]; redo.RemoveAt(redo.Count - 1); Snd.Play("undo", 1, 1.2f); Changed(-1); }
     void Finish()
     {
+        if (ValidName(name) && Saves.NameTaken(name)) { shake = .45f; taken = 3; Snd.Play("error"); typing = true; return; }
         if (!ValidName(name)) { shake = .45f; Snd.Play("error"); typing = true; return; }
         D.Name = name.Trim(); typing = false; finishT = 0; an.Set(Anim.ShowOff); an.Punch(9); Snd.Play("finish"); var cols = new[] { Ui.Gold, Ui.Orange, Ui.Green, new Color(216, 111, 134, 255), new Color(126, 168, 201, 255) };
         for (int i = 0; i < 70; i++) fx.Add(new(avX + rng.R(-30, 30), 200), new(rng.R(-190, 190), rng.R(-260, -60)), rng.R(.9f, 1.6f), rng.R(3, 6), cols[i % 5], 2);
@@ -97,6 +98,7 @@ public sealed class EditorScreen
         Left(rx); float slide = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp((introT - .15f) * 1.8f), 1.1f); if (finishT > .5f) slide = 1 - Ease.InCubic(M.Clamp((finishT - .5f) * 2));
         Rlgl.PushMatrix(); Rlgl.Translatef((1 - slide) * 380, 0, 0); RightPanel(px); Rlgl.PopMatrix();
         if (outfits) OutfitPanel();
+        if (CanBack && finishT < 0 && Ui.Button("edback", null, 10, 12, 30, 24, "btn", "left", "Back")) Back?.Invoke();
         if (finishT > 0) { float k = Ease.OutBack(M.Clamp(finishT * 2.5f)); Ui.PushScale(avX, 44, k, k); Font.Draw("Looking good, " + D.Name + "!", avX, 36, Ui.Cream, 2, .5f, Ui.Ink, 1); Ui.PopScale(); }
     }
     void Fan(float rx)
@@ -112,7 +114,7 @@ public sealed class EditorScreen
         var (a, hit, o) = Ui.Widget("name", nx, 10, 140, 24); if (hit) { typing = true; while (Raylib.GetCharPressed() > 0) { } } else if (Ui.Click && !o) typing = false;
         a.Sel.Update(typing ? 1 : 0, 300, 16, Ui.DT); Ui.PushScale(nx + 70, 22, 1 + a.Hover.X * .03f + a.Sel.X * .05f, 1 + a.Hover.X * .03f + a.Sel.X * .05f); Ui.Nine("paper", nx, 8, 140, 28, Color.White);
         string shown = name.Length == 0 && !typing ? "Your name..." : name; float tw = Font.Width(shown, 1.5f); Font.Draw(shown, nx + 70, 15, name.Length == 0 && !typing ? Ui.Soft : Ui.Ink, 1.5f, .5f); if (typing && (Ui.T % .9f) < .5f) Raylib.DrawRectangleV(new(nx + 71 + tw / 2 + (name.Length > 0 ? 1 : -tw / 2), 15), new(1.5f, 12), Ui.Orange);
-        Font.Draw(name.Length + "/10", nx + 132, 18, ValidName(name) ? Ui.Green : Ui.Orange, 1, 1); if (!ValidName(name)) Font.Draw("3 to 10 letters", nx + 70, 38, new Color(255, 214, 170, 255), 1, .5f, Ui.Ink); Ui.PopScale(); Rlgl.PopMatrix();
+        Font.Draw(name.Length + "/10", nx + 132, 18, ValidName(name) ? Ui.Green : Ui.Orange, 1, 1); taken -= Ui.DT; if (taken > 0) Font.Draw("You already have a " + name.Trim(), nx + 70, 38, new Color(255, 170, 140, 255), 1, .5f, Ui.Ink); else if (!ValidName(name)) Font.Draw("3 to 10 letters", nx + 70, 38, new Color(255, 214, 170, 255), 1, .5f, Ui.Ink); Ui.PopScale(); Rlgl.PopMatrix();
         float by = 326, x = avX - 108; Rlgl.PushMatrix(); Rlgl.Translatef(0, (1 - k) * 60, 0);
         if (Ui.Button("rand", null, x, by, 34, 28, "btnP", null, "Randomize (unlocked tabs)")) { Snap(); D = AvatarData.Random(rng, D, s => locks.Contains(s)); D.Name = name; diceRot = 1; Snd.Play("dice"); Changed(4); for (int i = 0; i < 14; i++) fx.Add(new(x + 17, by), new(rng.R(-90, 90), rng.R(-120, -20)), .8f, 4, Ui.Gold, 1); }
         diceRot = M.Damp(diceRot, 0, 3, Ui.DT); Ui.PushScale(x + 17, by + 13, 1 + diceRot * .5f, 1 + diceRot * .5f, diceRot * 720); Ui.Icon("dice", x + 9, by + 5); Ui.PopScale();
@@ -154,7 +156,7 @@ public sealed class EditorScreen
             case 9: StyleTab(x, y, w); break;
         }
         Rlgl.PopMatrix();
-        if (Ui.Button("finish", FromGame ? "Done" : "Finish", px + pw - 108, py + ph - 37, 92, 26, "btnG", "check", ValidName(name) ? null : "Pick a name first", text: 2)) Finish();
+        if (Ui.Button("finish", "Create", px + pw - 108, py + ph - 37, 92, 26, "btnG", "check", ValidName(name) ? null : "Pick a name first", text: 2)) Finish();
     }
     int Subs(string[] n, float x, float y, float w)
     {
@@ -319,9 +321,10 @@ public sealed class EditorScreen
         float x = avX - 118, y = 218, w = 236, h = 102; Ui.Nine("panel", x, y, w, h, Color.White); Font.Draw("Saved outfits", x + 14, y + 12, Ui.Ink, 1.25f); Font.Draw("click to wear", x + w - 14, y + 13, Ui.Soft, 1, 1);
         for (int i = 0; i < 5; i++)
         {
-            float cx = x + 13 + i * 42.5f, cy = y + 26; var o = Store.Data.Outfits[i]; var (a, hit, ov) = Ui.Card("of" + i, cx, cy, 39, 46, false); if (o != null) { var (t, ok) = Thumb("outfit" + i, o.GetHashCode(), p => ap.Draw(p, o, Pose.Stand, .8f, 48, 88, outlinePx: 1)); if (ok) Raylib.DrawTexturePro(t, new Rectangle(24, 0, 48, 92), new Rectangle(cx + 8, cy + 2, 22, 42), Vector2.Zero, 0, Color.White); } else Font.Draw("+", cx + 19.5f, cy + 16, Ui.Soft, 2, .5f);
-            Ui.PopScale(); if (hit) { if (o != null) { Snap(); D = o.Clone(); D.Name = name; Changed(4); } else { Store.Data.Outfits[i] = D.Clone(); Store.SaveGame(); Snd.Play("confirm"); } } if (ov) Ui.Tip = o == null ? "Save here" : "Wear outfit " + (i + 1);
-            if (Ui.Button("ofs" + i, o == null ? "Save" : "Replace", cx, cy + 48, 39, 15, "btnG", text: .8f)) { Store.Data.Outfits[i] = D.Clone(); Store.SaveGame(); Snd.Play("confirm"); }
+            float cx = x + 13 + i * 42.5f, cy = y + 26; var o = i < Store.Outfits.Count ? Store.Outfits[i] : null; var (a, hit, ov) = Ui.Card("of" + i, cx, cy, 39, 46, false); if (o != null) { var (t, ok) = Thumb("outfit" + i, HashCode.Combine(o.GetHashCode(), D.Skin, D.Hair.Id), p => { var q = D.Clone(); q.P = o.Select(z => z.Clone()).ToArray(); q.Validate(); ap.Draw(p, q, Pose.Stand, .8f, 48, 88, outlinePx: 1); }); if (ok) Raylib.DrawTexturePro(t, new Rectangle(24, 0, 48, 92), new Rectangle(cx + 8, cy + 2, 22, 42), Vector2.Zero, 0, Color.White); } else Font.Draw("+", cx + 19.5f, cy + 16, Ui.Soft, 2, .5f);
+            void Keep() { while (Store.Outfits.Count <= i) Store.Outfits.Add(null); Store.Outfits[i] = D.P.Select(z => z.Clone()).ToArray(); Store.SaveOutfits(); Snd.Play("confirm"); }
+            Ui.PopScale(); if (hit) { if (o != null) { Snap(); var beard = D[Slot.Beard].Clone(); D.P = o.Select(z => z.Clone()).ToArray(); D.P[(int)Slot.Beard] = beard; D.Validate(); Changed(4); } else Keep(); } if (ov) Ui.Tip = o == null ? "Save these clothes" : "Wear outfit " + (i + 1);
+            if (Ui.Button("ofs" + i, o == null ? "Save" : "Replace", cx, cy + 48, 39, 15, "btnG", text: .8f)) Keep();
         }
     }
 }
@@ -358,8 +361,8 @@ static class Room
         p.Begin().Rect(176, 92, 74, 5); p.Shade(new Ink(0x9a6244, 2, .6f)); Col[] bk = [0x8c2f35, 0x4f6b52, 0x4a6285, 0xc99a4b, 0x6d4a8a]; for (int i = 0; i < 5; i++) { p.Begin().Rect(180 + i * 6, 70 + (i * 7 % 5), 5.4f, 22 - (i * 7 % 5)); p.Shade(new Ink(bk[i], 1.5f, .5f)); }
         p.Begin().Poly(V(220, 92), V(218, 80), V(234, 80), V(232, 92)); p.Shade(new Ink(0xc65a3a, 3, .6f)); for (int i = 0; i < 7; i++) { float a = (i - 3) * .42f; p.Begin().Blob(V(226, 80), V(226 + M.Sin(a) * 12 - 3, 72 - M.Cos(a) * 8), V(226 + M.Sin(a) * 18, 72 - M.Cos(a) * 12), V(226 + M.Sin(a) * 12 + 3, 74 - M.Cos(a) * 8)); p.Shade(new Ink(i % 2 == 0 ? 0x5f8a52 : 0x7ba566, 2, .5f)); }
         p.Begin().Ellipse(243, 86, 5, 6); p.Shade(new Ink(0x9ec3cf, 2, .7f));
-        // framed fish
-        p.Begin().Rect(184, 34, 52, 34); p.Shade(new Ink(0xa8693c, 3, .7f)); p.Begin().Rect(189, 39, 42, 24); p.Shade(new Ink(0xf3e2bd, 1, .3f)); FishDex.Draw(p, FishDex.All[3], .32f, 100 + 209, 51); p.View(1, 100, 0);
+        // framed landscape
+        p.Begin().Rect(184, 34, 52, 34); p.Shade(new Ink(0xa8693c, 3, .7f)); p.Begin().Rect(189, 39, 42, 24); p.Shade(new Ink(0xf3e2bd, 1, .3f)); p.Begin().Rect(190, 40, 40, 22); p.Shade(new Ink((x, y) => y < 50 + M.Sin(x * .25f) * 2 ? Col.Lerp(0x9fc8e0, 0xffd8a0, (y - 40) / 12) : y < 55 + M.Sin(x * .18f + 1) * 2 ? (Col)0x86ab74 : 0x5f8a56, 1, 0, 0) { Ao = 0, Grad = 0 }); p.Begin().Ellipse(221, 45, 3, 3); p.Flat(0xfff0c0);
         // floor lamp
         p.Begin().Rect(38, 186, 4, 120); p.Shade(new Ink(0x5a3a2a, 2, .6f)); p.Begin().Ellipse(40, 308, 17, 5); p.Shade(new Ink(0x5a3a2a, 3, .6f)); p.Begin().Poly(V(28, 150), V(52, 150), V(62, 190), V(18, 190)); p.Shade(new Ink((x, y) => Col.Lerp(0xffe0a0, 0xf0a860, M.Clamp((y - 150) / 40)), 5, .3f)); p.Begin().Rect(18, 186, 44, 4); p.Shade(new Ink(0xc65a3a, 1.5f, .4f)); for (int i = 0; i < 11; i++) p.Line(V(20 + i * 4, 190), V(20 + i * 4, 194), 1, 0xe0b650, false);
         // rug

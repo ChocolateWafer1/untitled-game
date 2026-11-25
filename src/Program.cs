@@ -3,11 +3,11 @@ using System.Numerics;
 using Raylib_cs;
 namespace UntitledGame;
 
-public enum Scr { Title, Editor, World }
+public enum Scr { Title, Select, Editor, World }
 
 public static class Program
 {
-    public static Scr Screen = Scr.Title; public static EditorScreen Editor; public static GameScreen Game; public static bool Quit; static bool editFromGame; static string shot; static string shotDir;
+    public static Scr Screen = Scr.Title; public static EditorScreen Editor; public static GameScreen Game; public static readonly SelectScreen Select = new(); public static bool Quit; static string shot; static string shotDir; static Task<World> growing; static Action<World> grown; static float growT; public static bool Busy => irisT < 1 || hold > 0 || growing != null;
     // cartoon iris
     static float iris = 1, irisFrom, irisTo, irisT = 1, irisDur = .8f; static Vector2 irisC; static Action irisMid; static float hold;
 
@@ -20,27 +20,36 @@ public static class Program
     }
     static void Run(bool dev)
     {
-        Store.LoadAll(); Raylib.SetTraceLogLevel(TraceLogLevel.Warning);
+        Store.LoadAll(); Raylib.SetTraceLogLevel(dev && shot == "passes" ? TraceLogLevel.Info : TraceLogLevel.Warning);
         Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "Untitled Game"); Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
         if (!dev) ApplyWindow();
-        Snd.Load(dev); Ui.Load(); Editor = new EditorScreen { Done = EditorDone }; Game = new GameScreen();
+        Snd.Load(dev); Ui.Load(); Editor = new EditorScreen { Done = EditorDone, Back = EditorBack }; Game = new GameScreen(new World(dev ? 4242 : Saves.All.OrderByDescending(q => q.Data.Played).FirstOrDefault()?.Data.Seed ?? Random.Shared.Next(1, int.MaxValue)));
         Dev.Shots = shotDir;
         if (dev) { Dev.RunShot(shot); Raylib.CloseWindow(); return; }
         Start();
         while (!Raylib.WindowShouldClose() && !Quit) Frame(MathF.Min(Raylib.GetFrameTime(), .05f));
-        Store.SaveCfg(); if (Store.Data.Created) Store.SaveGame(); Snd.Close(); Raylib.CloseWindow();
+        Store.SaveCfg(); Store.SaveGame(); Snd.Close(); Raylib.CloseWindow();
     }
     public static void StartForTest() => Start();
-    static void Start() { if (Store.Data.Created) { Screen = Scr.Title; Game.OpenTitle(); iris = 0; IrisOpen(new(Ui.VW * .5f, 110)); } else OpenEditor(false); }
-    static void OpenEditor(bool fromGame) { editFromGame = fromGame; Screen = Scr.Editor; Game.Title = false; Editor.Open(Store.Data.Avatar, fromGame); IrisOpen(new(Ui.VW * .27f, 190)); }
-    public static void PlayFromTitle() => IrisClose(new(Ui.VW * .5f, 180), () => OpenEditor(false));
-    public static void EditAvatar() => IrisClose(Game.ToScreen(Game.P.P + new Vector2(0, -36)), () => OpenEditor(true));
-    public static void ToTitle() => IrisClose(new(Ui.VW / 2, Ui.VH / 2), () => { Screen = Scr.Title; Game.OpenTitle(); IrisOpen(new(Ui.VW * .5f, 110)); });
+    static void Start() { if (Saves.All.Count > 0) { Screen = Scr.Title; Game.OpenTitle(); iris = 0; IrisOpen(new(Ui.VW * .5f, 110)); } else OpenEditor(); }
+    static AvatarData Fresh() => new() { Name = "" };
+    static void OpenEditor() { Screen = Scr.Editor; Game.Title = true; Editor.Open(Fresh(), Saves.All.Count > 0); IrisOpen(new(Ui.VW * .27f, 190)); }
+    /// With no characters yet, Play goes straight to making the first one.
+    public static void PlayFromTitle() { if (Saves.All.Count == 0) { IrisClose(new(Ui.VW * .5f, 180), OpenEditor); return; } Screen = Scr.Select; Select.Open(); Snd.Play("page"); }
+    public static void BackToTitle() { Screen = Scr.Title; Snd.Play("close", .8f); }
+    public static void NewCharacter() { if (!Saves.Full) IrisClose(Ui.Mouse, OpenEditor); }
+    static void EditorBack() => IrisClose(Editor.AvatarCenter, () => { Screen = Scr.Select; Game.OpenTitle(); Select.Open(); IrisOpen(new(Ui.VW / 2, Ui.VH / 2)); });
+    /// The world grows on another thread while the iris closes; if it is not done yet, a little sprout keeps you company.
+    static void Enter(Saves.Slot s, Vector2 c)
+    {
+        var d = s.Data; growing = null; var t = Task.Run(() => new World(d.Seed, d.Gen == World.GenVer ? d.Edits : "", d.Gen == World.GenVer ? d.Gone : null)); IrisClose(c, () => { growing = t; growT = 0; grown = w => { Store.Current = s; Store.Data = d; Game.SetWorld(w); Screen = Scr.World; Game.Title = false; Game.Begin(); IrisOpen(Game.ToScreen(Game.P.P + new Vector2(0, -36)), 1.35f); }; });
+    }
+    public static void PlaySave(Saves.Slot s, Vector2 c) { if (!Busy) Enter(s, c); }
+    public static void ToTitle() => IrisClose(new(Ui.VW / 2, Ui.VH / 2), () => { Store.SaveGame(); Store.Current = null; Game.Leave(); Screen = Scr.Title; Game.OpenTitle(); IrisOpen(new(Ui.VW * .5f, 110)); });
     public static void Warp(Action mid) => IrisClose(Game.ToScreen(Game.P.P + new Vector2(0, -36)), () => { mid(); IrisOpen(Game.ToScreen(Game.P.P + new Vector2(0, -36))); });
     static void EditorDone()
     {
-        Store.Data.Avatar = Editor.D; Store.Data.Created = true; Store.SaveGame();
-        IrisClose(Editor.AvatarCenter, () => { Screen = Scr.World; Game.Title = false; Game.Begin(!editFromGame || Game.P.P.X < 0); if (!editFromGame && Store.Data.X > 0) Game.LoadClock(); IrisOpen(Game.ToScreen(Game.P.P + new Vector2(0, -36)), 1.35f); });
+        var s = Saves.Create(Editor.D); if (s == null) { Snd.Play("error"); EditorBack(); return; } Enter(s, Editor.AvatarCenter);
     }
     public static void ApplyWindow()
     {
@@ -51,16 +60,21 @@ public static class Program
     public static void Frame(float dt)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) { Store.Cfg.Window = 1 - Store.Cfg.Window; ApplyWindow(); Store.SaveCfg(); }
-        Ui.Begin(dt); bool busy = irisT < 1 || hold > 0; if (busy) { Ui.Click = Ui.Held = false; } In.Locked = busy;
+        Ui.Begin(dt); bool busy = Busy; if (busy) { Ui.Click = Ui.Held = Ui.RightClick = Ui.RightHeld = Ui.Release = false; Ui.Wheel = 0; } In.Locked = busy;
         Snd.Update(dt); Voice.Update(dt);
-        if (Screen == Scr.Editor) { Snd.Music("editor"); Editor.Update(dt); } else Game.Update(dt);
+        if (Screen == Scr.Editor) { Snd.Music("editor"); Editor.Update(dt); } else { if (Screen == Scr.Select) Select.Update(dt); Game.Update(dt); }
         Raylib.BeginDrawing(); Raylib.ClearBackground(Color.Black); if (Screen != Scr.Editor) Game.RenderWorld();
-        if (Screen != Scr.Editor) { Ui.Push(); Game.DrawWorld(); Ui.Pop(); } Ui.Push(); if (Screen == Scr.Editor) Editor.Draw(); else Game.DrawUi(); Ui.End(); DrawIris(dt); Ui.Pop(); Raylib.EndDrawing();
+        if (Screen != Scr.Editor) { Ui.Push(); Game.DrawWorld(); Ui.Pop(); } Ui.Push(); if (Screen == Scr.Editor) Editor.Draw(); else { Game.DrawUi(); if (Screen == Scr.Select) Select.Draw(); } Ui.End(); DrawIris(dt); Ui.Pop(); Raylib.EndDrawing();
     }
     public static void IrisClose(Vector2 c, Action mid, float dur = .85f) { irisC = c; irisFrom = 1; irisTo = 0; irisT = 0; irisDur = dur; irisMid = mid; Snd.Play("iris_in"); }
     public static void IrisOpen(Vector2 c, float dur = 1.25f) { irisC = c; irisFrom = 0; irisTo = 1; irisT = 0; irisDur = dur; irisMid = null; Snd.Play("iris_out"); }
     static void DrawIris(float dt)
     {
+        if (growing != null)
+        {
+            growT += dt; Raylib.DrawRectangle(-2, -2, (int)Ui.VW + 4, (int)Ui.VH + 4, Color.Black); if (growT > .35f) { float a = M.Clamp((growT - .35f) * 3), cx = Ui.VW / 2, cy = Ui.VH / 2 + 6, g = .5f + .5f * M.Sin(growT * 3); Font.Draw("Growing the world", cx, cy + 22, Raylib.Fade(Ui.Cream, a), 1.5f, .5f); Raylib.DrawEllipse((int)cx, (int)cy + 10, 16, 4, Raylib.Fade(new Color(122, 82, 58, 255), a)); float h = 10 + g * 8, l = M.Sin(growT * 2) * 2; Raylib.DrawLineEx(new(cx, cy + 9), new(cx + l, cy + 9 - h), 2, Raylib.Fade(new Color(122, 168, 84, 255), a)); Raylib.DrawEllipse((int)(cx + l - 5), (int)(cy + 8 - h), 5, 2.6f, Raylib.Fade(new Color(142, 190, 98, 255), a)); Raylib.DrawEllipse((int)(cx + l + 5), (int)(cy + 7 - h), 5, 2.6f, Raylib.Fade(new Color(122, 168, 84, 255), a)); }
+            if (growing.IsCompleted) { var w = growing.Result; growing = null; var f = grown; grown = null; f(w); } return;
+        }
         if (hold > 0) { hold -= dt; Raylib.DrawRectangle(-2, -2, (int)Ui.VW + 4, (int)Ui.VH + 4, Color.Black); if (hold <= 0) { var m = irisMid; irisMid = null; m?.Invoke(); } return; }
         if (irisT < 1)
         {
@@ -83,70 +97,104 @@ public static class Dev
     public static string Shots;
     public static bool Cpu(string[] a)
     {
-        switch (a[0]) { case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--icon": { var pi = new Painter(64, 64); pi.View(1, 0, 0); pi.Begin().Ellipse(32, 32, 30, 30); pi.Shade(new Ink((x, y) => Col.Lerp(0xffd890, 0xe8804a, y / 64), 6, .5f, 1)); pi.Begin().Blob(new(2, 46), new(16, 40), new(32, 45), new(48, 39), new(62, 46), new(50, 60), new(32, 63), new(14, 60)); pi.IntersectAlpha(); pi.Shade(new Ink(0x4f9fb4, 4, .5f, .8f)); FishDex.Draw(pi, FishDex.All[3], .44f, 31, 31); pi.View(1, 0, 0); pi.Outline(0x33201f, 1); pi.Export(a[1]); return true; }
-            case "--migrate": Store.Migrate(a[1], a[2]); return true;
-            case "--slide": SlideSheet(a[1]); return true;
-            case "--poses": PoseSheet(a[1]); return true;
-            case "--wind": WindSheet(a[1]); return true;
-            case "--wave": WaveSheet(a[1]); return true; case "--fish": FishSheet(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; }
+        switch (a[0])
+        {
+            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
+        }
         return false;
     }
+    static void IconArt(string path) { var p = new Painter(64, 64); p.View(1, 0, 0); p.Begin().Ellipse(32, 32, 30, 30); p.Shade(new Ink((x, y) => Col.Lerp(0x7ab8e0, 0xffc878, M.Clamp(y / 46)), 6, .5f, 1)); p.Begin().Ellipse(46, 22, 7, 7); p.IntersectAlpha(); p.Flat(0xfff2c0); p.Begin().Blob(new(0, 46), new(14, 36), new(30, 42), new(46, 35), new(64, 44), new(60, 64), new(4, 64)); p.IntersectAlpha(); p.Shade(new Ink(0x8ab46a, 3, .5f, .7f)); p.Begin().Blob(new(6, 54), new(18, 44), new(32, 40), new(46, 44), new(58, 54), new(48, 66), new(16, 66)); p.IntersectAlpha(); p.Shade(new Ink(0x6f9a4c, 5, .6f, .9f)); p.Curve(new(32, 44), new(30, 30), new(33, 17), 3.2f, 0x5f8a46, false); p.Begin().Blob(new(33, 18), new(42, 10), new(44, 18), new(37, 22)); p.Shade(new Ink(0x9ac862, 3, .8f, .8f)); p.Begin().Blob(new(32, 22), new(22, 16), new(21, 24), new(28, 27)); p.Shade(new Ink(0x7ab050, 3, .8f, .8f)); p.Outline(0x33201f, 1); p.Export(path); }
+    /// Every step in the land too tall to jump.
+    static void Tall() { foreach (int sd in new[] { 4242, 12161, 20080, 991, 77 }) { var w = new World(sd); Console.WriteLine($"{sd}: spawn {w.SpawnTile} tops " + string.Join(" ", Enumerable.Range(w.SpawnTile - 10, 24).Select(q => w.Top0[q]))); for (int x = 100; x < World.W - 100; x++) if (Math.Abs(w.Top0[x] - w.Top0[x - 1]) > 3) Console.WriteLine($"   {x} {w.BiomeAt(x)} {w.Top0[x - 1]} > {w.Top0[x]}"); Console.WriteLine("   falls " + string.Join(" ", w.Falls) + " pools " + string.Join(" ", w.Pools.Take(14).Select(q => q.X0 + "-" + q.X1 + "@" + q.Row))); } }
+    /// Whole worlds, one pixel per block.
+    static void Worlds(string path, int count)
+    {
+        var big = new Painter(World.W, count * (World.H + 8)); for (int k = 0; k < count; k++) { var sw = Stopwatch.StartNew(); var w = new World(k * 7919 + 4242); World.Cur = w; long ms = sw.ElapsedMilliseconds; int steep = 0; for (int x = 100; x < World.W - 100; x++) if (Math.Abs(w.Top0[x] - w.Top0[x - 1]) > 3) steep++; var seen = new HashSet<Biome>(); for (int x = 0; x < World.W; x += 4) for (int y = 0; y < World.H; y += 4) { if (Biomes.Of(w.UnderAt(x, y)).Under) seen.Add(w.UnderAt(x, y)); } Console.WriteLine($"seed {w.Seed}: {ms} ms, props {w.Props.Count}, lamps {w.Lamps.Count}, pools {w.Pools.Count}, falls {w.Falls.Count}, tall steps {steep}, under {string.Join("/", seen)}, order {string.Join(" ", w.Segs.Select(q => q.B))}, spawn {w.SpawnTile}"); for (int x = 0; x < World.W; x++) for (int y = 0; y < World.H; y++) { int i = y * World.W + x; Col c = w.Wet[i] != 0 ? w.Pools[w.Wet[i] - 1].Shallow : w.Tile[i] != T.Air ? (w.Turf[i] ? World.GrassCol(x) : (Col)Blocks.Of(w.Tile[i]).Color) : w.Climb[i] != 0 ? 0x40c040 : w.Wall[i] != T.Air ? Col.Lerp(Blocks.Of(w.Wall[i]).Color, 0x201828, .72f) : 0xbfd8ea; big.Px[(k * (World.H + 8) + y) * World.W + x] = c.Rl(); } foreach (var p in w.Props) { int px = (int)(p.X / 24), py = (int)((p.Y - 6) / 24); if (px >= 0 && py >= 0 && px < World.W && py < World.H && p.Kind == 1) for (int q = 0; q < 4 && py - q >= 0; q++) big.Px[(k * (World.H + 8) + py - q) * World.W + px] = new Color(60, 110, 60, 255); } }
+        big.Export(path);
+    }
+    static void BlockSheet(string path) { var big = new Painter(14 * 60, 3 * 100); for (int i = 1; i < Blocks.All.Length; i++) { int x = (i - 1) % 14 * 60 + 8, y = (i - 1) / 14 * 100 + 8; Blit(Tiles.Chunk((T)i, 20), big, x, y, 2); Blit(Tiles.Chunk((T)i, 12), big, x + 8, y + 50, 2); } Finish(big, path); }
+    static void MineSheet(string path)
+    {
+        var big = new Painter(1500, 4 * 250); var ap = new AvatarPainter(); var one = new Painter(250, 250); int row = 0; foreach (var aim in new[] { new Vector2(1, .1f), new Vector2(-1, .2f), new Vector2(.1f, 1), new Vector2(.15f, -1) }) { var an = new AvatarAnim { Dir = aim.X > 0 ? 1 : -1, Aim = Vector2.Normalize(aim), MineAmt = 1, Fps = 18 }; an.Set(Anim.Mine); for (int k = 0; k < 40; k++) an.Update(1 / 60f); for (int i = 0; i < 6; i++) { int g = 0; while (!an.Update(1 / 60f) && g++ < 20) { } one.Clear(); ap.Draw(one, new AvatarData(), an.Pose, 2.0f, 125, 235, outlinePx: 2); Blit(one, big, i * 250, row * 250); } row++; } Finish(big, path);
+    }
+    static void Backs(string path) { var m = typeof(Backdrop).GetMethod("Layer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static); var big = new Painter(1024 * 2, 8 * 200); for (int b = 0; b < 16; b++) { for (int L = 0; L < 4; L++) { var p = (Painter)m.Invoke(null, [(Biome)b, L]); int ox = b % 2 * 1024, oy = b / 2 * 200; for (int y = 0; y < 200; y++) for (int x = 0; x < 1024; x++) { int sy = y - L * 14 + 30; if (sy < 0 || sy >= 300) continue; var c = p.Px[sy * 1024 + x]; if (c.A > 80) big.Px[(oy + y) * big.W + ox + x] = c; } } } Finish(big, path); }
     public static void Steps(int n, float dt = 1 / 60f) { for (int i = 0; i < n; i++) Program.Frame(dt); }
     public static void Save(string n) { var img = Raylib.LoadImageFromScreen(); if (img.Width != 1280) Raylib.ImageCrop(ref img, new Rectangle(0, img.Height - 720, 1280, 720)); Raylib.ExportImage(img, Path.Combine(Shots, n + ".png")); Raylib.UnloadImage(img); }
     public static void ClickAt(float x, float y) { Ui.FakeMouse = new(x, y); Steps(2); Ui.FakeMouse = new(x, y); Ui.FakeClick = true; Steps(1); Steps(2); }
+    static void Key(Act a, string nm = null, int wait = 50) { In.ForcePress.Add(a); Steps(1); In.ForcePress.Clear(); Steps(wait); if (nm != null) Save(nm); }
+    static void NewSave(string name, int seed) { var r = new Rng(12 + name.Length); var a = AvatarData.Random(r); a.Name = name; var d = new SaveData { Avatar = a, Seed = seed, Clock = .42f }; d.Validate(); Store.Data = d; Store.Current = new Saves.Slot { Data = d, File = "x" }; }
+    static void Wait(int max = 900) { for (int i = 0; i < max && Program.Busy; i++) { Steps(1); if (i > 120) Thread.Sleep(2); } }
     public static void RunShot(string n)
     {
-        if (n == "audio") { Snd.Load(false); Program.Screen = Scr.Editor; Program.Editor.Open(new AvatarData(), false); foreach (var q in new[] { "click", "step_grass", "splash", "voicea", "catch", "thunder", "bird" }) { Snd.Play(q, .05f); Steps(10); Console.WriteLine(q + " " + Snd.Has(q)); } Snd.Close(); return; }
-        if (n == "flow")
-        {
-            Program.StartForTest(); Ui.FakeMouse = new(5, 300); Steps(100); Save("l_editor0"); Program.Editor.SetNameForTest("Pip"); float px0 = Ui.VW - 336; Steps(1); ClickAt(px0 + 270, 6 + 348 - 24); Steps(40); Save("l_finish"); Steps(55); for (int i = 0; i < 7; i++) { Steps(9); Save("l_iris" + i); } for (int i = 0; i < 9; i++) { Steps(9); Save("l_open" + i); } Console.WriteLine("screen " + Program.Screen + " name " + Store.Data.Avatar.Name); In.ForcePress.Add(Act.Menu); Steps(1); In.ForcePress.Clear(); Steps(30); ClickAt(Ui.VW / 2, 180 - 107 + 8 + 16 + 31 + 13); Steps(150); Console.WriteLine("after edit avatar: " + Program.Screen); Save("l_edit"); return;
-        }
-        if (n != "editor") { RunWorld(n); return; }
+        if (n == "audio") { Snd.Load(false); Program.Screen = Scr.Editor; Program.Editor.Open(new AvatarData(), false); foreach (var q in new[] { "click", "step_grass", "step_stone", "step_snow", "splash", "voicea", "thunder", "bird", "dice" }) { Snd.Play(q, .05f); Steps(10); Console.WriteLine(q + " " + Snd.Has(q)); } Snd.Close(); return; }
+        if (n == "flow") { Flow(); return; }
         if (n == "editor")
         {
-            var r = new Rng(12); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Juniper"; Program.Editor.Open(d, false); Ui.FakeMouse = new(5, 5); Steps(90); Save("ed_body");
-            float px = Ui.VW - 336; for (int i = 1; i < 10; i++) { ClickAt(px - 10, 6 + 8 + i * 33 + 15); Steps(70); Save("ed_" + i); }
-            ClickAt(px - 10, 6 + 8 + 5 * 33 + 15); Steps(10); ClickAt(px + 260, 50); Steps(60); Save("ed_skirts");
+            var r = new Rng(12); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Juniper"; Program.Editor.Open(d, true); Ui.FakeMouse = new(5, 5); Steps(90); Save("ed_body"); float px = Ui.VW - 336; for (int i = 1; i < 10; i++) { ClickAt(px - 10, 6 + 8 + i * 33 + 15); Steps(70); Save("ed_" + i); } return;
         }
+        RunWorld(n);
     }
-    public static void RunWorld(string n) { var G = Program.Game; Program.Screen = Scr.World; var r = new Rng(12); Store.Data.Avatar = AvatarData.Random(r); Store.Data.Avatar.Name = "Juniper"; Ui.FakeMouse = new(5, 300); Steps(2); Program.Screen = Scr.World; G.Title = false; G.Begin(true);
-        void Shot(string nm, float tx, float clock, Weather w = Weather.Clear, float? y = null, int dir = 1, int warm = 70) { G.P.P = new(tx * 24, y ?? G.W.Top[(int)tx] * 24); G.P.V = default; G.P.Dir = dir; G.Env.Clock = clock; G.Env.SetWeather(w, true); G.CamX = G.P.P.X - Ui.VW / 2; G.CamY = G.P.P.Y - Ui.VH * .62f; Steps(warm); G.Env.Clock = clock; Steps(2); Save(nm); }
-        if (n == "fish") { G.P.P = new(591 * 24, 94 * 24); Store.Data.Bait = 1; Store.Data.Baits[1] = 20; G.P.Dir = -1; G.Env.Clock = .66f; G.Env.SetWeather(Weather.Clear, true); G.CamX = G.P.P.X - 320; G.CamY = G.P.P.Y - 230; Steps(60); In.Force.Add(Act.Fish); In.ForcePress.Add(Act.Fish); Steps(1); In.ForcePress.Clear(); Steps(44); Save("f_aim"); In.Force.Clear(); Steps(90); Save("f_wait"); int guard = 0; while (G.Fish.S != FS.Bite && guard++ < 1500) Steps(1); Steps(12); Save("f_bite"); In.ForcePress.Add(Act.Fish); Steps(1); In.ForcePress.Clear(); Steps(30); guard = 0; bool saved = false; while (G.Fish.S == FS.Fight && guard++ < 3000) { In.Force.Clear(); if (G.Fish.Tension < .6f && G.Fish.Phase != 1) In.Force.Add(Act.Fish); if (G.Fish.FishP > G.Fish.NetP + .03f) In.Force.Add(Act.Right); else if (G.Fish.FishP < G.Fish.NetP - .03f) In.Force.Add(Act.Left); Steps(1); if (guard == 70) { Save("f_fight"); saved = true; } } In.Force.Clear(); In.ForcePress.Clear(); Console.WriteLine("fight result " + G.Fish.S + " after " + guard + " " + G.Fish.F?.Name + " saved " + saved); Steps(70); Save("f_caught"); return; }
-        if (n == "admin") { G.P.P = new(1000 * 24, G.W.Top[1000] * 24); Steps(60); G.ToggleAdminForTest(); for (int i = 0; i < 5; i++) { ClickAt(8 + 12 + 17 + i * 33, 46 + 35); Steps(20); Save("a_" + i); } return; }
-        if (n == "fishes")
+    /// First launch, making characters, the six-save limit, duplicate names, switching, deleting and world persistence, on real files in a test folder.
+    static void Flow()
+    {
+        void Check(string what, bool ok) => Console.WriteLine((ok ? "ok    " : "FAIL  ") + what); Store.TestSaves = true; if (Directory.Exists(Store.Dir)) Directory.Delete(Store.Dir, true); Saves.Refresh(); var G = Program.Game; Ui.FakeMouse = new(5, 300); float pxE = 0;
+        void Create(string nm) { Program.Editor.SetNameForTest(nm); Steps(2); pxE = Ui.VW - 336; ClickAt(pxE + 270, 6 + 348 - 24); Steps(90); }
+        Program.StartForTest(); Steps(100); Check("no saves goes straight to the creator", Program.Screen == Scr.Editor && Saves.All.Count == 0); Save("f_creator"); Create("Pip"); Steps(60); Wait(); Steps(60); Check("finishing makes one save and enters the world", Saves.All.Count == 1 && Program.Screen == Scr.World && File.Exists(Path.Combine(Saves.Dir, "Pip.json"))); int seedA = G.W.Seed; Check("world uses the save's seed", seedA == Saves.All[0].Data.Seed); Save("f_world");
+        // change the world
+        int tx = (int)(G.P.P.X / 24) + 3, ty = G.W.Top[tx]; var was = G.W.At(tx, ty); G.W.Set(tx, ty, T.Air); G.W.Set(tx + 4, G.W.Top[tx + 4] - 1, T.Chalk); int py = G.W.Top[tx + 4]; Bag.Add(Store.Data, (int)T.Clay, 130); Steps(5); Key(Act.Menu, null, 30); Save("f_pause"); ClickAt(Ui.VW / 2, 180 - 92 + 8 + 16 + 3 * 31 + 13); Steps(60); Wait(); Steps(150); Check("save and exit reaches the title", Program.Screen == Scr.Title && Store.Current == null); Save("f_title");
+        ClickAt(Ui.VW / 2, 180); Steps(60); Check("play opens character select", Program.Screen == Scr.Select); Save("f_select1"); float gx = (Ui.VW - 188 * 3 - 24) / 2; void ClickCard(int i, float ox, float oy) => ClickAt(gx + i % 3 * 200 + ox, 58 + i / 3 * 132 + oy);
+        foreach (var (nm, k) in new[] { ("Juniper", 1), ("Moss", 2), ("Wren", 3), ("Olive", 4), ("con", 5) }) { ClickCard(k, 94, 60); Steps(60); Wait(); Steps(30); Check("creator opens for " + nm, Program.Screen == Scr.Editor); if (k == 1) { Create("pip"); Steps(20); Check("a taken name is refused", Program.Screen == Scr.Editor && Saves.All.Count == 1); Save("f_taken"); } Create(nm); Steps(60); Wait(); Steps(30); Check(nm + " saved", Saves.All.Count == k + 1 && Program.Screen == Scr.World); Program.ToTitle(); Steps(60); Wait(); Steps(120); Program.PlayFromTitle(); Steps(50); }
+        Save("f_select6"); Check("six saves is full", Saves.Full && Saves.Create(new AvatarData { Name = "Seven" }) == null); Check("every world has its own seed", Saves.All.Select(q => q.Data.Seed).Distinct().Count() == 6); Check("reserved Windows name got a safe file", File.Exists(Path.Combine(Saves.Dir, "con_.json")));
+        ClickCard(0, 188 - 24, 122 - 31); Steps(60); Save("f_delete"); ClickAt(Ui.VW / 2 - 130 + 74, 180 - 56 + 112 - 28); Steps(20); Check("keep keeps", Saves.All.Count == 6); ClickCard(5, 188 - 24, 122 - 31); Steps(60); ClickAt(Ui.VW / 2 + 130 - 74, 180 - 56 + 112 - 28); Steps(20); Check("delete removes one", Saves.All.Count == 5 && Directory.GetFiles(Path.Combine(Store.Dir, "deleted")).Length == 1);
+        ClickCard(0, 118, 122 - 31); Steps(60); Wait(); Steps(60); Check("pip loads again", Store.Data.Avatar.Name == "Pip" && G.W.Seed == seedA); Check("dug hole was remembered", G.W.At(tx, ty) == T.Air && was != T.Air); Check("placed block was remembered", G.W.At(tx + 4, py) == T.Chalk); Check("items were remembered", Bag.Count(Store.Data, (int)T.Clay) == 130); Check("position was remembered", MathF.Abs(G.P.P.X - Store.Data.X) < 40);
+        // an old save from before seeds
+        var legacy = Path.Combine(Shots, "legacy"); if (Directory.Exists(legacy)) Directory.Delete(legacy, true); Directory.CreateDirectory(legacy); Store.Dir = legacy; File.WriteAllText(Path.Combine(legacy, "save.json"), System.Text.Json.JsonSerializer.Serialize(new { Created = true, Avatar = new AvatarData { Name = "Oldie" }, Day = 7, Clock = .4f, Coins = 99, Baits = new[] { 0, 1, 2 }, Fish = new object[] { new { Id = 3 } } })); Saves.Refresh(); Check("old save imported", Saves.All.Count == 1 && Saves.All[0].Data.Avatar.Name == "Oldie" && Saves.All[0].Data.Day == 7 && File.Exists(Path.Combine(legacy, "save.json"))); File.Copy(Path.Combine(Saves.Dir, "Oldie.json"), Path.Combine(Saves.Dir, "Copy.json")); Saves.Refresh(); Check("a copied file is not a second character", Saves.All.Count == 1); File.WriteAllText(Path.Combine(Saves.Dir, "broken.json"), "{oops"); Saves.Refresh(); Check("a broken file is skipped", Saves.All.Count == 1);
+    }
+    public static void RunWorld(string n)
+    {
+        var G = Program.Game; NewSave("Juniper", G.W.Seed); Ui.FakeMouse = new(320, 8); Steps(2); Program.Screen = Scr.World; G.Title = false; G.Begin(); Steps(2);
+        void At(Vector2 p, float clock, Weather w = Weather.Clear) { G.Travel(p); G.Env.Clock = clock; G.Env.SetWeather(w, true); G.Env.WeatherT = 999; }
+        void Shot(string nm, Vector2? p, float clock, Weather w = Weather.Clear, int warm = 110) { if (p == null) { Console.WriteLine("no spot for " + nm); return; } At(p.Value, clock, w); Steps(warm); G.Env.Clock = clock; Steps(2); Save(nm); }
+        Vector2 Ground(int x) => new(x * 24 + 12, G.W.Top[x] * 24);
+        if (n == "biomes") { foreach (var b in Enum.GetValues<Biome>()) Shot("b_" + (int)b + "_" + b, G.FindBiome(b), b is Biome.Moonpetal ? .5f : .44f); return; }
+        if (n == "dusk") { foreach (var b in new[] { Biome.Dunes, Biome.Crystal, Biome.Moonpetal, Biome.Cinder, Biome.Toadstool, Biome.Frost }) { Shot("d_" + b, G.FindBiome(b), b is Biome.Moonpetal or Biome.Toadstool ? .93f : .72f, b == Biome.Frost ? Weather.Rain : Weather.Clear); } return; }
+        if (n == "mine")
         {
-            var rb = new Rng(5); foreach (var (id, rod) in new[] { (5, 0), (6, 0), (8, 2), (9, 2), (9, 4) })
-            {
-                int wins = 0, tries = 4; float time = 0; for (int q = 0; q < tries; q++)
-                {
-                    G.Fish.Cancel(); G.P.P = new(591 * 24, 94 * 24); Store.Data.Rod = rod; G.P.Dir = -1; Store.Data.Fish.Clear(); G.Env.Clock = .6f; In.Force.Clear(); Steps(30); In.Force.Add(Act.Fish); In.ForcePress.Add(Act.Fish); Steps(1); In.ForcePress.Clear(); Steps(44); In.Force.Clear(); int gd = 0; G.Fish.NextFish = id; while (G.Fish.S != FS.Wait && gd++ < 200) Steps(1); G.Fish.ForceBite(id); Steps(10); In.ForcePress.Add(Act.Fish); Steps(1); In.ForcePress.Clear(); gd = 0; float seen = .5f; bool hold = true;
-                    // reacts late (about a quarter second) and imprecisely, like a person
-                    var lag = new Queue<(float f, float n, bool rel)>(); while (G.Fish.S == FS.Fight && gd++ < 60 * 90) { lag.Enqueue((G.Fish.FishP + rb.R(-.03f, .03f), G.Fish.NetP, G.Fish.NeedRelease)); var o = lag.Count > 15 ? lag.Dequeue() : lag.Peek(); In.Force.Clear(); seen = o.f; if (seen > o.n + .06f) In.Force.Add(Act.Right); else if (seen < o.n - .06f) In.Force.Add(Act.Left); hold = o.rel ? false : G.Fish.Tension < .3f ? true : hold; if (hold) In.Force.Add(Act.Fish); Steps(1); }
-                    if (G.Fish.S == FS.Caught) wins++; time += gd / 60f;
-                }
-                Console.WriteLine($"{FishDex.All[id].Name} rod {rod}: {wins}/{tries} caught, {time / tries:0.0}s");
-            }
+            At(G.W.SafeSpawn(), .45f); Steps(60); int px = (int)(G.P.P.X / 24), py = (int)(G.P.P.Y / 24); Vector2 Scr2(int x, int y) => new(x * 24 + 12 - G.CamX, y * 24 + 12 - G.CamY); void Hold(int x, int y, int frames, string nm = null, int every = 6) { Ui.FakeMouse = Scr2(x, y); Ui.FakeClick = true; Ui.FakeHold = true; for (int i = 0; i < frames; i++) { Ui.FakeMouse = Scr2(x, y); Steps(1); if (nm != null && i % every == every - 1) Save(nm + (i / every).ToString("00")); } Ui.FakeHold = false; Steps(1); }
+            G.W.Set(px + 1, py - 1, T.Stone); G.W.Set(px + 1, py - 2, T.Geode); G.W.Set(px + 2, py - 1, T.Dirt); Steps(5); int before = Store.Data.Mined; Hold(px + 1, py - 1, 150, "m_", 10); Console.WriteLine("stone mined: " + (Store.Data.Mined - before) + " tile now " + G.W.At(px + 1, py - 1)); for (int i = 0; i < 6; i++) { Steps(5); Save("n_" + i); } Steps(120); Console.WriteLine("picked up stone: " + Bag.Count(Store.Data, (int)T.Stone)); Hold(px + 1, py - 2, 110); Save("m_geode"); Hold(px, py, 40); Save("m_down"); Hold(px, py, 60); Steps(60); Save("m_hole"); Console.WriteLine("dirt " + Bag.Count(Store.Data, (int)T.Dirt));
+            foreach (T t in Enum.GetValues<T>()) if (Blocks.Minable(t)) { At(G.W.SafeSpawn(), .45f); Steps(8); int x = (int)(G.P.P.X / 24) + 2, y = (int)(G.P.P.Y / 24) - 1; G.W.Set(x, y, t); Steps(2); Ui.FakeClick = true; Ui.FakeHold = true; int f = 0; while (G.W.At(x, y) != T.Air && f++ < 900) { Ui.FakeMouse = Scr2(x, y); Steps(1); } Ui.FakeHold = false; Steps(2); Console.WriteLine($"{Blocks.Of(t).Name,-16} {f / 60f:0.0}s"); G.W.Set(x, y, T.Air); }
             return;
         }
-        if (n == "herd") { foreach (var dir in new[] { 1, -1 }) { G.P.P = new((dir > 0 ? 606 : 1058) * 24, 0); G.P.P.Y = G.W.Top[(int)(G.P.P.X / 24)] * 24; In.Force.Clear(); In.Force.Add(dir > 0 ? Act.Right : Act.Left); In.Force.Add(Act.Run); int max = 0, sum = 0, c = 0; float x0 = G.P.P.X; for (int i = 0; i < 60 * 70; i++) { Steps(1); if (i % 30 == 0) { int q = G.Life.CrittersAhead(G.P.P, dir, 260); max = Math.Max(max, q); sum += q; c++; } } Console.WriteLine($"dir {dir}: ran {MathF.Abs(G.P.P.X - x0) / 24:0} blocks, most critters ahead {max}, average {sum / (float)c:0.0}"); } In.Force.Clear(); return; }
-        if (n == "clouds") { G.P.P = new(1000 * 24, G.W.Top[1000] * 24); G.CamX = G.P.P.X - 320; G.CamY = G.P.P.Y - 270; G.Env.Clock = .42f; G.Env.TimeScale = 0; G.Env.SetWeather(Weather.Clear, true); G.Env.Cloud = .05f; G.Env.WeatherT = 999; Steps(60); G.Env.SetWeather(Weather.Cloudy); for (int i = 0; i < 8; i++) { Steps(360); Save("k_" + i); } return; }
-        if (n == "sky") { G.P.P = new(1000 * 24, G.W.Top[1000] * 24); G.Env.SetWeather(Weather.Clear, true); G.Env.WeatherT = 999; G.Env.Clock = .95f; G.Env.TimeScale = 0; G.CamX = G.P.P.X - 320; G.CamY = G.P.P.Y - 270; Steps(60); G.Env.MeteorT = 40; Steps(220); for (int i = 0; i < 8; i++) { Steps(9); Save("m_" + i); Console.WriteLine("meteors alive " + G.Env.Meteors.Count); } G.Env.MeteorT = 0; G.Env.Clock = .45f; Steps(90); G.Env.EclipseT = Env.EclipseLen; for (int i = 0; i < 6; i++) { Steps(430); Save("e_" + i); } Store.Data.Areas.Clear(); G.Env.TimeScale = 1; G.P.P = new(757 * 24, 89 * 24); G.CamX = G.P.P.X - 320; G.CamY = G.P.P.Y - 270; Steps(60); Save("b_0"); G.Life.Petals(0, 26); G.Life.Flock(G.CamX, G.CamY, 640); G.Env.RainbowGoal = 60; Steps(260); Save("b_1"); return; }
-        if (n == "cl2") { G.Env.TimeScale = 0; int z = 0; foreach (var (cv, ck) in new[] { (.35f, .40f), (.55f, .45f), (.78f, .5f), (.5f, .70f), (.6f, .757f), (.5f, .93f) }) { G.P.P = new((300 + z * 140) * 24, 0); G.P.P.Y = G.W.Top[300 + z * 140] * 24; G.CamX = G.P.P.X - 320; G.CamY = G.P.P.Y - 270; G.Env.SetWeather(Weather.Clear, true); G.Env.WeatherT = 999; G.Env.Cloud = cv; G.Env.Clock = ck; G.Env.CloudX = z * 1.37f; Steps(70); G.Env.Cloud = cv; G.Env.Clock = ck; Steps(1); Save("c_" + z++); } return; }
+        if (n == "build")
+        {
+            At(G.W.SafeSpawn(), .45f); Steps(40); var d = Store.Data; T[] give = [T.Chalk, T.RedRock, T.Glowrock, T.Dirt, T.Stone, T.Sand, T.Crystal, T.Amberwood, T.Snow, T.Basalt]; foreach (var t in give) Bag.Add(d, (int)t, 40); Steps(5); int px = (int)(G.P.P.X / 24), py = (int)(G.P.P.Y / 24); Vector2 Scr2(int x, int y) => new(x * 24 + 12 - G.CamX, y * 24 + 12 - G.CamY); void Put(int x, int y) { Ui.FakeMouse = Scr2(x, y); Steps(1); Ui.FakeMouse = Scr2(x, y); Ui.FakeRight = true; Steps(1); Steps(8); } void Wheel(int k) { for (int i = 0; i < Math.Abs(k); i++) { Ui.FakeWheel = -Math.Sign(k); Steps(1); Steps(7); } } Wheel(1); Console.WriteLine("hand after one scroll: " + Items.Name(d.Slots[d.Hand].Id)); Save("s_bar1"); for (int y = 1; y <= 4; y++) { Put(px + 3, py - y); } Wheel(1); for (int x = 3; x >= -1; x--) Put(px + x, py - 5); Console.WriteLine($"placed {d.Placed}, chalk left {Bag.Count(d, (int)T.Chalk)}, red left {Bag.Count(d, (int)T.RedRock)}"); Wheel(1); Put(px + 2, py - 1); Steps(20); Ui.FakeMouse = Scr2(px - 2, py - 1); Steps(20); Save("s_build"); Put(px, py - 1); Console.WriteLine("cannot place inside yourself: " + (G.W.At(px, py - 1) == T.Air)); Put(px + 30, py - 1); G.Env.Clock = .93f; Steps(60); Save("s_night"); G.Env.Clock = .45f; Ui.FakeWheel = -1; Steps(3); Save("s_scroll0"); Steps(3); Save("s_scroll1"); Steps(14); Save("s_scroll2"); Wheel(-9); Save("s_wrap"); return;
+        }
+        if (n == "bag")
+        {
+            At(G.FindBiome(Biome.Amber).Value, .66f); var d = Store.Data; for (int i = 1; i < Blocks.All.Length; i++) if (Items.Valid(i)) Bag.Add(d, i, (i * 37) % 120 + 1); Steps(60); Key(Act.Bag, "i_open"); float gw = Bag.Cols * 31 - 2, gh = Bag.Rows * 31 - 2, W2 = 104 + gw + 62, H2 = gh + 92, x = MathF.Round((Ui.VW - W2) / 2), y = MathF.Round((Ui.VH - H2) / 2), gx = x + 21 + 104 + 18, gy = y + 40; Vector2 Sl(int i) => new(gx + i % 12 * 31 + 14, gy + i / 12 * 31 + 14); Ui.FakeMouse = Sl(5); Steps(30); Save("i_hover"); var a0 = d.Slots[0]; ClickAt(Sl(0).X, Sl(0).Y); Steps(30); Console.WriteLine("picked up: " + d.Slots[0].Empty); Ui.FakeMouse = Sl(60); Steps(20); Save("i_held"); ClickAt(Sl(60).X, Sl(60).Y); Console.WriteLine("moved: " + (d.Slots[60].Id == a0.Id && d.Slots[60].N == a0.N)); int n2 = d.Slots[2].N; Ui.FakeMouse = Sl(2); Ui.FakeRight = true; Steps(1); Steps(1); ClickAt(Sl(61).X, Sl(61).Y); Console.WriteLine($"split {n2} into {d.Slots[2].N} + {d.Slots[61].N}"); Steps(30); ClickAt(Sl(4).X, Sl(4).Y); ClickAt(Sl(4).X, Sl(4).Y); Steps(10); Console.WriteLine("double-click holds: " + (d.Hand == 4)); Steps(30); Save("i_hand"); int tot = d.Slots.Sum(s => s.N); ClickAt(Sl(7).X, Sl(7).Y); ClickAt(8, 8); Steps(10); Console.WriteLine("thrown out: " + (d.Slots.Sum(s => s.N) < tot) + " panel open " + G.MenuOpen); Steps(40); ClickAt(gx + gw - 64, gy + gh + 17); Steps(20); Save("i_sorted"); Ui.FakeMouse = Sl(0); Ui.FakeClick = true; Steps(1); Ui.FakeHold = true; Ui.FakeMouse = Sl(70); Steps(5); Ui.FakeHold = false; Ui.FakeRelease = true; Steps(2); Console.WriteLine("drag and drop: " + (!d.Slots[70].Empty)); Key(Act.Bag); Console.WriteLine("closed: " + !G.MenuOpen); Key(Act.Map, "i_map"); Key(Act.Menu); Key(Act.Menu, "i_menu"); Key(Act.Menu); In.Force.Add(Act.Emote); Steps(30); Save("i_emote"); In.Force.Clear(); G.ToggleAdminForTest(); ClickAt(70 + 12 + 17 + 3 * 33, 16 + 35); Steps(30); Save("i_admin"); ClickAt(70 + 12 + 17 + 4 * 33, 16 + 35); Steps(30); Save("i_admin2"); return;
+        }
+        if (n == "water")
+        {
+            var pl = G.W.Pools.First(p => p.Kind == Water.Lake); int x = pl.X0 - 1; At(new(x * 24 - 30, G.W.Top[x - 2] * 24), .45f); Steps(60); Save("wa_0"); for (int k = 0; k < 6; k++) for (int q = 0; q < 5; q++) G.W.Set(x - q, pl.Row + k, T.Air); Steps(30); Save("wa_1"); Steps(200); Save("wa_2"); Console.WriteLine("flooded " + pl.Flooded); if (G.W.Falls.Count > 0) { var f = G.W.Falls[0]; Shot("wa_top", new(f.x * 24 - 240, G.W.Top0[f.x - 10] * 24), .42f); Shot("wa_fall", new(f.x * 24 + 200, f.y1 * 24 - 4), .4f); Shot("wa_behind", new(f.x * 24 - 40, f.y1 * 24), .42f); } return;
+        }
+        if (n == "tree") { var p = G.W.Props.First(q => q.Kind == 1 && q.S.StartsWith("oak")); At(new(p.X - 70, G.W.Top[(int)((p.X - 70) / 24)] * 24), .45f); Steps(60); G.W.Set(p.GX, p.GY, T.Air); for (int i = 0; i < 6; i++) { Steps(14); Save("t_" + i); } return; }
+        if (n == "gpu")
+        {
+            unsafe void Sync() { byte* px = Rlgl.ReadScreenPixels(1, 1); Raylib.MemFree(px); } // waits until the graphics card has really finished
+            foreach (var b in Enum.GetValues<Biome>()) { var p = G.FindBiome(b); if (p == null) continue; At(p.Value, .5f); for (int i = 0; i < 140; i++) { Steps(1); Sync(); } double worst = 0; var all = Stopwatch.StartNew(); int slow = 0; In.Force.Add(Act.Right); for (int i = 0; i < 180; i++) { var sw = Stopwatch.StartNew(); Steps(1); Sync(); double f = sw.Elapsed.TotalMilliseconds; worst = Math.Max(worst, f); if (f > 16.6) slow++; } In.Force.Clear(); Console.WriteLine($"{b,-11} {all.Elapsed.TotalMilliseconds / 180:0.0} ms (worst {worst:0}, over budget {slow})"); } return;
+        }
+        if (n == "dig") { At(G.W.SafeSpawn(), .5f); Steps(30); var sw = Stopwatch.StartNew(); int x = (int)(G.P.P.X / 24), y = G.W.Top[x]; for (int i = 0; i < 100; i++) G.W.Set(x + i % 10, y + i / 10, T.Air); Console.WriteLine($"one block change: {sw.Elapsed.TotalMilliseconds / 100:0.00} ms"); sw.Restart(); G.Flush(); Console.WriteLine($"flush {sw.Elapsed.TotalMilliseconds:0.0} ms, {Store.Data.Edits.Length} chars"); return; }
         if (n == "gait")
         {
-            foreach (var (nm, rn, cr) in new[] { ("walk", false, false), ("run", true, false), ("sneak", false, true) })
-            {
-                G.P.P = new(692 * 24, 89 * 24); G.P.V = default; In.Force.Clear(); Steps(40); In.Force.Add(Act.Right); if (rn) In.Force.Add(Act.Run); if (cr) In.Force.Add(Act.Down); Steps(60); float x0 = G.P.P.X, mn = 999, mxv = 0; int steps = 0, flips = 0; var st = G.P.An.State; float pushSum = 0, passSum = 0; int pc = 0, qc = 0; int lastStep = (int)((G.P.An.Phase + M.PI / 2) / M.PI); int N = rn ? 600 : 900; var line = new System.Text.StringBuilder();
-                for (int i = 0; i < N; i++) { Steps(1); float v = G.P.V.X; mn = MathF.Min(mn, v); mxv = MathF.Max(mxv, v); if (G.P.An.State != st) { flips++; st = G.P.An.State; } int q = (int)((G.P.An.Phase + M.PI / 2) / M.PI); if (q != lastStep) { steps++; lastStep = q; } if (G.P.An.Drive > .85f) { pushSum += v; pc++; } if (G.P.An.Drive < .15f) { passSum += v; qc++; } if (i < 40) line.Append((int)v).Append(' '); }
-                Console.WriteLine($"{nm}: average {(G.P.P.X - x0) / (N / 60f):0} px/s, slowest {mn:0}, fastest {mxv:0}, on push {pushSum / pc:0}, legs passing {passSum / qc:0}, {steps / (N / 60f):0.0} steps/s, state changes {flips}"); Console.WriteLine("   " + line);
-            }
-            In.Force.Clear(); return;
+            foreach (var (nm, rn) in new[] { ("walk", false), ("run", true) }) { At(G.W.SafeSpawn(), .5f); In.Force.Clear(); Steps(40); In.Force.Add(Act.Right); if (rn) In.Force.Add(Act.Run); Steps(60); float x0 = G.P.P.X, mn = 999, mx = 0; for (int i = 0; i < 120; i++) { Steps(1); mn = MathF.Min(mn, G.P.V.X); mx = MathF.Max(mx, G.P.V.X); } Console.WriteLine($"{nm}: average {(G.P.P.X - x0) / 2:0}, {mn:0} to {mx:0}"); } In.Force.Clear(); return;
         }
-        if (n == "perf") { foreach (var tx in new[] { 760f, 380f, 500f, 1200f }) { G.P.P = new(tx * 24, G.W.Top[(int)tx] * 24); Steps(80); var sw = Stopwatch.StartNew(); Steps(120); Console.WriteLine($"{tx}: {sw.ElapsedMilliseconds / 120f:0.0} ms/frame"); } return; }
-        if (n == "ui") { var d = Store.Data; for (int i = 0; i < 26; i++) { var f = FishDex.All[(i * 7) % 40]; var (kg, cm) = FishDex.Roll(f, r, 0); d.Fish.Add(new FishItem { Id = (i * 7) % 40, Kg = kg, Cm = cm }); d.Journal[(i * 7) % 40] = new FishRecord { Count = i + 1, BestKg = kg, BestCm = cm }; if (i % 3 == 0) d.Tank.Add(d.Fish[^1]); } d.Coins = 1234; G.P.P = new(820 * 24 + 30, 89 * 24); G.Env.Clock = .70f; Steps(60); void Key(Act a, string nm) { In.ForcePress.Add(a); Steps(1); In.ForcePress.Clear(); Steps(50); Save(nm); } Key(Act.Interact, "u_shop"); ClickAt(Ui.VW / 2 - 244 + 90, 22 + 38 + 30); Steps(30); Save("u_buy"); Key(Act.Menu, "x"); Key(Act.Bag, "u_bag"); Key(Act.Menu, "x"); Key(Act.Journal, "u_journal"); Key(Act.Menu, "x"); Key(Act.Map, "u_map"); Key(Act.Menu, "x"); Key(Act.Menu, "u_menu"); ClickAt(Ui.VW / 2, 180 - 107 + 8 + 16 + 62 + 13); Steps(40); Save("u_settings"); Key(Act.Menu, "x"); Key(Act.Menu, "x"); In.Force.Add(Act.Emote); Steps(30); Ui.FakeMouse = new(Ui.VW / 2 + 70, 110); Steps(20); Save("u_emote"); In.Force.Clear(); G.P.P = new(785 * 24, 89 * 24); Ui.FakeMouse = new(5, 300); Steps(20); Key(Act.Interact, "u_tank"); Key(Act.Menu, "x"); G.OpenTitle(); Program.Screen = Scr.Title; Steps(200); Save("u_title"); return; }
-        if (n == "move") { G.P.P = new(150 * 24, G.W.Top[150] * 24); G.Env.Clock = .4f; float last = 0; int stuck = 0; In.Force.Add(Act.Right); In.Force.Add(Act.Run); for (int i = 0; i < 60 * 420 && G.P.P.X < 1430 * 24; i++) { Steps(1); if (i % 20 == 0) { if (MathF.Abs(G.P.P.X - last) < 6) { stuck++; In.ForcePress.Add(Act.Jump); In.Force.Add(Act.Jump); if (stuck == 3) Console.WriteLine($"stuck near tile {G.P.P.X / 24:0} y {G.P.P.Y / 24:0} swim {G.P.Swim} climb {G.P.Climb}"); if (stuck > 25) { Console.WriteLine("SKIP"); G.P.P.X += 72; G.P.P.Y = G.W.Top[(int)(G.P.P.X / 24)] * 24 - 4; stuck = 0; } } else { stuck = 0; In.Force.Remove(Act.Jump); } last = G.P.P.X; } else In.ForcePress.Clear(); } Console.WriteLine($"finished at {G.P.P.X / 24:0}"); In.Force.Clear(); return; }
-        if (n == "back") { G.P.P = new(1400 * 24, G.W.Top[1400] * 24); float last = 0; int stuck = 0; In.Force.Add(Act.Left); In.Force.Add(Act.Run); for (int i = 0; i < 60 * 420 && G.P.P.X > 130 * 24; i++) { Steps(1); if (i % 20 == 0) { if (MathF.Abs(G.P.P.X - last) < 6) { stuck++; In.ForcePress.Add(Act.Jump); In.Force.Add(Act.Jump); if (stuck > 8 || (G.P.P.X < 480 * 24 && G.P.P.X > 462 * 24)) { In.Force.Add(Act.Up); In.Force.Remove(Act.Left); } if (stuck == 3) Console.WriteLine($"stuck near tile {G.P.P.X / 24:0} y {G.P.P.Y / 24:0} swim {G.P.Swim} climb {G.P.Climb} {G.P.An.State}"); if (stuck > 40) { Console.WriteLine("SKIP"); G.P.P.X -= 72; G.P.P.Y = G.W.Top[(int)(G.P.P.X / 24)] * 24 - 4; stuck = 0; } } else { if (!G.P.Climb) { In.Force.Remove(Act.Up); In.Force.Add(Act.Left); } stuck = 0; In.Force.Remove(Act.Jump); } last = G.P.P.X; } else In.ForcePress.Clear(); } Console.WriteLine($"finished at {G.P.P.X / 24:0}"); In.Force.Clear(); return; }
-        if (n == "world") { Shot("w_village", 762, .5f); Shot("w_village2", 806, .66f); Shot("w_snow", 300, .42f, Weather.Snow, null, 1, 700); Shot("w_swim", 520, .45f, Weather.Clear, World.LakeY + 40); In.Force.Add(Act.Right); Steps(40); Save("w_swim2"); Steps(16); Save("w_swim3"); In.Force.Clear(); Shot("w_noon", 1000, .42f); Shot("w_cloudy", 1000, .4f, Weather.Cloudy); Shot("w_village_night", 752, .93f); Shot("w_autumn", 372, .68f, Weather.Breezy); Shot("w_river", 302, .31f); Shot("w_lake", 484, .5f, Weather.Clear, 93 * 24); Shot("w_lake2", 590, .74f); Shot("w_meadow", 880, .30f, Weather.Mist); Shot("w_high", 1200, .45f); Shot("w_cave", 1178, .5f, Weather.Clear, 105 * 24); Shot("w_beach", 1418, .27f); Shot("w_rain", 820, .55f, Weather.Rain); Shot("w_storm", 300, .6f, Weather.Storm); } }
+        if (n == "move" || n == "back")
+        {
+            int dir = n == "move" ? 1 : -1; At(Ground(dir > 0 ? 180 : World.W - 180), .4f); Steps(20); float last = 0; int stuck = 0, skips = 0; In.Force.Add(dir > 0 ? Act.Right : Act.Left); In.Force.Add(Act.Run); for (int i = 0; i < 60 * 700 && (dir > 0 ? G.P.P.X < (World.W - 180) * 24 : G.P.P.X > 180 * 24); i++) { Steps(1); if (i % 20 == 0) { if (MathF.Abs(G.P.P.X - last) < 6) { stuck++; In.ForcePress.Add(Act.Jump); In.Force.Add(Act.Jump); if (stuck > 5) In.Force.Add(Act.Up); if (stuck == 4) Console.WriteLine($"slow near tile {G.P.P.X / 24:0} ({G.W.BiomeAt(G.P.P.X / 24)}) y {G.P.P.Y / 24:0} swim {G.P.Swim} climb {G.P.Climb}"); if (stuck > 34) { skips++; Console.WriteLine($"SKIP at {G.P.P.X / 24:0} {G.W.BiomeAt(G.P.P.X / 24)}"); G.P.P = Ground((int)(G.P.P.X / 24) + dir * 4) + new Vector2(0, -2); stuck = 0; } } else { stuck = 0; In.Force.Remove(Act.Jump); In.Force.Remove(Act.Up); } last = G.P.P.X; } else In.ForcePress.Clear(); } Console.WriteLine($"finished at {G.P.P.X / 24:0}, skips {skips}"); In.Force.Clear(); return;
+        }
+        if (n == "sky") { At(G.W.SafeSpawn(), .95f); G.Env.TimeScale = 0; Steps(60); G.Env.MeteorT = 40; Steps(220); for (int i = 0; i < 3; i++) { Steps(12); Save("m_" + i); } G.Env.MeteorT = 0; G.Env.BoltT = 0; G.Env.BoltX = .4f; G.Env.SetWeather(Weather.Storm, true); Steps(3); Save("m_bolt"); return; }
+        if (n == "title") { G.OpenTitle(); Program.Screen = Scr.Title; Steps(200); Save("ti_0"); return; }
+    }
     static void Finish(Painter big, string path) { for (int i = 0; i < big.Px.Length; i++) if (big.Px[i].A == 0) big.Px[i] = new Color(168, 150, 128, 255); big.Export(path); }
     static void Sheet(string path)
     {
@@ -195,7 +243,6 @@ public static class Dev
         for (int i = 0; i < 6; i++) { d.Mouth = new[] { 0, 1, 4, 9, 5, 8 }[i]; d.Skin = AvatarData.SkinTones[i * 2 + 1]; one.Clear(); ap.Draw(one, d, Pose.Stand with { Mouth = i == 5 ? .8f : 0 }, 7.5f, 125, 800, outlinePx: 2); Blit(one, big, i * 250, 340); }
         Finish(big, path);
     }
-    static void FishSheet(string path) { var big = new Painter(1440, 6 * 130); var one = new Painter(200, 130); for (int i = 0; i < FishDex.All.Length; i++) { one.Clear(); FishDex.Draw(one, FishDex.All[i], 1.3f, 100, 65); one.Outline(0x2a1a1c, 2); Blit(one, big, (i % 7) * 205, (i / 7) * 130); } Finish(big, path); }
     static void Cat(string path, string what)
     {
         int n = what == "hair" ? Catalog.Hair.Length : what == "face" ? 24 : Catalog.Count(Enum.Parse<Slot>(what)); int cols = 10, cw = 150, ch = what is "Bottom" ? 190 : 170; var big = new Painter(cols * cw, ((n + cols - 1) / cols) * ch); var ap = new AvatarPainter(); var one = new Painter(cw, ch);

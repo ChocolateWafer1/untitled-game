@@ -36,6 +36,7 @@ public static class M
         return r / n;
     }
     public static int Mod(int a, int b) => ((a % b) + b) % b;
+    public static float Mod2(float a, float b) { float r = a % b; return r < 0 ? r + b : r; }
     public static float Approach(float a, float b, float d) => a < b ? MathF.Min(a + d, b) : MathF.Max(a - d, b);
 }
 

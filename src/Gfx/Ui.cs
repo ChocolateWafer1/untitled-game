@@ -46,16 +46,16 @@ public static class Font
 /// Immediate mode UI with springy, per-widget animation state. Works in a 360-tall virtual canvas.
 public static class Ui
 {
-    public static float VW = 640, VH = 360, Scale = 2, T, DT; public static Vector2 Mouse; public static bool Click, Held, Release; public static float Wheel; public static bool Enabled = true;
-    public sealed class An { public Spring Hover = new(), Press = new(), Sel = new(); public bool Was; public float Born = -1; public int Seen; }
+    public static float VW = 640, VH = 360, Scale = 2, T, DT; public static Vector2 Mouse; public static bool Click, Held, Release, RightClick, RightHeld; public static float Wheel; public static bool Enabled = true;
+    public sealed class An { public Spring Hover = new(), Press = new(), Sel = new(); public bool Was, SlotWas; public float Born = -1; public int Seen; }
     static readonly Dictionary<string, An> an = new(); static int frame; public static string Hot, Active; public static string Tip; static float tipT; static Vector2 pad;
-    static Vector2 lastMouse; public static bool PadMode; public static Vector2? FakeMouse; public static bool FakeClick;
+    static Vector2 lastMouse; public static bool PadMode; public static Vector2? FakeMouse; public static bool FakeClick, FakeRight, FakeHold, FakeRelease, FakeRightHold; public static float FakeWheel;
     public static readonly Color Ink = new(62, 38, 34, 255), Cream = new(250, 240, 218, 255), Soft = new(140, 104, 82, 255), Gold = new(240, 182, 78, 255), Orange = new(226, 124, 66, 255), Green = new(120, 158, 88, 255), Red = new(196, 82, 70, 255);
 
     public static void Begin(float dt)
     {
         frame++; DT = dt; T += dt; int w = Raylib.GetRenderWidth(), h = Raylib.GetRenderHeight(); Scale = h / 360f; VH = 360; VW = w / Scale; if (VW < 480) { Scale = w / 480f; VW = 480; VH = h / Scale; }
-        var m = Raylib.GetMousePosition() / Scale; Click = Raylib.IsMouseButtonPressed(MouseButton.Left); Held = Raylib.IsMouseButtonDown(MouseButton.Left); Release = Raylib.IsMouseButtonReleased(MouseButton.Left); Wheel = Raylib.GetMouseWheelMove();
+        var m = Raylib.GetMousePosition() / Scale; Click = Raylib.IsMouseButtonPressed(MouseButton.Left); Held = Raylib.IsMouseButtonDown(MouseButton.Left); Release = Raylib.IsMouseButtonReleased(MouseButton.Left); RightClick = Raylib.IsMouseButtonPressed(MouseButton.Right); RightHeld = Raylib.IsMouseButtonDown(MouseButton.Right); Wheel = Raylib.GetMouseWheelMove();
         if (m != lastMouse) PadMode = false; lastMouse = m;
         if (Raylib.IsGamepadAvailable(0))
         {
@@ -63,7 +63,7 @@ public static class Ui
             if (MathF.Abs(x) > .25f || MathF.Abs(y) > .25f) { if (!PadMode) pad = m; PadMode = true; pad += new Vector2(x, y) * dt * 260; pad = Vector2.Clamp(pad, Vector2.Zero, new(VW, VH)); }
             if (PadMode) { m = pad; Click |= Raylib.IsGamepadButtonPressed(0, GamepadButton.RightFaceDown); Held |= Raylib.IsGamepadButtonDown(0, GamepadButton.RightFaceDown); Release |= Raylib.IsGamepadButtonReleased(0, GamepadButton.RightFaceDown); Wheel -= Raylib.GetGamepadAxisMovement(0, GamepadAxis.RightY) * dt * 10; }
         }
-        if (FakeMouse is Vector2 f) { m = f; Click = FakeClick; Held = FakeClick; FakeClick = false; }
+        if (FakeMouse is Vector2 f) { m = f; Click = FakeClick; Held = FakeClick || FakeHold; Release = FakeRelease; RightClick = FakeRight; RightHeld = FakeRight || FakeRightHold; Wheel = FakeWheel; FakeWheel = 0; FakeClick = FakeRight = FakeRelease = false; }
         Mouse = m; Tip = null; if (!Held) Active = null; Enabled = true; Hot = null;
     }
     public static void Push() { Rlgl.PushMatrix(); Rlgl.Scalef(Scale, Scale, 1); }
@@ -194,11 +194,8 @@ static class Icons
         I("check", p => { p.Stroke([V(3, 8.4f), V(6.6f, 12), V(13, 4)], 2.6f, 0xf6eee0, 1, false); });
         I("x", p => { p.Line(V(4, 4), V(12, 12), 2.4f, 0xf6eee0, false); p.Line(V(12, 4), V(4, 12), 2.4f, 0xf6eee0, false); });
         I("gear", p => { for (int i = 0; i < 8; i++) { float a = i * M.TAU / 8; p.Begin().Ellipse(8 + M.Sin(a) * 4.6f, 8 + M.Cos(a) * 4.6f, 1.6f, 1.6f); p.Flat(0xb9b2a8); } p.Begin().Ellipse(8, 8, 4.6f, 4.6f).CutEllipse(8, 8, 1.8f, 1.8f); p.Shade(K(0xc9c2b8, 2)); });
-        I("book", p => { p.Begin().Rect(2.6f, 2.6f, 10.8f, 11); p.Shade(K(0x8c2f35, 2)); p.Begin().Rect(4.6f, 2.6f, 1, 11); p.Flat(0x5a1c24); p.Begin().Rect(7.4f, 5, 4, 2.4f); p.Flat(0xe0b650); });
         I("map", p => { p.Begin().Poly(V(1.6f, 4), V(6, 2.4f), V(10, 4), V(14.4f, 2.4f), V(14.4f, 12), V(10, 13.6f), V(6, 12), V(1.6f, 13.6f)); p.Shade(K(0xf3e2bd, 1)); p.Line(V(6, 3), V(6, 12), 1, 0xc9a06a, false); p.Line(V(10, 4), V(10, 13), 1, 0xc9a06a, false); p.Dot(12, 6, 0xb8473f); p.Dot(11, 7, 0xb8473f); p.Dot(12, 8, 0xb8473f); });
         I("bag", p => { p.Begin().Ellipse(8, 4.6f, 3, 2.8f).CutEllipse(8, 4.8f, 1.7f, 1.6f); p.Flat(0x6b4a33); p.Begin().Blob(V(2.6f, 12), V(3.6f, 6), V(12.4f, 6), V(13.4f, 12), V(8, 14)); p.Shade(K(0xb0764a, 3)); p.Begin().Rect(6.4f, 8, 3.2f, 2.6f); p.Flat(0xe0b650); });
-        I("coin", p => { p.Begin().Ellipse(8, 8, 5.6f, 5.6f); p.Shade(K(0xf0bd4a, 2.6f)); p.Begin().Ellipse(8, 8, 3.4f, 3.4f); p.Flat(0xd8962e); p.Begin().Rect(7.2f, 5.4f, 1.6f, 5.2f); p.Flat(0xffe9a8); });
-        I("fish", p => FishDex.Draw(p, FishDex.All[1], .13f, 8, 8));
         I("left", p => { p.Begin().Poly(V(4, 8), V(11, 3), V(11, 13)); p.Flat(0xf6eee0); });
         I("right", p => { p.Begin().Poly(V(12, 8), V(5, 3), V(5, 13)); p.Flat(0xf6eee0); });
         I("home", p => { p.Begin().Poly(V(1.6f, 8), V(8, 2), V(14.4f, 8)); p.Flat(0xb8473f); p.Begin().Rect(3.6f, 7.6f, 8.8f, 6); p.Shade(K(0xf3e2bd)); p.Begin().Rect(6.8f, 9.6f, 2.6f, 4); p.Flat(0x6b4a33); });
@@ -206,28 +203,6 @@ static class Icons
         I("video", p => { p.Begin().Rect(1.6f, 3, 12.8f, 8.4f); p.Shade(K(0x5f8aa8)); p.Begin().Rect(6, 11.4f, 4, 1.4f).Rect(4, 12.8f, 8, 1.2f); p.Flat(0x6b4a33); });
         I("keys", p => { p.Begin().Rect(1.4f, 4.4f, 13.2f, 7.4f); p.Shade(K(0xc9c2b8)); for (int i = 0; i < 5; i++) { p.Begin().Rect(2.8f + i * 2.2f, 5.8f, 1.2f, 1.2f); p.Flat(0x4e4c52); } p.Begin().Rect(4.6f, 9, 7, 1.2f); p.Flat(0x4e4c52); });
         I("eye", p => { p.Begin().Blob(V(1.4f, 8), V(8, 3.6f), V(14.6f, 8), V(8, 12.4f)); p.Flat(0xfaf4ea); p.Begin().Ellipse(8, 8, 2.8f, 2.8f); p.Flat(0x4a82b0); p.Begin().Ellipse(8, 8, 1.2f, 1.2f); p.Flat(0x1a1014); });
-        I("rod", p => { p.Line(V(3, 13), V(12, 2.6f), 1.4f, 0x9a6a3c, false); p.Curve(V(12, 2.6f), V(14, 6), V(12.6f, 10), .6f, 0xf6eee0, false); p.Begin().Ellipse(12.4f, 11, 1.4f, 1.4f); p.Flat(0xc45a48); p.Begin().Ellipse(5.6f, 10.6f, 1.5f, 1.5f); p.Flat(0x83807f); });
-        I("bait", p => { p.Stroke([V(3, 10), V(5, 6), V(8, 9), V(11, 5), V(13, 8)], 2.6f, 0xd88a8a, 1, false); });
-        // every bait, lure and rod has its own picture
-        I("bait0", p => { p.Curve(V(8, 2), V(8, 9), V(8, 10), 1.6f, 0xb9b2a8, false); p.Curve(V(8, 10), V(8, 14), V(4, 13), 1.6f, 0xb9b2a8, false); p.Curve(V(4, 13), V(3, 11), V(4, 9.6f), 1.6f, 0xb9b2a8, false); p.Begin().Ellipse(8, 2.6f, 1.6f, 1.6f).CutEllipse(8, 2.6f, .7f, .7f); p.Flat(0xd8d4cc); });
-        I("bait1", p => { p.Stroke([V(3, 10), V(5, 5), V(8, 9), V(10, 5), V(13, 8)], 3.2f, 0xd88a8a, 1, false); p.Stroke([V(3, 9), V(5, 4.4f), V(8, 8)], 1, 0xf2b8b4, 1, false); for (int i = 0; i < 3; i++) p.Dot(5 + i * 3, 7, 0xb8605f); });
-        I("bait2", p => { p.Begin().Ellipse(7, 9, 4.6f, 2.4f); p.Shade(K(0x86a848)); p.Begin().Ellipse(11.6f, 8.4f, 2, 1.9f); p.Shade(K(0x6f9038)); p.Line(V(6, 8), V(2.4f, 4), 1.4f, 0x5f7a34, false); p.Line(V(2.4f, 4), V(2, 12.6f), 1.4f, 0x5f7a34, false); p.Line(V(9, 10), V(10, 13), 1, 0x5f7a34, false); p.Line(V(12.4f, 7), V(15, 3), .8f, 0x5f7a34, false); p.Dot(12, 8, 0x1a1014); });
-        I("bait3", p => { foreach (var (x, y) in new[] { (5f, 9f), (10.4f, 9f), (7.8f, 12f), (7.6f, 6.6f) }) { p.Begin().Ellipse(x, y, 2.8f, 2.8f); p.Shade(K(0xd8405a)); p.Dot(x - 1, y - 1.2f, 0xffc0c8); } p.Begin().Blob(V(8, 5), V(11, 2), V(13.6f, 3.4f), V(10.6f, 5.6f)); p.Flat(0x6f9a46); });
-        I("bait4", p => { p.Begin().Blob(V(4, 7), V(12, 7), V(11, 12), V(8, 14.4f), V(5, 12)); p.Shade(K(0xc88f4a, 3)); p.Begin().Blob(V(3, 7.6f), V(4, 4.6f), V(8, 3.4f), V(12, 4.6f), V(13, 7.6f)); p.Shade(K(0x7a5030)); p.Line(V(8, 3.6f), V(9, 1.6f), 1.4f, 0x7a5030, false); for (int i = 0; i < 3; i++) p.Dot(5.4f + i * 2.4f, 6, 0x5a3820); });
-        I("bait5", p => { p.Begin().Capsule(V(8, 8), 1.8f, V(8, 13), 2); p.Shade(K(0xe8f8f0)); p.Begin().Ellipse(8, 7.6f, 6, 5).Cut(V(0, 8.4f), V(16, 8.4f), V(16, 16), V(0, 16)); p.Shade(K(0x58e0d0)); p.Dot(5.6f, 6, 0xffffff); p.Dot(9.6f, 5, 0xffffff); p.Dot(10.8f, 7, 0xd8fff8); });
-        I("bait6", p => { p.Begin().Capsule(V(2.6f, 12), 1.4f, V(13, 12), 1.6f); p.Shade(K(0xd8b890)); p.Begin().Ellipse(7, 8, 4.6f, 4.4f); p.Shade(K(0xc87a5a, 3)); p.Curve(V(4.4f, 9), V(6, 4), V(9.6f, 7), 1, 0x8a4a38, false); p.Curve(V(9.6f, 7), V(10, 10.6f), V(7, 9), 1, 0x8a4a38, false); p.Line(V(13, 11), V(14.2f, 8), .8f, 0xd8b890, false); });
-        I("bait7", p => { for (int i = 0; i < 5; i++) { float a = i * .62f - .4f; p.Begin().Ellipse(3.6f + i * 2.2f, 10.4f - M.Sin(i / 4f * M.PI) * 4, 2.2f, 2.2f); p.Shade(K(0xf0e4c0)); } p.Begin().Ellipse(13, 10.6f, 1.6f, 1.6f); p.Flat(0x9a6238); });
-        I("bait8", p => { p.Begin().Ellipse(8, 8.6f, 5.2f, 4.8f); p.Shade(K(0xe0b070, 4)); p.Curve(V(4.4f, 7), V(8, 4.6f), V(11.6f, 7), 1, 0xb07a40, false); p.Dot(6, 9, 0xf8dcae); p.Dot(10, 10, 0xb88850); p.Dot(8, 11, 0xb88850); });
-        I("bait9", p => { for (int i = 0; i < 5; i++) { float a = -1.2f + i * .62f; p.Begin().Ellipse(8 + M.Cos(a) * 4, 8 + M.Sin(a) * 4.4f, 2.6f - i * .28f, 2.4f - i * .26f); p.Shade(K(i % 2 == 0 ? 0xf0906a : 0xf8b090)); } p.Begin().Poly(V(3, 12), V(6, 10), V(6.4f, 13.4f)); p.Flat(0xe07a5a); p.Line(V(10, 4), V(14, 2), .8f, 0xd86a4a, false); p.Dot(10, 4.6f, 0x1a1014); });
-        I("bait10", p => { p.Begin().Ellipse(8, 11, 3, 3.4f); p.Shade(K(0xf8f080)); p.Begin().Ellipse(8, 6.6f, 2.4f, 2.8f); p.Shade(K(0x5a4038)); p.Begin().Ellipse(4.4f, 6.4f, 2.8f, 1.6f).Ellipse(11.6f, 6.4f, 2.8f, 1.6f); p.Flat(0xd8e8f0); p.Dot(8, 11, 0xffffff); });
-        I("bait11", p => { for (int i = 0; i < 5; i++) { p.Begin().Ellipse(3.6f + i * 2.2f, 10.4f - M.Sin(i / 4f * M.PI) * 4, 2.2f, 2.2f); p.Shade(K(0xf0bd3a)); } p.Begin().Rect(12, 2, 1, 5).Rect(10, 4, 5, 1); p.Flat(0xfff4c0); p.Dot(6, 7, 0xfff0b0); });
-        Col[] rcol = [0x8a6a48, 0xd0b060, 0x9a5a34, 0x6ac0d0, 0xb8a8f0]; for (int rr = 0; rr < 5; rr++) { Col rc = rcol[rr]; int q = rr; I("rod" + rr, p => { p.Line(V(2.6f, 13.6f), V(12.4f, 2.6f), q == 0 ? 1.2f : 1.8f, rc, false); if (q == 1) for (int i = 0; i < 4; i++) p.Dot(5 + i * 2, 11 - i * 2.2f, 0x7a6030); if (q == 4) { p.Dot(7, 8.6f, 0xffffff); p.Dot(10, 5, 0xffffff); } p.Line(V(2.2f, 14), V(5, 10.8f), 2.4f, q == 0 ? 0x6e4a34 : 0x5a3430, false); p.Curve(V(12.4f, 2.6f), V(14.4f, 6), V(12.8f, 10), .6f, 0xf6eee0, false); p.Begin().Ellipse(12.6f, 11, 1.4f, 1.4f); p.Flat(0xc45a48); if (q > 0) { p.Begin().Ellipse(6.4f, 10.8f, 1.9f, 1.9f); p.Shade(K(q >= 3 ? 0xe0b650 : 0x9a9aa0, 1)); } }); }
-        I("lure0", p => { p.Curve(V(8, 2), V(8, 10), V(8, 11), 1.6f, 0xb9b2a8, false); p.Curve(V(8, 11), V(8, 14), V(5, 12), 1.6f, 0xb9b2a8, false); });
-        I("lure1", p => { p.Begin().Ellipse(8, 6, 2.6f, 3.4f); p.Shade(K(0xd8d8e0)); p.Begin().Poly(V(6, 9), V(10, 9), V(12, 14), V(8, 12), V(4, 14)); p.Shade(K(0xd86f86)); });
-        I("lure2", p => { p.Begin().Blob(V(8, 1.6f), V(11.6f, 7), V(8, 14.4f), V(4.4f, 7)); p.Shade(K(0xd08a48, 3)); p.Dot(6.6f, 5, 0xffe0b0); });
-        I("lure3", p => { p.Begin().Ellipse(8, 9, 4, 4.4f); p.Shade(K(0xc45a48, 3)); p.Begin().Rect(4, 9, 8, 1.6f); p.Flat(0xf6eee0); p.Line(V(8, 1.6f), V(8, 5), 1.2f, 0xe0b650, false); p.Begin().Ellipse(8, 3, 1.6f, 1.6f); p.Shade(K(0xf0c860)); });
-        I("lure4", p => { p.Begin().Blob(V(8, 2), V(11, 8), V(10.6f, 13), V(8, 14.4f), V(5.4f, 13), V(5, 8)); p.Shade(K(0x6a6a78, 3)); p.Begin().Ellipse(8, 3.4f, 1, 1); p.Flat(0xd8d4cc); });
-        I("lure5", p => { p.Begin().Ellipse(7.4f, 8, 5.2f, 5.2f).CutEllipse(10, 6.6f, 4.2f, 4.2f); p.Shade(K(0xd8d8ff)); p.Dot(12, 4, 0xffffff); p.Dot(13, 9, 0xffffff); });
         I("sun", p => { for (int i = 0; i < 8; i++) { float a = i * M.TAU / 8; p.Line(V(8, 8), V(8 + M.Sin(a) * 6.4f, 8 + M.Cos(a) * 6.4f), 1.2f, 0xf0bd4a, false); } p.Begin().Ellipse(8, 8, 3.8f, 3.8f); p.Shade(K(0xffd970)); });
         I("moon", p => { p.Begin().Ellipse(7.4f, 8, 5.4f, 5.4f).CutEllipse(10.2f, 6.4f, 4.6f, 4.6f); p.Shade(K(0xf0ead0)); });
         I("rain", p => { p.Begin().Ellipse(6, 6, 3.4f, 3).Ellipse(10, 6, 3.6f, 3.4f).Rect(4, 6, 8, 3); p.Shade(K(0xb0bcc8)); for (int i = 0; i < 3; i++) p.Line(V(5 + i * 3, 11), V(4 + i * 3, 14), 1, 0x6fa8d8, false); });

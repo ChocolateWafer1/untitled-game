@@ -4,8 +4,8 @@ namespace UntitledGame;
 
 public sealed class Player
 {
-    public Vector2 P, V; public AvatarData D; public readonly AvatarAnim An = new(); readonly AvatarPainter ap = new(); readonly Painter pt = new(150, 150); public Texture2D Tex; readonly World w; readonly GameScreen g;
-    public bool Ground, Swim, Climb, Sit, Crouch; public Prop Seat; float coyote, buffer, slideT, landT, dropT, fallPeak, ledgeT = -1; Vector2 ledgeA, ledgeB; public float StepY; public Anim Emote = Anim.Idle; public float EmoteT; public float Air; public bool Frozen; public float WetT;
+    public Vector2 P, V; public AvatarData D; public readonly AvatarAnim An = new(); readonly AvatarPainter ap = new(); readonly Painter pt = new(150, 150); public Texture2D Tex; World w; readonly GameScreen g; public void SetWorld(World q) => w = q;
+    public bool Ground, Swim, Climb, Crouch; public bool Mining; public Vector2 MineAim; float coyote, buffer, slideT, landT, fallPeak, ledgeT = -1; Vector2 ledgeA, ledgeB; public float StepY; public Anim Emote = Anim.Idle; public float EmoteT; public float Air; public bool Frozen; public float WetT;
     public const float HW = 8, OX = 75, OY = 128; public float HH => Crouch ? 40 : 62; public int Dir = 1; float footT;
     public Player(World w, GameScreen g) { this.w = w; this.g = g; Tex = pt.ToTexture(); An.Event = Ev; }
     public void SetAvatar(AvatarData d) { D = d; An.IdleStyle = d.Idle; An.Stride = AvatarPainter.StrideOf(d); Redraw(); }
@@ -13,34 +13,32 @@ public sealed class Player
     public void Redraw() { pt.Clear(); ap.Draw(pt, D, An.Pose, AvatarAnim.PxPerUnit, OX, OY, outlinePx: Store.Cfg.Contrast ? 2 : 1); pt.Upload(Tex); }
     public string Surface()
     {
-        int tx = (int)(P.X / 24), ty = (int)((P.Y + 4) / 24); if (w.PlatAt(tx, ty) && !w.Solid(tx, ty)) return "wood"; var t = w.At(tx, ty); return t switch { T.Sand => "sand", T.Stone or T.Cobble or T.Moss or T.Clay => "stone", T.Plank => "wood", _ => w.Solid(tx, ty - 1) ? "dirt" : World.BiomeAt(tx) == Biome.Autumn ? "leaves" : w.WallAt(tx, ty - 1) != T.Air ? "dirt" : "grass" };
+        int tx = (int)(P.X / 24), ty = (int)((P.Y + 4) / 24); if (!w.Solid(tx, ty)) { tx = (int)((P.X - 7) / 24); if (!w.Solid(tx, ty)) tx = (int)((P.X + 7) / 24); } if (w.TurfAt(tx, ty)) return Biomes.Of(w.BiomeAt(tx)).Step is "leaves" ? "leaves" : "grass"; return Blocks.Of(w.At(tx, ty)).Surf;
     }
     void Ev(string e)
     {
         switch (e)
         {
             case "step": Snd.Play("step_" + Surface(), An.State == Anim.Run ? .55f : .4f, .92f + M.Hash(Environment.TickCount, 1) * .18f); g.Life.Dust(P, Surface(), An.State == Anim.Run ? 2 : 1, -Dir); if (WetT > 0) g.Life.Drip(P); break;
+            case "strike": g.OnStrike(); break;
             case "climb": Snd.Play("climb", .4f, .9f + M.Hash(Environment.TickCount, 2) * .2f); break;
             case "stroke": Snd.Play("stroke", .4f, .9f + M.Hash(Environment.TickCount, 2) * .2f); if (w.PoolAt(P.X, P.Y - 10) is Pool q) g.R.Ripple(P.X, 1.6f); break;
         }
     }
     bool Free(float x, float y, float hh) { int x0 = (int)MathF.Floor((x - HW) / 24), x1 = (int)MathF.Floor((x + HW - .01f) / 24), y0 = (int)MathF.Floor((y - hh) / 24), y1 = (int)MathF.Floor((y - .01f) / 24); for (int j = y0; j <= y1; j++) for (int i = x0; i <= x1; i++) if (w.Solid(i, j)) return false; return true; }
-    public void DoEmote(Anim a) { Emote = a; EmoteT = a is Anim.SitGround or Anim.Sleep or Anim.Dance ? 999 : 2.2f; Sit = false; An.Set(a); An.StateT = 0; }
-    public void StandUp() { if (Sit && Seat != null) { Sit = false; Seat = null; An.Set(Anim.Idle); } }
-    public void SitOn(Prop b) { Sit = true; Seat = b; V = default; P = new(b.X, b.Y - 1); Snd.Play("sit"); An.StateT = 0; EmoteT = 0; }
+    public void DoEmote(Anim a) { Emote = a; EmoteT = a is Anim.SitGround or Anim.Sleep or Anim.Dance ? 999 : 2.2f; An.Set(a); An.StateT = 0; }
     public void Update(float dt, bool control)
     {
-        An.Wind = g.Env.Wind * (w.WallAt((int)(P.X / 24), (int)((P.Y - 30) / 24)) == T.Air ? .85f : .05f); An.Talk = Voice.Talking ? 1 : 0; WetT = MathF.Max(0, WetT - dt); StepY = M.Damp(StepY, 0, 18, dt); dropT -= dt; landT -= dt; coyote -= dt; buffer -= dt;
+        An.Wind = g.Env.Wind * (w.WallAt((int)(P.X / 24), (int)((P.Y - 30) / 24)) == T.Air ? .85f : .05f); An.Talk = Voice.Talking ? 1 : 0; WetT = MathF.Max(0, WetT - dt); StepY = M.Damp(StepY, 0, 18, dt); landT -= dt; coyote -= dt; buffer -= dt;
         if (ledgeT >= 0) { ledgeT += dt / .42f; float t = M.Clamp(ledgeT); P = t < .5f ? new(ledgeA.X, M.Lerp(ledgeA.Y, ledgeB.Y + 8, Ease.OutCubic(t * 2))) : new(M.Lerp(ledgeA.X, ledgeB.X, (t - .5f) * 2), M.Lerp(ledgeB.Y + 8, ledgeB.Y, (t - .5f) * 2)); An.Set(t < .55f ? Anim.Ledge : Anim.Crouch); if (t >= 1) { P = ledgeB; ledgeT = -1; V = default; Ground = true; } Tick(dt); return; }
         bool L = control && In.Down(Act.Left), R = control && In.Down(Act.Right), U = control && In.Down(Act.Up), Dn = control && In.Down(Act.Down), run = control && In.Down(Act.Run); float mx = (R ? 1 : 0) - (L ? 1 : 0); if (control && In.Press(Act.Jump)) buffer = .13f; if (In.Press(Act.Jump) == false && U && !Climb && !Swim && false) buffer = .1f;
-        if (Sit) { if (mx != 0 || buffer > 0 || U) { StandUp(); buffer = 0; } else { An.Set(Anim.Sit); An.Vel = default; Tick(dt); return; } }
         if (EmoteT > 0) { EmoteT -= dt; if (mx != 0 || buffer > 0 || !Ground) EmoteT = 0; }
         var pool = w.PoolAt(P.X, P.Y - 4); float sub = pool != null ? P.Y - pool.Surf : 0; bool was = Swim; Swim = pool != null && sub > (Swim ? 36 : 44); if (Swim && !was) { Crouch = false; float hit = MathF.Abs(V.Y); g.Life.Splash(new(P.X, pool.Surf), M.Clamp(hit / 300, .25f, 1.4f)); g.R.Ripple(P.X, M.Clamp(hit / 70, 1.5f, 7)); Snd.Play(hit > 180 ? "splash" : "splash_small", M.Clamp(hit / 400, .35f, 1)); V.Y *= .35f; Climb = false; } if (was && !Swim) { g.Life.Splash(new(P.X, P.Y - 10), .4f); Snd.Play("splash_small", .5f); WetT = 5; }
         if (sub > 4 && !Swim && MathF.Abs(V.X) > 20 && Ground) { footT -= dt * MathF.Abs(V.X); if (footT < 0) { footT = 24; g.Life.Splash(new(P.X, pool.Surf), .22f); g.R.Ripple(P.X, 1.2f); Snd.Play("splash_small", .25f, 1.2f); } WetT = 5; }
         int tx = (int)MathF.Floor(P.X / 24); byte c = 0; int cTile = 0; for (int k = -1; k <= 1 && c == 0; k++) { if (MathF.Abs((tx + k) * 24 + 12 - P.X) > 17) continue; foreach (float oy in new[] { 6f, 30f, 2f }) { c = w.ClimbAt(tx + k, (int)((P.Y - oy) / 24)); if (c != 0) { cTile = tx + k; break; } } }
         byte below = w.ClimbAt(tx, (int)((P.Y + 6) / 24));
         if (!Climb && c != 0 && !Swim && ((U && V.Y > -60) || (Dn && !Ground))) { Climb = true; V = default; }
-        if (!Climb && Ground && Dn && below != 0 && w.PlatAt(tx, (int)((P.Y + 6) / 24))) { Climb = true; cTile = tx; P.Y += 6; dropT = .3f; V = default; }
+        if (!Climb && Ground && Dn && below != 0 && !w.Solid(tx, (int)((P.Y + 6) / 24))) { Climb = true; cTile = tx; P.Y += 6; V = default; }
         if (Climb && c == 0 && below == 0) { Climb = false; if (U) V.Y = -150; }
         if (Climb)
         {
@@ -59,24 +57,24 @@ public sealed class Player
         else
         {
             // on the ground each step surges: full speed on the push, slower as the foot lands and the legs pass
-            (float peak, float low, float air) gait = Crouch ? (50, .55f, 40) : run ? (181, .68f, 152) : (102, .50f, 75);
+            (float peak, float low, float air) gait = Crouch ? (54, .72f, 46) : run ? (194, .82f, 174) : (106, .70f, 88);
             if (Ground && mx != 0 && MathF.Abs(V.X) < 5) An.StartStep();
-            float spd = Ground ? gait.peak * M.Lerp(gait.low, 1, An.Drive) : gait.air; float acc = Ground ? (mx != 0 ? (MathF.Abs(V.X) > spd ? 520 : 680) : 1000) : 560; V.X = M.Approach(V.X, mx * spd, acc * dt);
+            float spd = Ground ? gait.peak * M.Lerp(gait.low, 1, An.Drive) : gait.air; bool turning = mx != 0 && V.X * mx < 0;
+            float acc = !Ground ? 420 : mx == 0 ? 760 : turning ? 820 : run ? 330 : 270; V.X = M.Approach(V.X, mx * spd, acc * dt); // build up over a few steps rather than snapping to speed
         }
-        if (mx != 0 && slideT <= 0) Dir = (int)mx; V.Y = MathF.Min(V.Y + (V.Y < 0 && control && In.Down(Act.Jump) ? 760 : 1080) * dt, 620); if (Ground) coyote = .1f;
-        if (buffer > 0 && coyote > 0 && Dn && w.PlatAt(tx, (int)((P.Y + 2) / 24)) && !w.Solid(tx, (int)((P.Y + 2) / 24))) { dropT = .22f; buffer = 0; P.Y += 2; Ground = false; coyote = 0; }
-        else if (buffer > 0 && coyote > 0) { V.Y = -338; buffer = coyote = 0; Ground = false; slideT = 0; An.Punch(-4); Snd.Play("jump", .5f, .95f + M.Hash(Environment.TickCount, 4) * .12f); g.Life.Dust(P, Surface(), 4, 0); EmoteT = 0; }
+        if (mx != 0 && slideT <= 0) Dir = (int)mx; else if (Mining && MathF.Abs(MineAim.X) > .2f) Dir = MineAim.X > 0 ? 1 : -1; V.Y = MathF.Min(V.Y + (V.Y < 0 && control && In.Down(Act.Jump) ? 760 : 1080) * dt, 620); if (Ground) coyote = .1f;
+        if (buffer > 0 && coyote > 0) { V.Y = -338; buffer = coyote = 0; Ground = false; slideT = 0; An.Punch(-4); Snd.Play("jump", .5f, .95f + M.Hash(Environment.TickCount, 4) * .12f); g.Life.Dust(P, Surface(), 4, 0); EmoteT = 0; }
         bool wasG = Ground; if (!Ground) fallPeak = MathF.Min(fallPeak, P.Y); else fallPeak = P.Y; float vy0 = V.Y; Move(dt);
         if (Ground && !wasG) { float h = P.Y - fallPeak; if (h > 14) { landT = h > 60 ? .2f : .1f; An.Punch(M.Clamp(h / 14, 2, 9)); Snd.Play("land", M.Clamp(h / 130, .18f, .8f)); Snd.Play("step_" + Surface(), .6f, .85f); g.Life.Dust(P, Surface(), (int)M.Clamp(h / 12, 3, 12), 0); if (h > 150) g.Shake(M.Clamp(h / 60, 0, 4)); } }
         // ledge grab
         if (!Ground && V.Y > 20 && mx != 0 && slideT <= 0) { int wx = (int)MathF.Floor((P.X + mx * (HW + 4)) / 24), wy = (int)MathF.Floor((P.Y - 56) / 24); if (w.Solid(wx, wy) && !w.Solid(wx, wy - 1) && !w.Solid(wx, wy - 2) && !w.Solid(wx, wy - 3) && !w.Solid(tx, wy - 1) && !w.Solid(tx, wy)) { ledgeA = new(P.X, wy * 24 + 58); ledgeB = new(wx * 24 + 12, wy * 24); ledgeT = 0; V = default; Snd.Play("climb", .6f, .8f); } }
         An.Dir = Dir; An.Vel = V; if (!Frozen)
         {
-            if (slideT > 0) An.Set(Anim.Slide); else if (!Ground) { if (V.Y < 40 || P.Y - fallPeak < 8 && coyote > -.12f) { if (coyote < -.04f || V.Y < -60) An.Set(V.Y < 40 ? Anim.Jump : Anim.Fall); } else An.Set(Anim.Fall); } else if (landT > 0 && MathF.Abs(V.X) < 30) An.Set(Anim.Land); else if (Crouch) An.Set(MathF.Abs(V.X) > 8 ? Anim.CrouchWalk : Anim.Crouch); else if (MathF.Abs(V.X) > 114 || (run && MathF.Abs(V.X) > 84 && mx != 0)) An.Set(Anim.Run); else if (MathF.Abs(V.X) > 6) An.Set(Anim.Walk); else if (EmoteT > 0) An.Set(Emote); else An.Set(Anim.Idle);
+            if (slideT > 0) An.Set(Anim.Slide); else if (!Ground) { if (V.Y < 40 || P.Y - fallPeak < 8 && coyote > -.12f) { if (coyote < -.04f || V.Y < -60) An.Set(V.Y < 40 ? Anim.Jump : Anim.Fall); } else An.Set(Anim.Fall); } else if (landT > 0 && MathF.Abs(V.X) < 30) An.Set(Anim.Land); else if (Crouch) An.Set(MathF.Abs(V.X) > 8 ? Anim.CrouchWalk : Anim.Crouch); else if (MathF.Abs(V.X) > 114 || (run && MathF.Abs(V.X) > 84 && mx != 0)) An.Set(Anim.Run); else if (MathF.Abs(V.X) > 6) An.Set(Anim.Walk); else if (Mining) An.Set(Anim.Mine); else if (EmoteT > 0) An.Set(Emote); else An.Set(Anim.Idle);
         }
         Tick(dt);
     }
-    void Tick(float dt) { if (An.Update(dt)) Redraw(); }
+    void Tick(float dt) { An.Aim = MineAim; An.MineAmt = M.Damp(An.MineAmt, Mining && !Climb && slideT <= 0 && ledgeT < 0 ? 1 : 0, Mining ? 40 : 10, dt); An.Fps = Mining ? 18 : 12; if (An.Update(dt)) Redraw(); }
     void Move(float dt)
     {
         float nx = P.X + V.X * dt; nx = M.Clamp(nx, 26, World.W * 24 - 26);
@@ -89,7 +87,7 @@ public sealed class Player
         if (V.Y >= 0)
         {
             int f0 = (int)MathF.Floor((P.Y - .01f) / 24), f1 = (int)MathF.Floor((ny) / 24); bool hit = false; int x0 = (int)MathF.Floor((P.X - HW) / 24), x1 = (int)MathF.Floor((P.X + HW - .01f) / 24);
-            for (int y = f0 + 1; y <= f1 && !hit; y++) for (int x = x0; x <= x1; x++) if (w.Solid(x, y) || (w.PlatAt(x, y) && dropT <= 0 && !Swim)) { P.Y = y * 24; V.Y = 0; Ground = true; hit = true; break; }
+            for (int y = f0 + 1; y <= f1 && !hit; y++) for (int x = x0; x <= x1; x++) if (w.Solid(x, y)) { P.Y = y * 24; V.Y = 0; Ground = true; hit = true; break; }
             if (!hit) { P.Y = ny; if (!Swim && V.X != 0 && V.Y < 90 && coyote > .05f) { int by = (int)MathF.Floor((P.Y + 24.5f) / 24); bool land = false; for (int x = x0; x <= x1; x++) land |= w.Solid(x, by) && !w.Solid(x, by - 1); if (land && by * 24 - P.Y <= 25 && by * 24 - P.Y > 0) { float oy = P.Y; P.Y = by * 24; StepY -= P.Y - oy; Ground = true; V.Y = 0; } } }
         }
         else if (Free(P.X, ny, HH)) P.Y = ny; else { if (!Swim) { // corner nudge
