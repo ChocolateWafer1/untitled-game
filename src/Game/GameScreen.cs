@@ -17,7 +17,7 @@ public sealed partial class GameScreen
     /// Enter the world as the character that owns the current save.
     public void Begin()
     {
-        var d = Store.Data; P.SetAvatar(d.Avatar); var at = new Vector2(d.X, d.Y); P.P = d.X > 0 && W.FitsPlayer(at) ? at : W.SafeSpawn(); P.V = default; P.Climb = false; P.EmoteT = 0; P.Dir = 1; panel = Panel.None; held = default; heldFrom = -1; toasts.Clear(); gains.Clear(); admin = false; hideHud = false; playT = 0; area = shownArea = ""; areaT = 9; areaHold = 0; Under = 0; autosave = 30; playing = true; barSel = 0; nameT = 9; BuildMap();
+        var d = Store.Data; P.SetAvatar(d.Avatar); var at = new Vector2(d.X, d.Y); P.P = d.X > 0 && W.FitsPlayer(at) ? at : W.SafeSpawn(); P.V = default; P.Climb = false; P.EmoteT = 0; P.Dir = 1; panel = Panel.None; held = default; heldFrom = -1; toasts.Clear(); gains.Clear(); admin = false; hideHud = false; playT = 0; area = shownArea = ""; areaT = 9; areaHold = 0; Under = 0; autosave = 30; playing = true; barSel = 0; barHand = -9; nameT = 9; BuildMap();
         foreach (var q in d.Drops) loot.Add(new Loot { Id = q.Id, N = q.N, P = new(q.X, q.Y), T = 2, HopT = rng.R(1, 4) });
         Env.Clock = d.Clock; Env.Day = d.Day; Env.SkipTo = -1; Env.TimeScale = 1; Env.WindForce = -1; Env.SetWeather(Weather.Clear, true); Env.WeatherT = 150; Env.SnowCover = 0; Env.Wet = 0; Env.Rainbow = 0; Env.RainbowGoal = 0; Env.ForceAurora = false; Env.EclipseT = 0; Env.MeteorT = 0; Env.Meteors.Clear(); lookX = P.Dir * 34; lookY = 0; CamX = P.P.X + lookX - Ui.VW / 2; CamY = P.P.Y - 34 - Ui.VH * .66f; Local(P.P.X / 24, 99); Env.Colors(); back.Get(W.BiomeAt(P.P.X / 24), true);
     }

@@ -31,11 +31,11 @@ public static class Program
         Store.SaveCfg(); Store.SaveGame(); Snd.Close(); Raylib.CloseWindow();
     }
     public static void StartForTest() => Start();
-    static void Start() { if (Saves.All.Count > 0) { Screen = Scr.Title; Game.OpenTitle(); iris = 0; IrisOpen(new(Ui.VW * .5f, 110)); } else OpenEditor(); }
+    static void Start() { Screen = Scr.Title; Game.OpenTitle(); iris = 0; IrisOpen(new(Ui.VW * .5f, 110)); }
     static AvatarData Fresh() => new() { Name = "" };
-    static void OpenEditor() { Screen = Scr.Editor; Game.Title = true; Editor.Open(Fresh(), Saves.All.Count > 0); IrisOpen(new(Ui.VW * .27f, 190)); }
-    /// With no characters yet, Play goes straight to making the first one.
-    public static void PlayFromTitle() { if (Saves.All.Count == 0) { IrisClose(new(Ui.VW * .5f, 180), OpenEditor); return; } Screen = Scr.Select; Select.Open(); Snd.Play("page"); }
+    static void OpenEditor() { Screen = Scr.Editor; Game.Title = true; Editor.Open(Fresh(), true); IrisOpen(new(Ui.VW * .27f, 190)); }
+    /// Main menu -> save files -> a new character (the creator) or an existing one.
+    public static void PlayFromTitle() { Screen = Scr.Select; Select.Open(); Snd.Play("page"); }
     public static void BackToTitle() { Screen = Scr.Title; Snd.Play("close", .8f); }
     public static void NewCharacter() { if (!Saves.Full) IrisClose(Ui.Mouse, OpenEditor); }
     static void EditorBack() => IrisClose(Editor.AvatarCenter, () => { Screen = Scr.Select; Game.OpenTitle(); Select.Open(); IrisOpen(new(Ui.VW / 2, Ui.VH / 2)); });
@@ -99,7 +99,7 @@ public static class Dev
     {
         switch (a[0])
         {
-            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
+            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--hand": { var big = new Painter(1000, 340); int k = 0; foreach (Col sk in new Col[] { 0xf0c4a0, 0xc68a5e, 0x7e4b30 }) { Blit(GameScreen.HandArt(34, sk, k == 0 ? 0x2f9a94 : 0xc65a4a), big, 10 + k * 320, 10, 8); k++; } Finish(big, a[1]); return true; } case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
         }
         return false;
     }
@@ -139,7 +139,7 @@ public static class Dev
     {
         void Check(string what, bool ok) => Console.WriteLine((ok ? "ok    " : "FAIL  ") + what); Store.TestSaves = true; if (Directory.Exists(Store.Dir)) Directory.Delete(Store.Dir, true); Saves.Refresh(); var G = Program.Game; Ui.FakeMouse = new(5, 300); float pxE = 0;
         void Create(string nm) { Program.Editor.SetNameForTest(nm); Steps(2); pxE = Ui.VW - 336; ClickAt(pxE + 270, 6 + 348 - 24); Steps(90); }
-        Program.StartForTest(); Steps(100); Check("no saves goes straight to the creator", Program.Screen == Scr.Editor && Saves.All.Count == 0); Save("f_creator"); Create("Pip"); Steps(60); Wait(); Steps(60); Check("finishing makes one save and enters the world", Saves.All.Count == 1 && Program.Screen == Scr.World && File.Exists(Path.Combine(Saves.Dir, "Pip.json"))); int seedA = G.W.Seed; Check("world uses the save's seed", seedA == Saves.All[0].Data.Seed); Save("f_world");
+        Program.StartForTest(); Steps(150); Check("first launch opens the main menu", Program.Screen == Scr.Title && Saves.All.Count == 0); Save("f_menu"); ClickAt(Ui.VW / 2, 180); Steps(60); Check("play opens the save files, all empty", Program.Screen == Scr.Select && Saves.All.Count == 0); Save("f_empty"); In.ForcePress.Add(Act.Menu); Steps(1); In.ForcePress.Clear(); Steps(10); Check("escape goes back to the main menu", Program.Screen == Scr.Title); ClickAt(Ui.VW / 2, 180); Steps(60); float gx0 = (Ui.VW - 188 * 3 - 24) / 2; ClickAt(gx0 + 94, 58 + 60); Steps(60); Wait(); Steps(60); Check("new character opens the creator", Program.Screen == Scr.Editor); ClickAt(25, 24); Steps(60); Wait(); Steps(90); Check("back from the creator returns to the save files", Program.Screen == Scr.Select && Saves.All.Count == 0); ClickAt(gx0 + 94, 58 + 60); Steps(60); Wait(); Steps(60); Save("f_creator"); Create("Pip"); Steps(60); Wait(); Steps(60); Check("finishing makes one save and enters the world", Saves.All.Count == 1 && Program.Screen == Scr.World && File.Exists(Path.Combine(Saves.Dir, "Pip.json"))); int seedA = G.W.Seed; Check("world uses the save's seed", seedA == Saves.All[0].Data.Seed); Save("f_world");
         // change the world
         int tx = (int)(G.P.P.X / 24) + 3, ty = G.W.Top[tx]; var was = G.W.At(tx, ty); G.W.Set(tx, ty, T.Air); G.W.Set(tx + 4, G.W.Top[tx + 4] - 1, T.Chalk); int py = G.W.Top[tx + 4]; Bag.Add(Store.Data, (int)T.Clay, 130); Steps(5); Key(Act.Menu, null, 30); Save("f_pause"); ClickAt(Ui.VW / 2, 180 - 92 + 8 + 16 + 3 * 31 + 13); Steps(60); Wait(); Steps(150); Check("save and exit reaches the title", Program.Screen == Scr.Title && Store.Current == null); Save("f_title");
         ClickAt(Ui.VW / 2, 180); Steps(60); Check("play opens character select", Program.Screen == Scr.Select); Save("f_select1"); float gx = (Ui.VW - 188 * 3 - 24) / 2; void ClickCard(int i, float ox, float oy) => ClickAt(gx + i % 3 * 200 + ox, 58 + i / 3 * 132 + oy);
@@ -168,6 +168,12 @@ public static class Dev
         if (n == "build")
         {
             At(G.W.SafeSpawn(), .45f); Steps(40); var d = Store.Data; T[] give = [T.Chalk, T.RedRock, T.Glowrock, T.Dirt, T.Stone, T.Sand, T.Crystal, T.Amberwood, T.Snow, T.Basalt]; foreach (var t in give) Bag.Add(d, (int)t, 40); Steps(5); int px = (int)(G.P.P.X / 24), py = (int)(G.P.P.Y / 24); Vector2 Scr2(int x, int y) => new(x * 24 + 12 - G.CamX, y * 24 + 12 - G.CamY); void Put(int x, int y) { Ui.FakeMouse = Scr2(x, y); Steps(1); Ui.FakeMouse = Scr2(x, y); Ui.FakeRight = true; Steps(1); Steps(8); } void Wheel(int k) { for (int i = 0; i < Math.Abs(k); i++) { Ui.FakeWheel = -Math.Sign(k); Steps(1); Steps(7); } } Wheel(1); Console.WriteLine("hand after one scroll: " + Items.Name(d.Slots[d.Hand].Id)); Save("s_bar1"); for (int y = 1; y <= 4; y++) { Put(px + 3, py - y); } Wheel(1); for (int x = 3; x >= -1; x--) Put(px + x, py - 5); Console.WriteLine($"placed {d.Placed}, chalk left {Bag.Count(d, (int)T.Chalk)}, red left {Bag.Count(d, (int)T.RedRock)}"); Wheel(1); Put(px + 2, py - 1); Steps(20); Ui.FakeMouse = Scr2(px - 2, py - 1); Steps(20); Save("s_build"); Put(px, py - 1); Console.WriteLine("cannot place inside yourself: " + (G.W.At(px, py - 1) == T.Air)); Put(px + 30, py - 1); G.Env.Clock = .93f; Steps(60); Save("s_night"); G.Env.Clock = .45f; Ui.FakeWheel = -1; Steps(3); Save("s_scroll0"); Steps(3); Save("s_scroll1"); Steps(14); Save("s_scroll2"); Wheel(-9); Save("s_wrap"); return;
+        }
+        if (n == "bar")
+        {
+            // every list size: scroll through and back, checking nothing jumps, and that it is perfectly still afterwards
+            At(G.W.SafeSpawn(), .45f); Steps(20); foreach (int count in new[] { 0, 1, 2, 3, 5, 7, 8, 9, 14 }) { var d = Store.Data; Array.Clear(d.Slots); d.Hand = -1; for (int i = 0; i < count; i++) d.Slots[i] = new(1 + i, 20); Steps(60); float worst = 0, still = 0; var last = G.BarForTest(); void Track(ref float m) { var now = G.BarForTest(); foreach (var (off, slot) in now) foreach (var (o2, s2) in last) if (s2 == slot && MathF.Abs(o2) < 3 && MathF.Abs(off) < 3) m = MathF.Max(m, MathF.Abs(off - o2)); last = now; } foreach (int dir in new[] { -1, 1 }) for (int k = 0; k < count + 3; k++) { bool wraps = count + 1 < 9 && false; Ui.FakeWheel = dir; for (int f = 0; f < 14; f++) { Steps(1); Track(ref worst); } } Steps(60); last = G.BarForTest(); for (int f = 0; f < 120; f++) { Steps(1); Track(ref still); } var h = d.Hand; if (count is 2 or 5) { d.Hand = count - 1; Steps(60); last = G.BarForTest(); d.Slots[0] = default; float gone = 0; for (int f = 0; f < 60; f++) { Steps(1); Track(ref gone); } Console.WriteLine($"   losing an item above the selection moves the selection by {gone:0.00}"); } Console.WriteLine($"{count} items: largest move in one frame {worst:0.00} rows, drift at rest {still:0.0000}"); if (count == 2) Save("bar_2"); if (count == 7) Save("bar_7"); }
+            return;
         }
         if (n == "bag")
         {

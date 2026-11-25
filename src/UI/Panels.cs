@@ -34,6 +34,7 @@ public sealed partial class GameScreen
     }
     void Hud()
     {
+        if (P.D == null) return;
         float W = Ui.VW, H = Ui.VH; float x = W - 112, y = 8; Ui.Nine("paper", x, y, 104, 28, Color.White); Ui.Icon(Env.WeatherIcon, x + 8, y + 6 + M.Sin(Ui.T * 1.5f) * 1, 1); Font.Draw(Env.TimeText, x + 29, y + 9, Ui.Ink, 1.25f); Font.Draw("Day " + Env.Day, x + 96, y + 11, Ui.Soft, .85f, 1);
         if (mapReady) { float mw = 104, mx = x, my = y + 30; Ui.Nine("dark", mx, my, mw, 30, Color.White); float span = 420, c = M.Clamp(P.P.X / 24 - span / 2, 0, World.W - span); Raylib.DrawTexturePro(map, new Rectangle(c, 0, span, map.Height), new Rectangle(mx + 4, my + 4, mw - 8, 22), Vector2.Zero, 0, Color.White); float px = mx + 4 + (P.P.X / 24 - c) / span * (mw - 8), py = my + 4 + M.Clamp((P.P.Y / 24 - MapY0) / MapYH) * 22; Raylib.DrawCircleV(new(px, py - 1), 2.6f, Ui.Ink); Raylib.DrawCircleV(new(px, py - 1), 1.8f, new Color(255, 110, 90, 255)); }
         Bar();
