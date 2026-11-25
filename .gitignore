@@ -1,0 +1,6 @@
+bin/
+obj/
+Play/
+*.zip
+.vs/
+*.user
