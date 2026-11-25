@@ -67,7 +67,7 @@ public sealed class Tiles
             case T.Sand: s = s * .5f + M.Sin(wy * .55f + M.Noise(wx * .05f, wy * .02f, 5) * 6) * .05f; if (M.Hash(wx, wy, 2) > .96f) s -= .16f; if (M.Hash(wx, wy, 7) > .985f) s += .3f; break;
             case T.Clay: s += ((wy + (int)(M.Noise(wx * .06f, ty) * 6)) / 5 & 1) == 0 ? .06f : -.06f; break;
         }
-        if (wall) { c = Col.Lerp(c, 0x3a3048, .52f); s = s * .75f - .12f; }
+        if (wall) { c = Col.Lerp(c, 0x4a4058, .44f); s = s * .75f - .08f; }
         return c.Shade(MathF.Round(M.Clamp(s, -.8f, .8f) * 10) / 10);
     }
     public Texture2D? Get(int cx, int cy, bool sync)

@@ -15,7 +15,7 @@ public sealed class World
     public readonly int[] Top = new int[W]; public readonly List<Pool> Pools = new(); public readonly List<Prop> Props = new(); public readonly List<Seller> Sellers = new(); public float[] Light = new float[W * H];
     public Vector2 Spawn; public readonly List<(float x, float y, float r, Col c, float flick)> Lamps = new(); readonly Rng rng = new(Seed);
     public (int x, int y0, int y1) Falls;
-    static readonly (float x, float y, float a)[] Ctl = [(0, 114, 1.5f), (60, 111, 1.5f), (92, 104, .4f), (118, 97.4f, .3f), (150, 94, .8f), (200, 88, 2.2f), (260, 82, 1.8f), (294, 80, .4f), (299, 87, .3f), (307, 87, .3f), (312, 80, .4f), (360, 74, 2.2f), (420, 66, 1.6f), (452, 65, .4f), (468, 66, .2f), (470, 98, .3f), (482, 103, .8f), (530, 107, 1), (572, 103, .8f), (592, 95, .4f), (620, 91, 1.4f), (700, 90, 1), (728, 89, 0), (792, 89, 0), (830, 90, 1), (900, 83, 2.2f), (960, 88, 2.2f), (1010, 78, 2), (1060, 80, 1.6f), (1120, 66, 2.2f), (1170, 55, 2), (1215, 46, 1.6f), (1260, 50, 2), (1300, 60, 2), (1340, 74, 1.6f), (1375, 90, 1), (1400, 95, .6f), (1424, 97.4f, .3f), (1445, 104, .6f), (1470, 111, 1.4f), (1500, 114, 1)];
+    static readonly (float x, float y, float a)[] Ctl = [(0, 114, 1.5f), (60, 111, 1.5f), (92, 104, .4f), (118, 97.4f, .3f), (150, 94, .8f), (200, 88, 2.2f), (260, 82, 1.8f), (294, 80, .4f), (299, 87, .3f), (307, 87, .3f), (312, 80, .4f), (360, 74, 2.2f), (420, 66, 1.6f), (452, 65, .4f), (468, 66, .2f), (470, 98, .3f), (482, 103, .8f), (530, 107, 1), (572, 103, .8f), (592, 95, .4f), (620, 91, 1.4f), (672, 90.4f, .8f), (688, 89, 0), (852, 89, 0), (872, 88, 1), (905, 83, 2.2f), (960, 88, 2.2f), (1010, 78, 2), (1060, 80, 1.6f), (1120, 66, 2.2f), (1170, 55, 2), (1215, 46, 1.6f), (1260, 50, 2), (1300, 60, 2), (1340, 74, 1.6f), (1375, 90, 1), (1400, 95, .6f), (1424, 97.4f, .3f), (1445, 104, .6f), (1470, 111, 1.4f), (1500, 114, 1)];
 
     public T At(int x, int y) => x < 0 || x >= W ? T.Stone : y < 0 ? T.Air : y >= H ? T.Stone : Tile[y * W + x];
     public bool Solid(int x, int y) => At(x, y) != T.Air;
@@ -23,8 +23,8 @@ public sealed class World
     public byte ClimbAt(int x, int y) => x >= 0 && y >= 0 && x < W && y < H ? Climb[y * W + x] : (byte)0;
     public T WallAt(int x, int y) => x < 0 || x >= W || y < 0 ? T.Air : y >= H ? T.Stone : Wall[y * W + x];
     public Pool PoolAt(float x, float y) { foreach (var p in Pools) if (p.Contains(x, y)) return p; return null; }
-    public static Biome BiomeAt(float tx) => tx < 92 ? Biome.SeaW : tx < 152 ? Biome.BeachW : tx < 462 ? Biome.Autumn : tx < 600 ? Biome.Lake : tx < 700 ? Biome.Meadow : tx < 812 ? Biome.Village : tx < 1066 ? Biome.Meadow : tx < 1370 ? Biome.Highlands : tx < 1436 ? Biome.BeachE : Biome.SeaE;
-    public static string AreaName(float tx, bool cave) => cave ? (tx < 600 ? "Behind the Falls" : "Glowcap Caverns") : tx < 92 ? "The West Sea" : tx < 152 ? "Driftwood Beach" : tx < 292 ? "Birchwood" : tx < 316 ? "Maple River" : tx < 462 ? "Amber Forest" : tx < 600 ? "Lake Lantern" : tx < 700 ? "Clover Meadow" : tx < 812 ? "Lantern Village" : tx < 930 ? "Clover Meadow" : tx < 1066 ? "Rolling Hills" : tx < 1370 ? "Pinecrest Highlands" : tx < 1436 ? "Sunrise Shore" : "The East Sea";
+    public static Biome BiomeAt(float tx) => tx < 92 ? Biome.SeaW : tx < 152 ? Biome.BeachW : tx < 462 ? Biome.Autumn : tx < 600 ? Biome.Lake : tx < 690 ? Biome.Meadow : tx < 850 ? Biome.Village : tx < 1066 ? Biome.Meadow : tx < 1370 ? Biome.Highlands : tx < 1436 ? Biome.BeachE : Biome.SeaE;
+    public static string AreaName(float tx, bool cave) => cave ? (tx < 600 ? "Behind the Falls" : "Glowcap Caverns") : tx < 92 ? "The West Sea" : tx < 152 ? "Driftwood Beach" : tx < 292 ? "Birchwood" : tx < 316 ? "Maple River" : tx < 462 ? "Amber Forest" : tx < 600 ? "Lake Lantern" : tx < 690 ? "Clover Meadow" : tx < 850 ? "Lantern Village" : tx < 930 ? "Clover Meadow" : tx < 1066 ? "Rolling Hills" : tx < 1370 ? "Pinecrest Highlands" : tx < 1436 ? "Sunrise Shore" : "The East Sea";
     /// 0 meadow green, 1 autumn gold, 2 highland teal; blended so colours drift naturally.
     public static Col GrassCol(float tx)
     {
@@ -48,7 +48,7 @@ public sealed class World
             for (int x = 1; x < W; x++) if (!Cliff(x) && !Cliff(x - 1)) Top[x] = Math.Clamp(Top[x], Top[x - 1] - 1, Top[x - 1] + 1);
             for (int x = W - 2; x >= 0; x--) if (!Cliff(x) && !Cliff(x + 1)) Top[x] = Math.Clamp(Top[x], Top[x + 1] - 1, Top[x + 1] + 1);
         }
-        for (int x = 728; x <= 792; x++) Top[x] = 89;
+        for (int x = 688; x <= 852; x++) Top[x] = 89;
         // widen single block spikes and pits so the ground reads as calm ledges
         for (int it = 0; it < 2; it++) for (int x = 2; x < W - 2; x++) if (!Cliff(x)) { if (Top[x] < Top[x - 1] && Top[x] < Top[x + 1]) Top[x] = Math.Min(Top[x - 1], Top[x + 1]); if (Top[x] > Top[x - 1] && Top[x] > Top[x + 1]) Top[x] = Math.Max(Top[x - 1], Top[x + 1]); }
         for (int x = 0; x < W; x++)
@@ -60,7 +60,7 @@ public sealed class World
             {
                 int d = y - Top[x]; T t = d < sandD ? T.Sand : d < dirt + sandD * .4f ? T.Dirt : T.Stone; if (t == T.Dirt && d > 1 && M.Fbm(x * .11f, y * .13f, 2, 40) > .42f) t = T.Stone; if (t == T.Stone && d < 26 && M.Fbm(x * .09f, y * .1f, 3, 71) > .42f) t = T.Dirt; if (t == T.Stone && M.Fbm(x * .07f, y * .09f, 2, 88) > .5f) t = T.Clay; Tile[y * W + x] = t; if (d > 0) Wall[y * W + x] = t == T.Sand ? T.Sand : d < dirt + 2 ? T.Dirt : T.Stone;
             }
-            if (x >= 735 && x <= 786) for (int d = 0; d < 2; d++) Tile[(Top[x] + d) * W + x] = T.Cobble;
+            if (x >= 744 && x <= 794) for (int d = 0; d < 2; d++) Tile[(Top[x] + d) * W + x] = T.Cobble;
         }
         Caves(); Structures(); Waters(); LightBake(); Decorate(); Villagers();
         Spawn = new(SpawnTile * TS + 60, Top[SpawnTile] * TS);
@@ -148,23 +148,23 @@ public sealed class World
     void Decorate()
     {
         bool Wet(int x) => PoolAt(x * TS + 12, Gy(x) - 2) != null; var used = new bool[W]; void Use(int x, int r) { for (int i = -r; i <= r; i++) if (x + i >= 0 && x + i < W) used[x + i] = true; }
-        for (int x = 724; x <= 796; x++) used[x] = true; foreach (var (a, b) in new[] { (290, 318), (458, 486), (576, 596) }) for (int x = a; x <= b; x++) used[x] = true;
+        for (int x = 686; x <= 856; x++) used[x] = true; foreach (var (a, b) in new[] { (290, 318), (458, 486), (576, 596) }) for (int x = a; x <= b; x++) used[x] = true;
         for (int x = 1086; x < 1100; x++) used[x] = true; for (int x = 1332; x < 1346; x++) used[x] = true;
         void Trees(int x0, int x1, int gap, string[] kinds, float p)
         {
             for (int x = x0; x < x1; x++) { if (used[x] || Wet(x) || !Flat(x, 1) || !rng.P(p)) continue; Add(kinds[rng.I(kinds.Length)] + rng.I(3), x * TS + 12, Gy(x) + 2, rng.P(.4f) ? 0 : 1, rng.P(.5f), 1); Use(x, gap + rng.I(2)); }
         }
-        Trees(160, 292, 3, ["birch", "birch", "maple"], .5f); Trees(316, 458, 3, ["maple", "maple", "birch", "oakgold"], .5f); Trees(600, 724, 7, ["oak", "oak", "willow"], .24f); Trees(798, 1060, 7, ["oak", "oak", "blossom"], .22f); Trees(1062, 1366, 3, ["pine", "pine", "pine", "fir"], .44f); Trees(1368, 1416, 6, ["palm"], .35f); Trees(122, 156, 6, ["palm"], .35f);
+        Trees(160, 292, 3, ["birch", "birch", "maple"], .5f); Trees(316, 458, 3, ["maple", "maple", "birch", "oakgold"], .5f); Trees(606, 684, 9, ["oak", "oak", "willow"], .24f); Trees(858, 1060, 9, ["oak", "oak", "blossom"], .22f); Trees(1062, 1366, 3, ["pine", "pine", "pine", "fir"], .44f); Trees(1368, 1416, 6, ["palm"], .35f); Trees(122, 156, 6, ["palm"], .35f);
         // a willow weeping over the lake
         foreach (int x in new[] { 596, 604 }) Add("willow" + (x & 1), x * TS, Gy(x) + 2, 1, x == 604, 1);
         var ub = new bool[W];
         for (int x = 122; x < 1420; x++)
         {
-            if (Wet(x) || !Solid(x, Top[x]) || Solid(x, Top[x] - 1)) continue; var b = BiomeAt(x); T t = At(x, Top[x]); bool plaza = x > 732 && x < 790; float y = Gy(x), cx = x * TS; if (t is T.Stone or T.Moss) continue;
-            if (t == T.Sand) { if (rng.P(.10f)) Add("shell" + rng.I(3), cx + rng.R(4, 20), y + 1, 2); if (rng.P(.05f)) Add("rock" + rng.I(4), cx + 12, y + 2, 2); if (rng.P(.06f)) Add("beachgrass" + rng.I(2), cx + 12, y + 2, 2, false, 2); if (rng.P(.025f)) Add("starfish", cx + 12, y + 1, 2); continue; }
-            if (plaza) continue;
+            if (Wet(x) || !Solid(x, Top[x]) || Solid(x, Top[x] - 1)) continue; var b = BiomeAt(x); T t = At(x, Top[x]); bool plaza = x > 742 && x < 796; float y = Gy(x), cx = x * TS; if (t is T.Stone or T.Moss) continue;
+            if (t == T.Sand) { if (rng.P(.10f)) Add("shell" + rng.I(3), cx + rng.R(4, 20), y + 1, 2); if (rng.P(.04f) && Flat(x, 1)) Add("rock" + rng.I(4), cx + 12, y + 2, 2); if (rng.P(.06f)) Add("beachgrass" + rng.I(2), cx + 12, y + 2, 2, false, 2); if (rng.P(.025f)) Add("starfish", cx + 12, y + 1, 2); continue; }
+            if (plaza || (b == Biome.Village && rng.P(.72f)) || (b == Biome.Meadow && rng.P(.22f))) continue;
             if (!ub[x] && Flat(x, 1) && rng.P(b is Biome.Autumn ? .16f : b == Biome.Highlands ? .12f : .13f)) { string k = b == Biome.Autumn ? "bushgold" : b == Biome.Highlands ? (rng.P(.5f) ? "fern" : "bushpine") : "bush"; Add(k + rng.I(3), cx + 12, y + 3, rng.P(.6f) ? 1 : 3, rng.P(.5f), 3); ub[x] = ub[x + 1] = true; }
-            else if (rng.P(.05f) && Flat(x, 1)) Add("rock" + rng.I(4), cx + 12, y + 3, 2, rng.P(.5f));
+            else if (rng.P(.03f) && Flat(x, 1)) Add("rock" + rng.I(4), cx + 12, y + 2, 2, rng.P(.5f));
             else if (b == Biome.Autumn && rng.P(.05f)) Add(rng.P(.5f) ? "stump" : "log", cx + 12, y + 2, 2);
             else if (rng.P(b == Biome.Highlands ? .12f : .34f)) Add((b == Biome.Autumn ? "flowera" : b == Biome.Highlands ? "flowerh" : "flower") + rng.I(4), cx + rng.R(4, 20), y + 2, rng.P(.75f) ? 2 : 3, rng.P(.5f), 2);
             if (b == Biome.Autumn && rng.P(.12f)) Add("shroom" + rng.I(3), cx + rng.R(4, 20), y + 2, 2);
@@ -189,7 +189,7 @@ public sealed class World
             if (x > 476 && x < 1088) continue; for (int y = 60; y < 118; y++)
             {
                 if (Solid(x, y) || WallAt(x, y) == T.Air) continue; bool floor = Solid(x, y + 1), ceil = Solid(x, y - 1); float px = x * TS + 12; if (PoolAt(px, y * TS + 20) != null) continue;
-                if (floor) { float q = rng.F(); if (q < .15f) { int k = rng.I(4); Add("glow" + k, px, (y + 1) * TS + 2, 2, rng.P(.5f), 5, 6); Lamp(px, y * TS + 6, 118, k % 2 == 0 ? 0x58e0d0 : 0x9a8aff, .12f); } else if (q < .19f) Add("crystal" + rng.I(3), px, (y + 1) * TS + 2, 2, rng.P(.5f), 6); else if (q < .25f) Add("rock" + rng.I(4), px, (y + 1) * TS + 3, 2); else if (q < .3f) Add("shroom" + rng.I(3), px, (y + 1) * TS + 2, 2); if (q >= .15f && q < .19f) Lamp(px, y * TS + 4, 96, 0x8ab8ff, .05f); }
+                if (floor && Solid(x - 1, y + 1) && Solid(x + 1, y + 1) && !Solid(x - 1, y) && !Solid(x + 1, y)) { float q = rng.F(); if (q < .15f) { int k = rng.I(4); Add("glow" + k, px, (y + 1) * TS + 2, 2, rng.P(.5f), 5, 6); Lamp(px, y * TS + 6, 118, k % 2 == 0 ? 0x58e0d0 : 0x9a8aff, .12f); } else if (q < .19f) Add("crystal" + rng.I(3), px, (y + 1) * TS + 2, 2, rng.P(.5f), 6); else if (q < .23f) Add("rock" + rng.I(4), px, (y + 1) * TS + 2, 2, rng.P(.5f), 0); else if (q < .3f) Add("shroom" + rng.I(3), px, (y + 1) * TS + 2, 2); if (q >= .15f && q < .19f) Lamp(px, y * TS + 4, 96, 0x8ab8ff, .05f); }
                 if (ceil && rng.P(.2f)) Add(rng.P(.6f) ? "stal" + rng.I(3) : "hang" + rng.I(2), px, y * TS - 2, 2, rng.P(.5f), 7);
             }
         }
@@ -197,14 +197,14 @@ public sealed class World
         for (int x = 0; x < W; x++) for (int y = 1; y < H; y++) if (Solid(x, y) && !Solid(x, y + 1) && At(x, y) != T.Plank && WallAt(x, y + 1) == T.Air && y > 40 && rng.P(.16f) && x > 160 && x < 1380 && !PlatAt(x, y + 1)) Add("hang" + rng.I(2), x * TS + 12, (y + 1) * TS - 2, 2, rng.P(.5f), 7);
         Village();
         // travellers' lanterns and signs through the world
-        foreach (int x in new[] { 170, 214, 262, 290, 317, 350, 400, 446, 602, 640, 688, 830, 880, 930, 985, 1040, 1075, 1130, 1190, 1250, 1300, 1376, 1398, 138, 154 }) { int k = x; while (!Flat(k, 1) && k < x + 10) k++; if (Wet(k)) continue; Add("lantern", k * TS + 12, Gy(k) + 1, 2, false, 8); Lamp(k * TS + 12, Gy(k) - 46, 130, 0xffb258); }
+        foreach (int x in new[] { 170, 214, 262, 290, 317, 350, 400, 446, 602, 640, 672, 880, 930, 985, 1040, 1075, 1130, 1190, 1250, 1300, 1376, 1398, 138, 154 }) { int k = x; while (!Flat(k, 1) && k < x + 10) k++; if (Wet(k)) continue; Add("lantern", k * TS + 12, Gy(k) + 1, 2, false, 8); Lamp(k * TS + 12, Gy(k) - 46, 130, 0xffb258); }
         foreach (int x in new[] { 597, 560 }) { }
         Add("boat", 100 * TS, SeaY + 4, 3, false, 4); Add("boat", 1452 * TS, SeaY + 4, 3, true, 4); Add("boat", 566 * TS, LakeY + 4, 3, true, 4);
         Add("campfire", 1218 * TS, Gy(1218) + 2, 2, false, 9); Lamp(1218 * TS, Gy(1218) - 12, 190, 0xff9a48, .16f); Add("tent", 1223 * TS, Gy(1223) + 2, 1); Add("logseat", 1215 * TS, Gy(1215) + 2, 2, false, 10);
         Add("campfire", 250 * TS, Gy(250) + 2, 2, false, 9); Lamp(250 * TS, Gy(250) - 12, 190, 0xff9a48, .16f); Add("logseat", 253 * TS, Gy(253) + 2, 2, false, 10);
         foreach (int x in new[] { 612, 660, 872, 1005, 420, 206 }) { int k = x; while (!Flat(k, 1)) k++; Add("bench", k * TS + 12, Gy(k) + 2, 2, false, 10); }
-        Add("windmill", 852 * TS, Gy(852) + 4, 0, false, 11); Add("haystack", 862 * TS, Gy(862) + 2, 1); Add("haystack", 845 * TS, Gy(845) + 2, 2);
-        foreach (var f in new[] { (664, 8), (834, 7), (905, 9) }) for (int i = 0; i < f.Item2; i++) { int k = f.Item1 + i; if (Top[k] == Top[k + 1]) Add("fence", k * TS + 12, Gy(k) + 2, 2); }
+        Add("windmill", 878 * TS, Gy(878) + 4, 0, false, 11); Add("haystack", 888 * TS, Gy(888) + 2, 1);
+        foreach (var f in new[] { (660, 8), (860, 7), (912, 9) }) for (int i = 0; i < f.Item2; i++) { int k = f.Item1 + i; if (Top[k] == Top[k + 1]) Add("fence", k * TS + 12, Gy(k) + 2, 2); }
         // hidden statue cove behind the falls
         Add("statue", 444 * TS, FloorAt(444, 91) + 2, 1);
         Forage();
@@ -212,24 +212,24 @@ public sealed class World
     public float FloorAt(int x, int y) { while (y < H - 1 && !Solid(x, y)) y++; return y * TS; }
     void Village()
     {
+        // roomy on purpose: every building gets its own breathing space and a clear view of the hills
         float g = 89 * TS; void L(float tx) { Add("lantern", tx * TS, g + 1, 2, false, 8); Lamp(tx * TS, g - 46, 150, 0xffb258); }
-        Add("cottage0", 731 * TS, g + 2, 0, false, 12); Add("cottage1", 743 * TS, g + 2, 0, false, 12); Add("cottage2", 777 * TS, g + 2, 0, false, 12); Add("cottage0", 790 * TS, g + 2, 0, true, 12);
-        foreach (var (x, w) in new[] { (731f, 1), (743f, 1), (777f, 1), (790f, 1) }) { Lamp(x * TS - 44, g - 46, 84, 0xffa850); Lamp(x * TS + 44, g - 46, 84, 0xffa850); }
+        void House(int v, float tx, bool flip) { Add("cottage" + v, tx * TS, g + 2, 0, flip, 12); Lamp(tx * TS - 44, g - 46, 84, 0xffa850); Lamp(tx * TS + 44, g - 46, 84, 0xffa850); }
+        House(0, 704, false); House(1, 732, false); House(2, 803, false); House(0, 836, true);
         Add("fountain", 760 * TS, g + 2, 1, false, 13); Lamp(760 * TS, g - 40, 110, 0x9ad8ff, .05f);
-        Add("aquarium", 768.5f * TS, g + 2, 1, false, 14); Lamp(768.5f * TS, g - 40, 130, 0x7ad0f0, .04f);
-        Add("board", 753 * TS, g + 2, 2, false, 15); Add("well", 736.5f * TS, g + 2, 1); Add("bench", 756.5f * TS, g + 2, 2, false, 10); Add("bench", 764 * TS, g + 2, 2, false, 10); Add("barrel", 773 * TS, g + 2, 2); Add("crate", 772 * TS, g + 2, 1); Add("barrel", 747.6f * TS, g + 2, 2); Add("cart", 784.6f * TS, g + 2, 1);
-        foreach (float x in new[] { 734.6f, 739.6f, 750, 759.9f - 6.4f, 766.4f, 775, 785, 794 }) L(x);
-        for (int i = 0; i < 5; i++) Add("bunting", (739.6f + i * 10.5f) * TS + 120, g - 78, 1, false, 16);
-        foreach (float x in new[] { 733.6f, 740.8f, 746, 780, 786.8f, 792.6f }) Add("flowerbox" + ((int)x % 2), x * TS, g + 2, 2, false, 2);
-        Add("oak1", 726 * TS, g + 2, 1, false, 1); Add("blossom0", 748.8f * TS, g + 2, 0, false, 1); Add("blossom1", 772.4f * TS, g + 2, 0, true, 1); Add("oak0", 797 * TS, Gy(797) + 2, 1, true, 1);
-        for (float x = 725; x < 734; x += 1) Add("fence", x * TS + 12, g + 2, 2); for (float x = 791; x < 797; x += 1) Add("fence", x * TS + 12, Gy((int)x) + 2, 2);
-        Add("signpost", 789 * TS, g + 2, 2); Add("signpost", 732.4f * TS, g + 2, 2, true);
+        Add("aquarium", 785 * TS, g + 2, 1, false, 14); Lamp(785 * TS, g - 40, 130, 0x7ad0f0, .04f);
+        Add("board", 750 * TS, g + 2, 2, false, 15); Add("bench", 771 * TS, g + 2, 2, false, 10); Add("well", 718 * TS, g + 2, 1); Add("barrel", 809.4f * TS, g + 2, 2);
+        foreach (float x in new[] { 711f, 741, 777, 794, 826, 845 }) L(x);
+        Add("bunting", 765.5f * TS, g - 78, 1, false, 16); Add("bunting", 754.9f * TS, g - 78, 1, false, 16); L(749.6f - 3.6f);
+        Add("flowerbox0", 708.6f * TS, g + 2, 2, false, 2); Add("flowerbox1", 798.6f * TS, g + 2, 2, false, 2);
+        Add("oak1", 692 * TS, g + 2, 1, false, 1); Add("blossom0", 723.6f * TS, g + 2, 0, false, 1); Add("blossom1", 814 * TS, g + 2, 0, true, 1); Add("oak0", 850 * TS, g + 2, 1, true, 1);
+        Add("signpost", 843 * TS, g + 2, 2); Add("signpost", 698 * TS, g + 2, 2, true);
     }
     void Forage()
     {
         // Kind 20: forageable. Data is the bait id it gives. They grow back.
         void F(string s, int bait, int x0, int x1, int n) { for (int i = 0; i < n; i++) { for (int k = 0; k < 30; k++) { int x = rng.I(x0, x1); if (!Solid(x, Top[x]) || Solid(x, Top[x] - 1) || PoolAt(x * TS + 12, Gy(x) - 2) != null || PlatAt(x, Top[x] - 1)) continue; if (Props.Any(q => q.Kind == 20 && MathF.Abs(q.X - x * TS) < 60)) continue; Add(s, x * TS + 12, Gy(x) + 2, 2, rng.P(.5f), 20, bait); break; } } }
-        F("f_berry", 3, 604, 724, 7); F("f_berry", 3, 800, 1060, 14); F("f_acorn", 4, 160, 456, 18); F("f_snail", 6, 122, 156, 6); F("f_snail", 6, 1392, 1420, 6); F("f_grub", 7, 1064, 1366, 14); F("f_worm", 1, 600, 1060, 8); F("f_worm", 1, 160, 456, 7); F("f_cricket", 2, 600, 1060, 9); F("f_firefly", 10, 604, 1060, 10);
+        F("f_berry", 3, 606, 684, 5); F("f_berry", 3, 858, 1060, 12); F("f_acorn", 4, 160, 456, 18); F("f_snail", 6, 122, 156, 6); F("f_snail", 6, 1392, 1420, 6); F("f_grub", 7, 1064, 1366, 14); F("f_worm", 1, 600, 1060, 8); F("f_worm", 1, 160, 456, 7); F("f_cricket", 2, 600, 1060, 9); F("f_firefly", 10, 604, 1060, 10);
         for (int i = 0; i < 12; i++) for (int k = 0; k < 60; k++) { int x = rng.I(1100, 1335); int y = Top[x] + 6; while (y < 112 && Solid(x, y)) y++; while (y < 114 && !Solid(x, y + 1)) y++; if (y >= 112 || Solid(x, y) || PoolAt(x * TS + 12, y * TS + 20) != null || Props.Any(q => q.Kind == 20 && MathF.Abs(q.X - x * TS) < 60)) continue; Add("f_glow", x * TS + 12, (y + 1) * TS + 2, 2, rng.P(.5f), 20, 5); Lamp(x * TS + 12, y * TS + 10, 50, 0x58e0d0, .1f); break; }
     }
     void Villagers()
@@ -243,7 +243,7 @@ public sealed class World
         S("Marlow", "Driftwood Beach", 144, A(11, 0xd8d6d2, 0xc68a5e, 2, 0xf3ebdc, 0x35496b, 26, 0x4f6b52, 6, 0xe0b650, 5, 0xe0b650, 3, 9, 4, 0, .62f));
         S("Hazel", "Amber Forest", 345, A(38, 0x8a3324, 0xf0c4a0, 11, 0xc99a4b, 0x8c2f35, 67, 0x6b4a33, 12, 0x8c2f35, 9, 0x8c2f35, 1, 0, 2, 0));
         S("Wren", "Lake Lantern", 606, A(36, 0x1c1618, 0xa56a42, 8, 0xf3ebdc, 0x4a6285, 10, 0x4a6285, 19, 0xd8c49a, 17, 0xe0b872, 1, 0, 5, 1));
-        S("Barnaby", "Lantern Village", 782, A(8, 0x5a3a26, 0xe8b48e, 5, 0xb8473f, 0x2b2a30, 14, 0x35496b, 0, 0, 24, 0x6b4a33, 2, 8, 2, 0, .7f));
+        S("Barnaby", "Lantern Village", 820, A(8, 0x5a3a26, 0xe8b48e, 5, 0xb8473f, 0x2b2a30, 14, 0x35496b, 0, 0, 24, 0x6b4a33, 2, 8, 2, 0, .7f));
         S("Isolde", "Pinecrest Highlands", 1236, A(30, 0x432a1c, 0x7e4b30, 9, 0xe9dcc3, 0xb8473f, 7, 0x4e4c52, 20, 0x35496b, 2, 0xb8473f, 2, 0, 1, 0));
         S("Coral", "Sunrise Shore", 1404, A(23, 0xe06a8a, 0xd49a70, 6, 0x7fa8c9, 0xf3ebdc, 37, 0xe9dcc3, 0, 0, 17, 0xf0dca8, 1, 0, 9, 4));
     }

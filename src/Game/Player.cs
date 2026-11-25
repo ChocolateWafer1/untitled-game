@@ -25,9 +25,9 @@ public sealed class Player
         }
     }
     bool Free(float x, float y, float hh) { int x0 = (int)MathF.Floor((x - HW) / 24), x1 = (int)MathF.Floor((x + HW - .01f) / 24), y0 = (int)MathF.Floor((y - hh) / 24), y1 = (int)MathF.Floor((y - .01f) / 24); for (int j = y0; j <= y1; j++) for (int i = x0; i <= x1; i++) if (w.Solid(i, j)) return false; return true; }
-    public void DoEmote(Anim a) { Emote = a; EmoteT = a is Anim.Sit or Anim.Sleep or Anim.Dance ? 999 : 2.2f; Sit = false; An.Set(a); An.StateT = 0; }
+    public void DoEmote(Anim a) { Emote = a; EmoteT = a is Anim.SitGround or Anim.Sleep or Anim.Dance ? 999 : 2.2f; Sit = false; An.Set(a); An.StateT = 0; }
     public void StandUp() { if (Sit && Seat != null) { Sit = false; Seat = null; An.Set(Anim.Idle); } }
-    public void SitOn(Prop b) { Sit = true; Seat = b; V = default; P = new(b.X, b.Y - 1); Snd.Play("sit"); EmoteT = 0; }
+    public void SitOn(Prop b) { Sit = true; Seat = b; V = default; P = new(b.X, b.Y - 1); Snd.Play("sit"); An.StateT = 0; EmoteT = 0; }
     public void Update(float dt, bool control)
     {
         An.Wind = g.Env.Wind * (w.WallAt((int)(P.X / 24), (int)((P.Y - 30) / 24)) == T.Air ? .85f : .05f); An.Talk = Voice.Talking ? 1 : 0; WetT = MathF.Max(0, WetT - dt); StepY = M.Damp(StepY, 0, 18, dt); dropT -= dt; landT -= dt; coyote -= dt; buffer -= dt;
@@ -35,7 +35,7 @@ public sealed class Player
         bool L = control && In.Down(Act.Left), R = control && In.Down(Act.Right), U = control && In.Down(Act.Up), Dn = control && In.Down(Act.Down), run = control && In.Down(Act.Run); float mx = (R ? 1 : 0) - (L ? 1 : 0); if (control && In.Press(Act.Jump)) buffer = .13f; if (In.Press(Act.Jump) == false && U && !Climb && !Swim && false) buffer = .1f;
         if (Sit) { if (mx != 0 || buffer > 0 || U) { StandUp(); buffer = 0; } else { An.Set(Anim.Sit); An.Vel = default; Tick(dt); return; } }
         if (EmoteT > 0) { EmoteT -= dt; if (mx != 0 || buffer > 0 || !Ground) EmoteT = 0; }
-        var pool = w.PoolAt(P.X, P.Y - 4); float sub = pool != null ? P.Y - pool.Surf : 0; bool was = Swim; Swim = pool != null && sub > (Swim ? 34 : 42) ; if (Swim && !was) { Crouch = false; float hit = MathF.Abs(V.Y); g.Life.Splash(new(P.X, pool.Surf), M.Clamp(hit / 300, .25f, 1.4f)); g.R.Ripple(P.X, M.Clamp(hit / 70, 1.5f, 7)); Snd.Play(hit > 180 ? "splash" : "splash_small", M.Clamp(hit / 400, .35f, 1)); V.Y *= .35f; Climb = false; } if (was && !Swim) { g.Life.Splash(new(P.X, P.Y - 10), .4f); Snd.Play("splash_small", .5f); WetT = 5; }
+        var pool = w.PoolAt(P.X, P.Y - 4); float sub = pool != null ? P.Y - pool.Surf : 0; bool was = Swim; Swim = pool != null && sub > (Swim ? 36 : 44); if (Swim && !was) { Crouch = false; float hit = MathF.Abs(V.Y); g.Life.Splash(new(P.X, pool.Surf), M.Clamp(hit / 300, .25f, 1.4f)); g.R.Ripple(P.X, M.Clamp(hit / 70, 1.5f, 7)); Snd.Play(hit > 180 ? "splash" : "splash_small", M.Clamp(hit / 400, .35f, 1)); V.Y *= .35f; Climb = false; } if (was && !Swim) { g.Life.Splash(new(P.X, P.Y - 10), .4f); Snd.Play("splash_small", .5f); WetT = 5; }
         if (sub > 4 && !Swim && MathF.Abs(V.X) > 20 && Ground) { footT -= dt * MathF.Abs(V.X); if (footT < 0) { footT = 24; g.Life.Splash(new(P.X, pool.Surf), .22f); g.R.Ripple(P.X, 1.2f); Snd.Play("splash_small", .25f, 1.2f); } WetT = 5; }
         int tx = (int)MathF.Floor(P.X / 24); byte c = 0; int cTile = 0; for (int k = -1; k <= 1 && c == 0; k++) { if (MathF.Abs((tx + k) * 24 + 12 - P.X) > 17) continue; foreach (float oy in new[] { 6f, 30f, 2f }) { c = w.ClimbAt(tx + k, (int)((P.Y - oy) / 24)); if (c != 0) { cTile = tx + k; break; } } }
         byte below = w.ClimbAt(tx, (int)((P.Y + 6) / 24));
@@ -49,7 +49,7 @@ public sealed class Player
         // swimming
         if (Swim)
         {
-            float buoy = sub > 46 ? -1 : 1; float tvx = mx * (run ? 118 : 82); V.X = M.Damp(V.X, tvx, 4, dt); float ty = U ? -95 : Dn ? 95 : (sub > 50 ? -38 : sub > 46 ? -10 : 14); if (U && sub < 48) ty = -12; V.Y = M.Damp(V.Y, ty, 4, dt); if (buffer > 0 && sub < 56) { V.Y = -300; buffer = 0; Snd.Play("splash_small", .7f); g.Life.Splash(new(P.X, pool.Surf), .5f); }
+            float buoy = sub > 46 ? -1 : 1; float tvx = mx * (run ? 118 : 82); V.X = M.Damp(V.X, tvx, 4, dt); float ty = U ? -95 : Dn ? 95 : (sub > 54 ? -38 : sub > 49 ? -10 : 14); if (U && sub < 51) ty = -12; V.Y = M.Damp(V.Y, ty, 4, dt); if (buffer > 0 && sub < 60) { V.Y = -300; buffer = 0; Snd.Play("splash_small", .7f); g.Life.Splash(new(P.X, pool.Surf), .5f); }
             Move(dt); if (mx != 0) Dir = (int)mx; An.Dir = Dir; An.Vel = V; An.Set(MathF.Abs(V.X) > 26 || MathF.Abs(V.Y) > 55 ? Anim.Swim : Anim.Tread); if (sub > 56) { Air += dt; if (M.Hash((int)(g.Env.T * 8), 2) > .72f) g.Life.Bubble(new(P.X + Dir * 6, P.Y - 48)); } else Air = 0; fallPeak = P.Y; Tick(dt); return;
         }
         // ground and air
@@ -91,6 +91,6 @@ public sealed class Player
     }
     public void Draw(int cx, int cy)
     {
-        float sq = M.Clamp(An.Squash, -.3f, .3f) * (Store.Cfg.ReduceMotion ? .3f : 1); float sx = 1 + sq * .45f, sy = 1 - sq * .5f; float x = MathF.Round(P.X) - cx, y = MathF.Round(P.Y + StepY) - cy + 1; if (Swim && An.State == Anim.Swim) y -= 6; Raylib.DrawTexturePro(Tex, new Rectangle(0, 0, pt.W, pt.H), new Rectangle(MathF.Round(x - OX * sx), MathF.Round(y - OY * sy), MathF.Round(pt.W * sx), MathF.Round(pt.H * sy)), Vector2.Zero, 0, Color.White);
+        float sq = M.Clamp(An.Squash, -.3f, .3f) * (Store.Cfg.ReduceMotion ? .3f : 1); float sx = 1 + sq * .45f, sy = 1 - sq * .5f; float x = MathF.Round(P.X) - cx, y = MathF.Round(P.Y + StepY) - cy + 1;  Raylib.DrawTexturePro(Tex, new Rectangle(0, 0, pt.W, pt.H), new Rectangle(MathF.Round(x - OX * sx), MathF.Round(y - OY * sy), MathF.Round(pt.W * sx), MathF.Round(pt.H * sy)), Vector2.Zero, 0, Color.White);
     }
 }

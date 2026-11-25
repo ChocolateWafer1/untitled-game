@@ -12,11 +12,12 @@ Download the zip from Releases, unzip it and run `UNNAMED GAME.exe`. Windows 10/
 | Space | Jump (S + Space drops through platforms) |
 | S | Crouch, or slide while running |
 | W / S | Climb, swim |
-| F or click | Hold and release to cast, then hold to reel |
+| F or click | Hold and release to cast. When a fish bites: A/D keep the net on it, hold F to reel, let go when the line is red |
 | E | Interact |
 | Q (hold) | Emote wheel |
 | Tab / J / M | Bag / Journal / Map |
 | Esc | Menu, settings, avatar editor |
+| F1 | Admin menu: weather, sky events, time, travel, fishing |
 | F11 | Borderless / windowed fullscreen |
 
 Keys can be rebound, and gamepads work.

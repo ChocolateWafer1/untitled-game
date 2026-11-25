@@ -7,6 +7,8 @@ public struct Pose
     public float ArmL0, ArmL1, ArmR0, ArmR1;   // L/R = screen side. 0 hangs down, + swings to screen right
     public float LegL0, LegL1, LegR0, LegR1, FootL, FootR;
     public float WristL, WristR, OpenL, OpenR; // wrist turn and how open the hand is
+    public float ForeL, ForeR, ForeS, Bend; // foreshortening: thighs and shins toward the camera, torso folding forward
+    public bool Back; // drawn from behind (climbing)
     public float Blink, Mouth, LookX, LookY, Brow;
     public float HemX, HemY, HairX, HairY, SleeveX, SleeveY, T, Wind;
     public bool FreeRoot; public float RootY;  // swimming / climbing: don't auto ground
@@ -56,7 +58,7 @@ public sealed partial class AvatarPainter
 
     Vector2 Tp(float x, float up)
     {
-        float q = x * (1 - .13f * at), b = 1 + po.Breath * .02f * M.Smooth(0, 20, up);
+        up *= 1 - .44f * po.Bend; float q = x * (1 - .13f * at), b = 1 + po.Breath * .02f * M.Smooth(0, 20, up) + po.Bend * .05f * M.Smooth(4, 20, up);
         q *= b; return new(P.X + q * cosL + up * sinL, P.Y - up * cosL + q * sinL);
     }
     Vector2 H(float x, float y) // head space, in radii
@@ -70,11 +72,12 @@ public sealed partial class AvatarPainter
         at = MathF.Abs(po.Turn); float lean = po.Lean; cosL = MathF.Cos(lean); sinL = MathF.Sin(lean);
         float hipSep = r.Hip * .52f * (1 - .5f * at), legLen = r.Thigh + r.Shin + r.AnkleH;
         P = new(po.RootX, -legLen);
-        void Leg(float sx, float a0, float a1, out Vector2 h, out Vector2 k, out Vector2 a)
+        void Leg(float sx, float a0, float a1, float fore, out Vector2 h, out Vector2 k, out Vector2 a)
         {
-            h = P + new Vector2(sx, 1.5f); k = h + M.Dir(a0, r.Thigh); a = k + M.Dir(a1, r.Shin);
+            h = P + new Vector2(sx, 1.5f); k = h + M.Dir(a0, r.Thigh * (1 - fore)); a = k + M.Dir(a1, r.Shin * (1 - po.ForeS));
         }
-        Leg(-hipSep, po.LegL0, po.LegL1, out hpL, out knL, out anL); Leg(hipSep, po.LegR0, po.LegR1, out hpR, out knR, out anR);
+        Leg(-hipSep, po.LegL0, po.LegL1, po.ForeL, out hpL, out knL, out anL); Leg(hipSep, po.LegR0, po.LegR1, po.ForeR, out hpR, out knR, out anR);
+        if (po.Bend > .01f) { r.HeadRx *= 1 + .07f * po.Bend; r.HeadRy *= 1 + .04f * po.Bend; }
         if (!po.FreeRoot)
         {
             float dirn = MathF.Sign(po.Turn);
@@ -87,7 +90,7 @@ public sealed partial class AvatarPainter
         shL = Tp(-sx2, sy); shR = Tp(sx2, sy);
         elL = shL + M.Dir(po.ArmL0, r.UArm); haL = elL + M.Dir(po.ArmL1, r.LArm);
         elR = shR + M.Dir(po.ArmR0, r.UArm); haR = elR + M.Dir(po.ArmR1, r.LArm);
-        HC = Tp(0, r.Torso + r.NeckLen + r.HeadRy * .80f) + new Vector2(po.HeadX + po.Turn * .9f, po.HeadY + (d.Age == 3 ? .8f : 0));
+        HC = Tp(0, r.Torso + r.NeckLen + r.HeadRy * .80f) + new Vector2(po.HeadX + po.Turn * .9f, po.HeadY + (d.Age == 3 ? .8f : 0) + po.Bend * r.HeadRy * .75f);
         near = po.Turn >= 0 ? -1 : 1;
     }
 
@@ -99,6 +102,7 @@ public sealed partial class AvatarPainter
         Layout();
         bool skirt = d[Slot.Bottom].Id >= 60 && Vis(Slot.Bottom);
         var jk = Catalog.Jackets[d[Slot.Jacket].Id]; bool jacket = d[Slot.Jacket].Id > 0 && Vis(Slot.Jacket);
+        if (po.Back) { DrawBack(jk, jacket, skirt); if (outlinePx > 0) p.Outline(d.OutlineCol, outlinePx); return; }
         if (Vis(Slot.Back)) BackBody();
         if (jacket && (jk.Cape || jk.Hem > 8)) JacketBack(jk);
         HairBack();
@@ -128,6 +132,28 @@ public sealed partial class AvatarPainter
         if (Vis(Slot.Neck)) NeckwearFront();
         if (side) Arm(near, true); else { if (overL) Arm(-1, true); if (overR) Arm(1, true); }
         if (outlinePx > 0) p.Outline(d.OutlineCol, outlinePx);
+    }
+    /// The character from behind: arms reach past the body, hair covers the head, packs sit on top.
+    void DrawBack(JacketDef jk, bool jacket, bool skirt)
+    {
+        Arm(-1, true); Arm(1, true); Legs(); if (skirt) Skirt(Catalog.Skirts[d[Slot.Bottom].Id - 60]);
+        TorsoSkin(); bool tuck = Tucked; if (tuck) Top(); if (!skirt) BottomsUpper(); if (!tuck) Top();
+        float T = r.Torso, nk = r.Neck;
+        if (!skirt && Vis(Slot.Bottom))
+        {
+            var bt = d[Slot.Bottom].Id < 30 ? Catalog.Pants[d[Slot.Bottom].Id] : Catalog.Shorts[d[Slot.Bottom].Id - 30];
+            if (bt.Bib) for (int s = -1; s <= 1; s += 2) { p.Begin().Poly(Tp(s * 4.2f, 5), Tp(s * 6f, 5), Tp(-s * (nk + 4), T * .97f), Tp(-s * (nk + 2.2f), T)); p.Shade(new Ink((Col)d[Slot.Bottom].A, 1, .4f) { Ao = .6f }); }
+        }
+        if (jacket) Jacket(jk);
+        bool hood = (jacket && jk.Lapel is Lapel.Hood) || (!jacket && Catalog.Tops[d[Slot.Top].Id].Neck == Neckline.Hood);
+        // neck and the back of the head
+        NeckSkinAndHead(() => { });
+        Col cc = jacket ? d[Slot.Jacket].A : d[Slot.Top].A; if (jacket || Catalog.Tops[d[Slot.Top].Id].Sleeve > 0) { p.Begin().Blob(Tp(-nk - 1.6f, T + 2.2f), Tp(0, T + 1.6f), Tp(nk + 1.6f, T + 2.2f), Tp(nk + 2, T - .6f), Tp(0, T - 1.8f), Tp(-nk - 2, T - .6f)); p.Shade(new Ink(jacket && jk.Lapel is Lapel.Shearling or Lapel.Fur ? (Col)d[Slot.Jacket].B : cc.Shade(-.06f), 1.6f, .5f)); }
+        if (hood) { p.Begin().Blob(Tp(-nk - 5, T + 1.6f), Tp(0, T + 3), Tp(nk + 5, T + 1.6f), Tp(nk + 4.4f, T - 6), Tp(0, T - 10), Tp(-nk - 4.4f, T - 6)); p.Shade(new Ink(cc, 3, .6f) { Ao = 1.4f }); p.Curve(Tp(-nk - 3, T), Tp(0, T - 4.4f), Tp(nk + 3, T), .5f, default, true, 1, .74f); }
+        if (Vis(Slot.Neck) && d[Slot.Neck].Id is 1 or 2 or 3 or 4 or 11) { p.Begin().Blob(Tp(-nk - 2.6f, T + 3), Tp(0, T + 2.4f), Tp(nk + 2.6f, T + 3), Tp(nk + 3, T - .6f), Tp(0, T - 2.6f), Tp(-nk - 3, T - .6f)); p.Shade(new Ink((Col)d[Slot.Neck].A, 2, .5f)); }
+        HairBehind();
+        if (Vis(Slot.Hat)) Hat();
+        if (Vis(Slot.Back)) { BackBody(); int b = d[Slot.Back].Id; if (b is 1 or 2 or 7) { Col a = d[Slot.Back].A; p.Begin().Blob(Tp(-r.ShX * .62f, 2), Tp(-r.ShX * .66f, T * .42f), Tp(0, T * .5f), Tp(r.ShX * .66f, T * .42f), Tp(r.ShX * .62f, 2)); p.Shade(new Ink(a.Shade(-.1f), 2, .5f) { Ao = .6f }); p.Line(Tp(-r.ShX * .5f, T * .36f), Tp(r.ShX * .5f, T * .36f), .7f, (Col)d[Slot.Back].C); } }
     }
     bool Tucked => Catalog.Tops[d[Slot.Top].Id].Tuck || (Vis(Slot.Bottom) && d[Slot.Bottom].Id < 60 && (d[Slot.Bottom].Id < 30 ? Catalog.Pants[d[Slot.Bottom].Id] : Catalog.Shorts[d[Slot.Bottom].Id - 30]).Bib);
     bool Vis(Slot s)
@@ -337,7 +363,7 @@ public sealed partial class AvatarPainter
         p.Begin().Poly(q[..n]); var k = new Ink(skin, 4, .5f) { Ao = 0, Merge = TorsoMerge() }; p.Shade(k);
         // collarbones & chin shadow
         var t = r.Torso;
-        if (fine) { p.Curve(Tp(-6.5f, t - 2.2f), Tp(-3, t - 2.6f), Tp(-1, t - 3.4f), .4f, skin.Shade(-.35f)); p.Curve(Tp(6.5f, t - 2.2f), Tp(3, t - 2.6f), Tp(1, t - 3.4f), .4f, skin.Shade(-.35f)); }
+        if (fine && !po.Back) { p.Curve(Tp(-6.5f, t - 2.2f), Tp(-3, t - 2.6f), Tp(-1, t - 3.4f), .4f, skin.Shade(-.35f)); p.Curve(Tp(6.5f, t - 2.2f), Tp(3, t - 2.6f), Tp(1, t - 3.4f), .4f, skin.Shade(-.35f)); }
         // plain undershirt so that skin only ever shows where a garment intends it to
         if (only != null && only != Slot.Top && show == Show.Mannequin) return;
     }
@@ -403,7 +429,8 @@ public sealed partial class AvatarPainter
 
     void Top()
     {
-        var t = Catalog.Tops[d[Slot.Top].Id]; var pc = d[Slot.Top]; float T = r.Torso; Col A = pc.A, B = pc.B, C = pc.C;
+        var t = Catalog.Tops[d[Slot.Top].Id]; if (po.Back) t = t with { Neck = t.Neck is Neckline.OffShoulder or Neckline.Tank or Neckline.Turtle or Neckline.Mock or Neckline.Cowl ? t.Neck : Neckline.Crew, Buttons = false, G = t.G is Graphic.Stripe or Graphic.Fair or Graphic.TwoStripe or Graphic.Wave or Graphic.Yoke ? t.G : Graphic.None };
+        var pc = d[Slot.Top]; float T = r.Torso; Col A = pc.A, B = pc.B, C = pc.C;
         bool tk = Tucked; float hem = tk ? 1 : t.Hem; bool sl = t.Sleeve <= 0; float rib = t.RibCuff && hem > 0 && t.Knit != Knit.Flat ? .7f : 0;
         p.Begin(); TorsoShape(t.Fit, hem, t.Neck, t.Flare, sl, rib, 0);
         var f = TorsoPat(pc, A); Vector2 o = P; float hipY = P.Y; float cx = po.Turn * 1.3f;
@@ -451,7 +478,7 @@ public sealed partial class AvatarPainter
             if (fine) { p.Crease(Tp(cx - 1.1f, y0), Tp(cx - 1.1f, y1), .3f, .8f); p.Crease(Tp(cx + 1.1f, y0), Tp(cx + 1.1f, y1), .3f, .8f); } else p.Crease(Tp(cx + .9f, y0), Tp(cx + .9f, y1), .3f, .78f);
             for (float y = y0 - 1.6f; y > y1 + .8f; y -= t.Buttons ? 4.2f : 2.4f) { var b = Tp(cx, y); if (fine) { p.Begin().Ellipse(b.X, b.Y, .6f, .6f); p.Shade(new Ink(C, .5f, .4f, .9f) { Ao = 0 }); } else p.Dot(b.X, b.Y, C); }
         }
-        NeckTrim(t, pc, fn, cx);
+        if (!po.Back) NeckTrim(t, pc, fn, cx);
     }
 
     void NeckTrim(TopDef t, Piece pc, Func<float, float, Col> fn, float cx)
@@ -588,9 +615,10 @@ public sealed partial class AvatarPainter
         // waistband
         p.Begin().Poly(Tp(-wH - .1f, up + .3f), Tp(wH + .1f, up + .3f), Tp(wH + .5f, up - 2.2f), Tp(-wH - .5f, up - 2.2f));
         p.Shade(new Ink(t.Belt ? B : t.Draw ? (Col)pc.A : A, 1.2f, .4f) { Ao = .5f });
-        if (t.Belt) { var q = Tp(cx, up - 1); p.Begin().Rect(q.X - 1.7f, q.Y - 1.3f, 3.4f, 2.6f); p.Shade(new Ink(C, .9f, .5f) { Ao = 0 }); p.Begin().Rect(q.X - .7f, q.Y - .5f, 1.4f, 1); p.Flat(((Col)B).Shade(-.3f)); if (fine) for (int s = -1; s <= 1; s += 2) { var l = Tp(s * 6, up - 1); p.Begin().Rect(l.X - .5f, l.Y - 1.4f, 1, 2.8f); p.Shade(new Ink(A, .5f, .3f) { Ao = 0 }); } }
+        if (po.Back) { for (int s = -1; s <= 1; s += 2) { var q = Tp(s * r.Hip * .48f, -1.2f); p.Begin().Poly(q + new Vector2(-2.3f, -2.2f), q + new Vector2(2.3f, -2.2f), q + new Vector2(2.1f, 2), q + new Vector2(0, 2.8f), q + new Vector2(-2.1f, 2)); p.IntersectAlpha(); p.Shade(new Ink(fn, 1, .35f, .7f) { Ao = 0 }); } }
+        else if (t.Belt) { var q = Tp(cx, up - 1); p.Begin().Rect(q.X - 1.7f, q.Y - 1.3f, 3.4f, 2.6f); p.Shade(new Ink(C, .9f, .5f) { Ao = 0 }); p.Begin().Rect(q.X - .7f, q.Y - .5f, 1.4f, 1); p.Flat(((Col)B).Shade(-.3f)); if (fine) for (int s = -1; s <= 1; s += 2) { var l = Tp(s * 6, up - 1); p.Begin().Rect(l.X - .5f, l.Y - 1.4f, 1, 2.8f); p.Shade(new Ink(A, .5f, .3f) { Ao = 0 }); } }
         else if (!t.Draw && t.Seam) { var q = Tp(cx, up - 1); p.Begin().Ellipse(q.X, q.Y, .75f, .75f); p.Shade(new Ink(C, .6f, .5f, .9f) { Ao = 0 }); }
-        if (t.Draw) for (int s = -1; s <= 1; s += 2) { var q = Tp(cx + s * .8f, up - 1.6f); p.Curve(q, q + new Vector2(s * .7f, 2), q + new Vector2(s * 1.1f + po.HemX * .3f, 4.6f), .55f, C, false); }
+        if (t.Draw && !po.Back) for (int s = -1; s <= 1; s += 2) { var q = Tp(cx + s * .8f, up - 1.6f); p.Curve(q, q + new Vector2(s * .7f, 2), q + new Vector2(s * 1.1f + po.HemX * .3f, 4.6f), .55f, C, false); }
     }
     void Bib()
     {
@@ -821,6 +849,7 @@ public sealed partial class AvatarPainter
     }
     void Jacket(JacketDef t)
     {
+        if (po.Back) t = t with { Open = 0, Close = Close.Open, Pockets = 0, Lapel = Lapel.Camp, Patch = false };
         var pc = d[Slot.Jacket]; Col A = pc.A, B = pc.B, C = pc.C; float T = r.Torso, cx = po.Turn * 1.3f, hem = t.Hem; var f = TorsoPat(pc, A); var fn = JacketFn(t, pc, f);
         if (t.Cape)
         {

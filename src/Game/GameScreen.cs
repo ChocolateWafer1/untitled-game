@@ -23,7 +23,8 @@ public sealed partial class GameScreen
     {
         float vw = Ui.VW, vh = Ui.VH; if (Title || panel is not (Panel.Menu or Panel.Settings)) time += dt; bool paused = panel is Panel.Menu or Panel.Settings, wasOpen = panel != Panel.None; if (Title) { UpdateTitle(dt); return; }
         Panels(dt); if (paused) { Ambience(); return; }
-        bool control = panel == Panel.None && !emoteOpen && !wasOpen; Env.Update(dt); Fish.Update(dt, control); P.Frozen = Fish.Locks; P.Update(dt, control && !Fish.Locks);
+        if (Raylib.IsKeyPressed(KeyboardKey.F1)) { admin = !admin; Snd.Play(admin ? "open" : "close"); }
+        bool control = panel == Panel.None && !emoteOpen && !wasOpen; AdminTick(dt); Env.Update(dt); Fish.Update(dt, control); P.Frozen = Fish.Locks; P.Update(dt, control && !Fish.Locks);
         if (control && !Fish.Busy && !wasOpen) Interact(); else prompt = null;
         Camera(dt, vw, vh); Life.Update(dt, P, CamX, CamY, (int)vw, (int)vh); Sellers(dt); Emit(dt);
         // areas
@@ -68,7 +69,7 @@ public sealed partial class GameScreen
     Prop target; Seller seller; string prompt;
     void Interact()
     {
-        target = null; seller = null; prompt = null; float best = 46; if (P.Swim || P.Climb) { } else
+        target = null; seller = null; prompt = null; float best = 30; if (P.Swim || P.Climb) { } else
         {
             foreach (var s in W.Sellers) { float d = MathF.Abs(s.X - P.P.X); if (d < 64 && MathF.Abs(s.Y - P.P.Y) < 40) { seller = s; prompt = "Talk to " + s.Name; best = 0; } }
             if (seller == null) foreach (var p in Visible(0)) { float d = MathF.Abs(p.X - P.P.X) + MathF.Abs(p.Y - P.P.Y) * .6f; if (d > best) continue; string q = p.Kind switch { 20 => Grown(p) && !(p.S == "f_firefly" && Env.Night < .5f) ? "Pick up " + FishDex.BaitNames[p.Data] : null, 10 => P.Sit ? null : "Sit", 14 => "Aquarium", 15 => "Read notices", 9 => null, _ => null }; if (q != null) { best = d; target = p; prompt = q; } }

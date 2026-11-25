@@ -88,6 +88,23 @@ public sealed partial class AvatarPainter
     }
     void StrandLines(Vector2 a, Vector2 m, Vector2 b, float mult = .8f) { if (fine || hd.Tex < 2) p.Curve(a, m, b, fine ? .45f : .4f, default, true, 1, mult); }
 
+    /// Back of the head for climbing: the skull cap, then whatever length hangs down.
+    void HairBehind()
+    {
+        HairSetup(); if (hd.Name == "Bald") return; float T = hTop, SV = MathF.Min(hSide, .5f), rx = r.HeadRx, ry = r.HeadRy; bool bumpy = hd.Tex is 2 or 3 && T + SV > .15f;
+        if (hd.Fade > .05f)
+        {
+            p.Begin().Blob(H(-1f, .1f), H(-1.02f, -.35f), H(-.7f, -.86f), H(0, -1.04f), H(.7f, -.86f), H(1.02f, -.35f), H(1f, .1f), H(.72f, .62f), H(0, .78f), H(-.72f, .62f)); HairClip(); p.Shade(new Ink((x, y) => Col.Lerp(skin, HairC(x, y, -1, false), M.Clamp(.8f - (y - HC.Y) / ry * .55f, .25f, .85f)), 2, .3f, .3f) { Ao = 0, Grain = .05f });
+            p.Begin().Blob(H(-.86f, -.28f), H(-.84f, -.8f - T * .5f), H(-.42f, -1f - T * .92f), H(0, -1.04f - T), H(.42f, -1f - T * .92f), H(.84f, -.8f - T * .5f), H(.86f, -.28f), H(.4f, -.1f), H(-.4f, -.1f)); HairClip(); p.Shade(HairInk(-1, false, 0, 3.4f));
+        }
+        else
+        {
+            float nape = hd.BackLen > .05f ? .72f : .6f; p.Begin().Blob(H(-1.02f - SV * .7f, .15f), H(-1.0f - SV * .6f, -.4f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1f - T * .92f), H(0, -1.04f - T), H(.42f, -1f - T * .92f), H(.82f + SV * .3f, -.82f - T * .55f), H(1.0f + SV * .6f, -.4f), H(1.02f + SV * .7f, .15f), H(.82f + SV * .5f, nape), H(0, nape + .12f), H(-.82f - SV * .5f, nape));
+            if (bumpy && !hatCover) for (int i = 0; i < 18; i++) { float an = i * M.TAU / 18; var c = H(MathF.Sin(an) * (1 + SV * .75f), -MathF.Cos(an) * (1 + T * .85f) * (MathF.Cos(an) < 0 ? .75f : 1)) + HairSway(.3f, i); p.Ellipse(c.X, c.Y, rx * .24f, ry * .2f); }
+            HairClip(); p.Shade(HairInk(-1, false, -.03f, 3.6f)); if (hd.Tex < 2) for (int i = -3; i <= 3; i++) StrandLines(H(i * .06f, -1 - T), H(i * .36f, -.5f), H(i * .27f, .62f), .8f);
+        }
+        if (hd.BackLen > .55f || hd.U != Updo.None) HairBack();
+    }
     void HairBack()
     {
         HairSetup(); if (hd.Name == "Bald") return;
@@ -170,7 +187,7 @@ public sealed partial class AvatarPainter
     void FaceAll()
     {
         if (show == Show.Mannequin && only != Slot.Beard) return;
-        float fx = po.Turn * .17f, S2 = S; Vector2 F2(float x, float y) => H(x + fx, y);
+        float fx = po.Turn * .17f, fd = po.Bend * .30f; Vector2 F2(float x, float y) => H(x + fx, y + fd * (1 - MathF.Max(0, y) * .35f));
         int mk = d.Marks; Col blush = Col.Lerp(skin, 0xe0564f, .38f);
         // soft cheeks & forehead light give the face volume
         for (int s = -1; s <= 1; s += 2)
@@ -379,7 +396,7 @@ public sealed partial class AvatarPainter
         float hl = f switch { Fringe.Slick => -.6f, Fringe.Crop => -.5f, Fringe.Puff => -.48f, Fringe.Pomp or Fringe.Quiff => -.56f, _ => -.5f };
         p.Begin();
         bool bumpy = hd.Tex is 2 or 3 && T + SV > .15f;
-        var cv = HairSway(.45f * M.Clamp(T * 4)); Span<Vector2> cap = [H(-side, low), H(-side - .02f, -.35f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1.0f - T * .92f) + cv, H(0, -1.04f - T) + cv, H(.42f, -1.0f - T * .92f) + cv, H(.82f + SV * .3f, -.82f - T * .55f) + cv * .5f, H(side + .02f, -.35f), H(side, low), H(.86f, low - .02f), H(.8f, -.3f), H(.5f + fx * .5f, hl - .02f), H(fx, hl + .02f), H(-.5f + fx * .5f, hl - .02f), H(-.8f, -.3f), H(-.86f, low - .02f)];
+        var cv = HairSway(.45f * M.Clamp(T * 4)); hl += po.Bend * .16f; Span<Vector2> cap = [H(-side, low), H(-side - .02f, -.35f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1.0f - T * .92f) + cv, H(0, -1.04f - T) + cv, H(.42f, -1.0f - T * .92f) + cv, H(.82f + SV * .3f, -.82f - T * .55f) + cv * .5f, H(side + .02f, -.35f), H(side, low), H(.86f, low - .02f), H(.8f, -.3f), H(.5f + fx * .5f, hl - .02f), H(fx, hl + .02f), H(-.5f + fx * .5f, hl - .02f), H(-.8f, -.3f), H(-.86f, low - .02f)];
         if (hd.Name == "High Top Fade" && !hatCover) { p.Poly(H(-.86f, -.45f), H(-.92f, -1.0f - T * .9f), H(-.8f, -1.05f - T), H(.8f, -1.05f - T), H(.92f, -1.0f - T * .9f), H(.86f, -.45f), H(.6f, hl), H(-.6f, hl)); }
         else p.Blob(cap, 1, 4);
         if (bumpy && !hatCover)
@@ -400,7 +417,7 @@ public sealed partial class AvatarPainter
     {
         float rx = r.HeadRx; var sw0 = HairSway(.95f); var sw = sw0; bool hat = hatCover; float lift = hat ? 0 : T; float w = rx * .2f;
         void L(float x0, float y0, float x1, float y1, float x2, float y2, float w0, float w1, float w2, int id)
-        { float len = Vector2.Distance(H(x0, y0), H(x2, y2)) / r.HeadRy; var sw = HairSway(MathF.Min(1.5f, .35f + len * .8f), id); p.Begin(); Lock(H(x0 + fx * .5f, y0), H(x1 + fx, y1) + sw * .25f, H(x2 + fx, y2) + sw, w0, w1, w2, id); HairClip(); p.Shade(HairInk(hd.Tex >= 4 ? id : -1)); if (hd.Tex < 2 && fine) StrandLines(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, .8f); }
+        { float len = Vector2.Distance(H(x0, y0), H(x2, y2)) / r.HeadRy; var sw = HairSway(MathF.Min(1.5f, .35f + len * .8f), id); p.Begin(); Lock(H(x0 + fx * .5f, y0), H(x1 + fx, y1 + po.Bend * .1f) + sw * .25f, H(x2 + fx, y2 + po.Bend * .2f) + sw, w0, w1, w2, id); HairClip(); p.Shade(HairInk(hd.Tex >= 4 ? id : -1)); if (hd.Tex < 2 && fine) StrandLines(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, .8f); }
         float top = hat ? -.62f : -.95f - lift * .75f;
         switch (f)
         {
@@ -497,14 +514,15 @@ public sealed partial class AvatarPainter
             case HatKind.Beanie: case HatKind.PomBeanie: case HatKind.CatBeanie: case HatKind.Frog:
                 if (t.K == HatKind.PomBeanie) { var s = HairSway(.3f); var q = H(0, -1.42f) + s; p.Begin(); for (int i = 0; i < 9; i++) { float an = i * M.TAU / 9; p.Ellipse(q.X + M.Sin(an) * 2.1f, q.Y + M.Cos(an) * 2, 1.4f, 1.4f); } p.Ellipse(q.X, q.Y, 2.4f, 2.4f); p.Shade(K(C, 2.4f)); }
                 if (t.K == HatKind.CatBeanie) for (int s = -1; s <= 1; s += 2) { p.Begin().Poly(H(s * .3f, -1.1f), H(s * .82f, -1.62f), H(s * .98f, -.86f)); p.Shade(KF(2)); p.Begin().Poly(H(s * .48f, -1.12f), H(s * .78f, -1.42f), H(s * .88f, -.98f)); p.Shade(K(C, 1, 0)); }
-                if (t.K == HatKind.Frog) for (int s = -1; s <= 1; s += 2) { var q = H(s * .58f, -1.18f); p.Begin().Ellipse(q.X, q.Y, 3, 3); p.Shade(KF(2)); p.Begin().Ellipse(q.X, q.Y - .2f, 1.9f, 1.9f); p.Shade(K(0xfaf4ea, 1.4f, 0)); p.Begin().Ellipse(q.X + po.LookX * .6f, q.Y, .9f, 1.1f); p.Flat(0x1a1014); }
+                if (t.K == HatKind.Frog) for (int s = -1; s <= 1; s += 2) { var q = H(s * .58f, -1.18f); p.Begin().Ellipse(q.X, q.Y, 3, 3); p.Shade(KF(2)); if (po.Back) continue; p.Begin().Ellipse(q.X, q.Y - .2f, 1.9f, 1.9f); p.Shade(K(0xfaf4ea, 1.4f, 0)); p.Begin().Ellipse(q.X + po.LookX * .6f, q.Y, .9f, 1.1f); p.Flat(0x1a1014); }
                 Dome(-1.3f, w); p.Shade(KF()); if (fine && t.K != HatKind.Frog) for (int i = -3; i <= 3; i++) p.Curve(H(i * .28f, -.5f), H(i * .27f, -1), H(i * .1f, -1.28f), .4f, default, true, 1, .84f);
-                if (t.K == HatKind.Frog) { p.Curve(H(-.4f + fx, -.72f), H(fx, -.55f), H(.4f + fx, -.72f), .5f, A.Ink()); for (int s = -1; s <= 1; s += 2) { var q = H(s * .62f + fx, -.66f); p.Begin().Ellipse(q.X, q.Y, 1, .7f); p.Tint(0xe58a8a, .7f); } break; }
+                if (t.K == HatKind.Frog && !po.Back) { p.Curve(H(-.4f + fx, -.72f), H(fx, -.55f), H(.4f + fx, -.72f), .5f, A.Ink()); for (int s = -1; s <= 1; s += 2) { var q = H(s * .62f + fx, -.66f); p.Begin().Ellipse(q.X, q.Y, 1, .7f); p.Tint(0xe58a8a, .7f); } break; }
                 Band(-.66f, by + .02f, w + .04f, B); if (fine) for (float x = -w; x < w; x += .16f) p.Curve(H(x, -.68f), H(x, -.5f), H(x, by + .12f), .3f, default, true, 1, .8f); break;
             case HatKind.Cap: case HatKind.CapBack: case HatKind.Propeller:
                 Dome(-1.2f, w, by - .06f); Func<float, float, Col> cf = fn; p.Shade(KF()); p.Curve(H(fx, -1.2f), H(fx * 2.4f, -.8f), H(fx * 2.4f, by), .4f, default, true, 1, .74f); p.Curve(H(-.1f, -1.18f), H(-.7f, -1), H(-.75f, by), .4f, default, true, 1, .8f); p.Curve(H(.1f, -1.18f), H(.7f, -1), H(.75f, by), .4f, default, true, 1, .8f);
                 { var q = H(0, -1.21f); p.Begin().Ellipse(q.X, q.Y, 1, .6f); p.Shade(K(B, .8f, 0)); }
                 if (t.K == HatKind.Propeller) { var q = H(0, -1.26f); p.Line(q, q + new Vector2(0, -1.8f), .6f, C, false); float sp = MathF.Abs(M.Cos(po.T * (4 + MathF.Abs(po.HairX) * 2))); p.Begin().Ellipse(q.X - 2.6f * sp, q.Y - 2, 2.6f * sp + .3f, .7f); p.Shade(K(B, .8f, 0)); p.Begin().Ellipse(q.X + 2.6f * sp, q.Y - 2, 2.6f * sp + .3f, .7f); p.Shade(K(C, .8f, 0)); }
+                if (po.Back) { Band(by - .14f, by + .02f, w + .01f, A.Shade(-.08f)); if (t.K == HatKind.CapBack) { p.Begin().Blob(H(-.84f, by - .06f), H(0, by - .12f), H(.84f, by - .06f), H(.92f, by + .16f), H(0, by + .3f), H(-.92f, by + .16f)); p.Shade(K(B, 2, 2)); } break; }
                 if (t.K == HatKind.CapBack) { Band(by - .14f, by + .02f, w + .01f, A.Shade(-.08f)); p.Begin().Blob(H(-.36f + fx, by + .02f), H(fx, by - .34f), H(.36f + fx, by + .02f), H(fx, by - .16f)); p.Shade(K(HairC(H(fx, -.5f).X, H(fx, -.5f).Y, 1, false).Shade(-.2f), 1, 0)); p.Curve(H(-.4f + fx, by + .04f), H(fx, by - .6f), H(.4f + fx, by + .04f), .6f, B, false); }
                 else { { var q = H(fx * 1.6f, -.78f); Star(q, 1.9f, C, B); } p.Begin().Blob(H(-.86f + fx, by - .08f), H(fx, by - .16f), H(.86f + fx, by - .08f), H(.98f + fx * 2.4f, by + .12f), H(.5f + fx * 2.4f, by + .27f), H(fx * 2.4f, by + .31f), H(-.5f + fx * 2.4f, by + .27f), H(-.98f + fx * 2.4f, by + .12f)); p.Shade(K(B, 2, 2)); if (fine) p.Curve(H(-.85f + fx * 2, by + .08f), H(fx * 2.4f, by + .25f), H(.85f + fx * 2, by + .08f), .3f, default, true, 1, .78f); }
                 break;
