@@ -8,6 +8,7 @@ public sealed partial class AvatarPainter
     void HairSetup()
     {
         hd = Catalog.Hair[show == Show.Mannequin && only != null ? Catalog.BaldHair : d.Hair.Id];
+        if (show != Show.Mannequin && hd.Name != "Bald") { var h = d.Hair; float Lm = M.Lerp(.6f, 1.5f, h.Length); int tex = hd.Tex; if (tex == 0 && h.Curl > .72f) tex = 1; else if (tex == 1 && h.Curl < .28f) tex = 0; else if (tex == 1 && h.Curl > .9f) tex = 2; else if (tex == 2 && h.Curl < .18f) tex = 1; else if (tex == 2 && h.Curl > .9f) tex = 3; else if (tex == 3 && h.Curl < .15f) tex = 2; hd = hd with { BackLen = hd.BackLen > .05f ? hd.BackLen * Lm : hd.BackLen, SideLen = hd.SideLen > .12f ? hd.SideLen * Lm : hd.SideLen, Tex = tex }; }
         hatd = Catalog.Hats[Vis(Slot.Hat) ? d[Slot.Hat].Id : 0]; hatCover = hatd.Cover;
         // a hat presses the hair down: volume shrinks by how squashable the style is
         float press = hatd.K == HatKind.None ? 0 : hd.Flat * hatd.Flat;
@@ -80,7 +81,7 @@ public sealed partial class AvatarPainter
         for (int i = 0; i < N; i++)
         {
             float t = i / (N - 1f), w = t < .5f ? M.Lerp(w0, w1, t * 2) : M.Lerp(w1, w2, (t - .5f) * 2); var c = At(t); var dd = At(MathF.Min(1, t + .05f)) - At(MathF.Max(0, t - .05f)); dd = dd.LengthSquared() < 1e-6f ? new(0, 1) : Vector2.Normalize(dd); var n = new Vector2(-dd.Y, dd.X);
-            if (tex == 1) c += n * M.Sin(t * len * .42f + id * 1.7f) * (.35f + t * .9f);
+            if (tex == 1) c += n * M.Sin(t * len * .42f + id * 1.7f) * (.35f + t * .9f) * (show == Show.Mannequin ? 1 : M.Lerp(.5f, 1.7f, d.Hair.Curl));
             q2[i] = c + n * w; q2[N * 2 - i] = c - n * w;
         }
         { var dd = b - At(.9f); q2[N] = b + (dd.LengthSquared() < 1e-6f ? default : Vector2.Normalize(dd)) * MathF.Max(.4f, w2 * .8f); if (tex == 1) q2[N] = (q2[N - 1] + q2[N + 1]) * .5f + new Vector2(0, .6f); }
@@ -174,15 +175,13 @@ public sealed partial class AvatarPainter
 
     void NeckSkinAndHead(Action collar)
     {
-        collar();
+        NeckTattoo(); collar();
         // ears
         for (int s = -1; s <= 1; s += 2)
         {
-            float turnIn = po.Turn * s > 0 ? at * .12f : 0; var e = H(s * (1.0f - turnIn) - po.Turn * .05f, .14f); p.Begin().Ellipse(e.X, e.Y, r.HeadRx * .19f, r.HeadRy * .2f); p.Shade(new Ink(skin, 1.4f, .5f) { Ao = 0 }); if (fine) p.Curve(e + new Vector2(s * .7f, -.9f), e + new Vector2(-s * .2f, 0), e + new Vector2(s * .5f, .9f), .35f, skin.Shade(-.4f));
+            float turnIn = po.Turn * s > 0 ? at * .12f : 0; var e = H(s * (1.0f - turnIn) - po.Turn * .05f, .14f); float es = show == Show.Mannequin ? 1 : M.Lerp(.8f, 1.3f, d.EarSize); p.Begin().Ellipse(e.X, e.Y, r.HeadRx * .19f * es, r.HeadRy * .2f * es); p.Shade(new Ink(skin, 1.4f, .5f) { Ao = 0 }); if (fine) p.Curve(e + new Vector2(s * .7f, -.9f), e + new Vector2(-s * .2f, 0), e + new Vector2(s * .5f, .9f), .35f, skin.Shade(-.4f));
         }
-        Span<Vector2> q = [H(0, -1), H(-.62f, -.82f), H(-.97f, -.3f), H(-.96f, .25f), H(-.76f, .68f), H(-.32f, .96f), H(0, 1), H(.32f, .96f), H(.76f, .68f), H(.96f, .25f), H(.97f, -.3f), H(.62f, -.82f)];
-        p.Begin().Blob(q, 1, 5);
-        p.Shade(new Ink(skin, 4.2f, .5f) { Ao = 2.4f, Grad = .1f });
+        HeadShape();
     }
 
     void FaceAll()
@@ -204,8 +203,9 @@ public sealed partial class AvatarPainter
             for (int s = -1; s <= 1; s += 2) { p.Curve(F2(s * .22f, .42f), F2(s * .36f, .5f), F2(s * .4f, .66f), .3f, skin.Shade(-.3f), false); p.Curve(F2(s * .24f, .22f), F2(s * .4f, .27f), F2(s * .55f, .2f), .3f, skin.Shade(-.28f), false); if (fine) p.Line(F2(s * .68f, .02f), F2(s * .8f, -.04f), .3f, skin.Shade(-.3f), false); }
             if (fine) { p.Curve(F2(-.35f, -.42f), F2(0, -.38f), F2(.35f, -.42f), .3f, skin.Shade(-.25f), false); }
         }
-        Eyes(F2); Brows(F2); Nose(F2); Mouth(F2);
+        Blusher(F2); SkinDetail(F2); Eyes(F2); Brows(F2); Scar(F2, false); Nose(F2); Mouth(F2); Scar(F2, true); FaceTattoo(F2);
         if (Vis(Slot.Beard) && d[Slot.Beard].Id > 0) Beard(F2);
+        Piercings(F2);
     }
 
     void Eyes(Func<float, float, Vector2> F2)
@@ -218,17 +218,17 @@ public sealed partial class AvatarPainter
         };
         for (int s = -1; s <= 1; s += 2)
         {
-            var c = F2(s * .40f, .07f);
+            var c = F2(s * EyeX, EyeY);
             float open = M.Clamp(1 - blink); if (d.Idle == 5) open *= .75f;
             if (!fine)
             {
                 // tiny, pixel-placed eyes: two columns each, always mirrored around the face centre
-                var mid = F2(0, .07f); float mx = OX(mid.X); int y0 = (int)MathF.Floor(OY(c.Y)) - 1; int cx0 = (int)MathF.Round(mx);
-                int x0 = s < 0 ? cx0 - 4 : cx0 + 1; int outer = s < 0 ? x0 : x0 + 2, inner = s < 0 ? x0 + 2 : x0;
+                var mid = F2(0, EyeY); float mx = OX(mid.X); int y0 = (int)MathF.Floor(OY(c.Y)) - 1; int cx0 = (int)MathF.Round(mx);
+                int eg = d.EyeGap > .74f ? 1 : 0, x0 = s < 0 ? cx0 - 4 - eg : cx0 + 1 + eg; int outer = s < 0 ? x0 : x0 + 2, inner = s < 0 ? x0 + 2 : x0;
                 if (open < .35f) { for (int i = 0; i < 3; i++) Pix(x0 + i, y0 + 1, lash); continue; }
                 for (int i = 0; i < 3; i++) Pix(x0 + i, y0, e.lid > .2f ? skin.Shade(-.35f) : lash);
                 if (e.lid > .2f) for (int i = 0; i < 3; i++) Pix(x0 + i, y0 + 1, lash);
-                if (e.lashes) Pix(s < 0 ? x0 - 1 : x0 + 3, y0, lash);
+                if (e.lashes || d.Liner is 2 or 4) Pix(s < 0 ? x0 - 1 : x0 + 3, y0 - (d.Liner is 2 or 4 ? 1 : 0), d.Liner is 2 or 4 ? (Col)d.LinerCol : lash); if (d.Shadow > .3f) for (int i = 0; i < 3; i++) Pix(x0 + i, y0 - 1, Col.Lerp(skin, d.ShadowCol, d.Shadow * .7f));
                 if (e.tilt < -.1f) Pix(outer, y0 + 1, lash); else if (e.tilt > .2f) Pix(s < 0 ? x0 - 1 : x0 + 3, y0 - 1, lash);
                 int r0 = y0 + (e.lid > .2f ? 2 : 1), rows = e.lid > .2f || open < .7f || e.h < 1.1f ? 1 : 2;
                 int look = lx > .3f ? 1 : lx < -.3f ? -1 : 0;
@@ -240,7 +240,7 @@ public sealed partial class AvatarPainter
                 }
                 continue;
             }
-            float w = e.w, h = e.h; float ct = M.Cos(e.tilt * -s), st = M.Sin(e.tilt * -s);
+            float es = M.Lerp(.8f, 1.25f, d.EyeSize), w = e.w * es, h = e.h * es; EyeShadowAt(c, w, h, s); float ct = M.Cos(e.tilt * -s), st = M.Sin(e.tilt * -s);
             Vector2 E(float x, float y) => c + new Vector2(x * ct - y * st, x * st + y * ct);
             if (open < .3f) { p.Begin(); p.Curve(E(-w, .1f), E(0, h * .55f), E(w, .1f), .55f, lash, false); if (e.lashes) p.Line(E(s * w, .1f), E(s * (w + .7f), .5f), .4f, lash, false); continue; }
             float topY = -h + e.lid * h * 1.4f + (1 - open) * h * 1.2f;
@@ -254,6 +254,7 @@ public sealed partial class AvatarPainter
             p.Begin(); p.Curve(E(-w, .15f), E(0, topY * 1.75f - .1f), E(w, .05f), .62f, lash, false);
             p.Curve(E(-w * .7f, h * .72f), E(0, h * 1.0f), E(w * .7f, h * .7f), .25f, skin.Shade(-.45f), false);
             p.Curve(E(-w * .9f, topY - .35f), E(0, topY * 1.6f - .95f), E(w * .9f, topY - .4f), .28f, skin.Shade(-.38f), false);
+            EyeLinerAt(E, w, h, topY, s);
             if (e.lashes) { p.Line(E(s * w * .95f, -.1f), E(s * (w + .95f), -.85f), .45f, lash, false); p.Line(E(s * w * .65f, topY * .8f), E(s * (w * .65f + .75f), topY - .75f), .4f, lash, false); p.Line(E(s * w * .25f, topY), E(s * (w * .25f + .4f), topY - .9f), .35f, lash, false); }
         }
     }
@@ -263,12 +264,12 @@ public sealed partial class AvatarPainter
 
     void Brows(Func<float, float, Vector2> F2)
     {
-        if (d.Brow == 9) return; Col c = Col.Lerp(d.Hair.Roots > .2f ? d.Hair.RootCol : d.Hair.Base, 0x2a1a1c, .3f); if (d.Hair.Id == Catalog.BaldHair) c = Col.Lerp(d.Hair.Base, 0x2a1a1c, .2f);
+        if (d.Brow == 9) return; Col c = d.BrowCol != 0 ? (Col)d.BrowCol : Col.Lerp(d.Hair.Roots > .2f ? d.Hair.RootCol : d.Hair.Base, 0x2a1a1c, .3f); if (d.Hair.Id == Catalog.BaldHair) c = Col.Lerp(d.Hair.Base, 0x2a1a1c, .2f);
         (float th, float arch, float tilt, float len) b = d.Brow switch { 0 => (.75f, .5f, 0, 1.9f), 1 => (1.15f, .45f, 0, 2.1f), 2 => (.45f, .55f, 0, 1.8f), 3 => (.65f, 1.0f, .1f, 2), 4 => (.8f, .05f, 0, 2), 5 => (1.35f, .5f, -.05f, 2.2f), 6 => (.6f, .4f, -.15f, 1.7f), 7 => (.85f, .3f, .3f, 2), _ => (.8f, .5f, 0, 2) };
         for (int s = -1; s <= 1; s += 2)
         {
-            var m = F2(s * .41f, -.235f) + new Vector2(0, -po.Brow * .6f);
-            if (!fine) { int cx0 = (int)MathF.Round(OX(F2(0, .07f).X)), y0 = (int)MathF.Floor(OY(F2(0, .07f).Y)) - 3 - (int)MathF.Round(po.Brow * .6f); int x0 = s < 0 ? cx0 - 4 : cx0 + 1; for (int i = 0; i < 3; i++) { bool ou = s < 0 ? i == 0 : i == 2; int up = b.arch > .8f && !ou ? -1 : b.tilt > .2f && ou ? -1 : 0; Pix(x0 + i, y0 + up, c); if (b.th > 1) Pix(x0 + i, y0 + up - 1, c); } continue; }
+            var m = F2(s * (EyeX + .01f), -.235f - (d.BrowHeight - .5f) * .16f - (d.EyeHeight - .5f) * .1f) + new Vector2(0, -po.Brow * .6f);
+            if (!fine) { int cx0 = (int)MathF.Round(OX(F2(0, EyeY).X)), y0 = (int)MathF.Floor(OY(F2(0, EyeY).Y)) - 3 - (int)MathF.Round(po.Brow * .6f + (d.BrowHeight - .5f) * 2.4f); int x0 = s < 0 ? cx0 - 4 : cx0 + 1; for (int i = 0; i < 3; i++) { bool ou = s < 0 ? i == 0 : i == 2; int up = b.arch > .8f && !ou ? -1 : b.tilt > .2f && ou ? -1 : 0; Pix(x0 + i, y0 + up, c); if (b.th > 1) Pix(x0 + i, y0 + up - 1, c); } continue; }
             Vector2 i0 = m + new Vector2(-s * b.len * .85f, .35f + b.tilt * 1.4f), o0 = m + new Vector2(s * b.len, .4f - b.tilt * 1.2f), mid = m + new Vector2(s * .3f, -b.arch * 1.3f);
             p.Begin(); Vector2 Q(float t) => (1 - t) * (1 - t) * i0 + 2 * t * (1 - t) * mid + t * t * o0;
             Span<Vector2> q = stackalloc Vector2[14]; for (int i = 0; i < 7; i++) { float t = i / 6f, w = b.th * .5f * (t < .75f ? 1 : 1 - (t - .75f) * 3.2f); q[i] = Q(t) - new Vector2(0, w); q[13 - i] = Q(t) + new Vector2(0, w); }
@@ -280,7 +281,7 @@ public sealed partial class AvatarPainter
     {
         var c = F2(po.Turn * .06f, .34f); Col sh = skin.Shade(-.58f), hl = skin.Shade(.6f);
         if (!fine) { int x = (int)MathF.Floor(OX(c.X)), y = (int)MathF.Floor(OY(c.Y)); Pix(x, y, skin.Shade(-.3f)); if (d.Nose is 1 or 3 or 7) Pix(x - 1, y, skin.Shade(-.3f)); if (d.Nose is 2 or 4 or 7) Pix(x, y - 1, skin.Shade(-.2f)); if (d.Nose == 3) Pix(x + 1, y, skin.Shade(-.3f)); return; }
-        float w = d.Nose switch { 0 => 1.1f, 1 => 1.5f, 2 => 1.1f, 3 => 1.9f, 4 => 1.2f, 5 => .8f, 6 => 1.15f, _ => 1.3f }, l = d.Nose switch { 2 => 3, 4 => 3.8f, 7 => 3.2f, _ => 1.4f };
+        float w = d.Nose switch { 0 => 1.1f, 1 => 1.5f, 2 => 1.1f, 3 => 1.9f, 4 => 1.2f, 5 => .8f, 6 => 1.15f, _ => 1.3f }, l = d.Nose switch { 2 => 3, 4 => 3.8f, 7 => 3.2f, _ => 1.4f }; float ns = M.Lerp(.75f, 1.3f, d.NoseSize); w *= ns * M.Lerp(.8f, 1.3f, d.NoseWidth); l *= ns;
         p.Begin();
         p.Curve(c + new Vector2(-w, -.2f), c + new Vector2(-w * .7f, .85f), c + new Vector2(-w * .2f, .5f), .45f, sh, false);
         p.Curve(c + new Vector2(w, -.2f), c + new Vector2(w * .7f, .85f), c + new Vector2(w * .2f, .5f), .45f, sh, false);
@@ -290,10 +291,10 @@ public sealed partial class AvatarPainter
     }
     void Mouth(Func<float, float, Vector2> F2)
     {
-        var c = F2(po.Turn * .03f, .615f); Col lip = Col.Lerp(skin, d.Lip, .62f), dk = Col.Lerp(skin.Ink(), 0x5a1c24, .45f); float o = po.Mouth;
+        var c = F2(po.Turn * .03f, .615f); Col lip = Col.Lerp(skin, LipCol, .62f + d.Lipstick * .36f), dk = Col.Lerp(skin.Ink(), 0x5a1c24, .45f); float o = po.Mouth;
         if (!fine)
         {
-            int x = (int)MathF.Floor(OX(c.X)), y = (int)MathF.Floor(OY(c.Y)); Col m = Col.Lerp(skin.Shade(-.6f), d.Lip, .4f);
+            int x = (int)MathF.Floor(OX(c.X)), y = (int)MathF.Floor(OY(c.Y)); Col m = Col.Lerp(Col.Lerp(skin.Shade(-.6f), d.Lip, .4f), d.LipstickCol, d.Lipstick * .8f);
             if (o > .35f) { for (int i = -1; i <= 1; i++) { Pix(x + i, y, dk); if (o > .6f || i == 0) Pix(x + i, y + 1, i == 0 ? 0xb5504f : dk); } return; }
             switch (d.Mouth)
             {
@@ -308,7 +309,8 @@ public sealed partial class AvatarPainter
             }
             return;
         }
-        p.Begin(); float w = d.Mouth switch { 6 => 1.2f, 1 => 2.9f, 4 => 2.6f, 5 => 2.1f, 7 => 1.7f, _ => 2.4f };
+        p.Begin(); float w = d.Mouth switch { 6 => 1.2f, 1 => 2.9f, 4 => 2.6f, 5 => 2.1f, 7 => 1.7f, _ => 2.4f } * M.Lerp(.8f, 1.25f, d.MouthWidth);
+        if (o <= .2f && d.Mouth is not (1 or 4 or 5 or 7 or 9) && (d.LipSize > .56f || d.Lipstick > .08f)) { float ls = M.Lerp(.6f, 1.5f, d.LipSize); p.Blob(c + new Vector2(-w * .9f, -.1f), c + new Vector2(-w * .4f, -.5f * ls), c + new Vector2(0, -.3f * ls), c + new Vector2(w * .4f, -.5f * ls), c + new Vector2(w * .9f, -.1f), c + new Vector2(w * .5f, .9f * ls), c + new Vector2(0, 1.25f * ls), c + new Vector2(-w * .5f, .9f * ls)); p.Shade(new Ink(lip, .9f, .5f, .3f) { Ao = 0 }); p.Dot(c.X - .5f, c.Y + .7f * ls, lip.Shade(.6f)); p.Begin(); }
         if (o > .2f || d.Mouth is 4)
         {
             // a proper open smile: curved upper lip, rounded jaw, inset teeth and a soft tongue
@@ -338,8 +340,9 @@ public sealed partial class AvatarPainter
 
     void Beard(Func<float, float, Vector2> F2)
     {
-        int id = d[Slot.Beard].Id; Col c = d[Slot.Beard].A; float sw = po.HairX * .12f;
-        Ink K(float dark = 0) => new Ink(c, 1.8f, .5f) { Ao = .4f, Tone = fine ? (x, y) => dark + M.Noise(x * 1.6f, y * .7f, 6) * .16f : (x, y) => dark };
+        int id = d[Slot.Beard].Id; Col c = d[Slot.Beard].A; float sw = po.HairX * .12f; float bl = M.Lerp(.65f, 1.55f, d.BeardLen); var F0 = F2; F2 = (x, y) => F0(x, y > .9f ? .9f + (y - .9f) * bl : y);
+        float thick = d.BeardThick, grey = d.BeardGrey; float sc = MathF.Max(1, S); Func<float, float, Col> bc = (x, y) => { int hx = (int)MathF.Floor(x * 1.5f / sc), hy = (int)MathF.Floor(y * 1.5f / sc); Col k = M.Hash(hx, hy, 17) < grey * .9f ? Col.Lerp(c, 0xdcdad6, .85f) : c; if (M.Hash(hx, hy, 19) > .35f + thick * .65f) k = Col.Lerp(k, SkinAt(x, y), .55f); return Col.Lerp(SkinAt(x, y), k, .5f + .5f * thick); };
+        Ink K(float dark = 0) => new Ink(bc, 1.8f, .5f) { Ao = .4f, Tone = fine ? (x, y) => dark + M.Noise(x * 1.6f, y * .7f, 6) * .16f : (x, y) => dark };
         void Stache(float w, float h) { p.Begin().Blob(F2(-w, .56f), F2(-w * .5f, .47f), F2(0, .48f), F2(w * .5f, .47f), F2(w, .56f), F2(w * .5f, .47f + h), F2(0, .53f), F2(-w * .5f, .47f + h)); p.Shade(K()); }
         void Jaw(float lo, float inner, bool mus)
         {
@@ -357,6 +360,15 @@ public sealed partial class AvatarPainter
             case 8: Jaw(1.28f, .48f, true); break;
             case 9: case 10: { p.Begin().Blob(F2(-.8f, .6f), F2(-.6f, 1.2f), F2(-.1f, 1.95f) + new Vector2(sw, 0), F2(.1f, 1.95f) + new Vector2(sw, 0), F2(.6f, 1.2f), F2(.8f, .6f)); p.Shade(K(-.08f)); for (int i = -2; i <= 2; i++) p.Curve(F2(i * .2f, .9f), F2(i * .17f, 1.3f), F2(i * .06f, 1.8f) + new Vector2(sw, 0), .4f, default, true, 1, .8f); if (id == 10) for (int i = 0; i < 3; i++) { var q = F2(0, 1.35f + i * .22f) + new Vector2(sw * i * .3f, 0); p.Line(q + new Vector2(-2, 0), q + new Vector2(2, 0), .7f, (Col)d[Slot.Beard].B, false); } Jaw(1.1f, .48f, true); break; }
             case 12: Stache(.4f, .1f); p.Begin().Blob(F2(-.18f, .78f), F2(.18f, .78f), F2(0, 1.25f)); p.Shade(K()); break;
+            case 14: Stache(.36f, .04f); break;
+            case 15: Stache(.5f, .2f); break;
+            case 16: Stache(.46f, .12f); for (int s = -1; s <= 1; s += 2) { p.Begin().Blob(F2(s * .46f, .52f), F2(s * .36f, .56f), F2(s * .34f, 1.02f), F2(s * .44f, 1.04f)); p.Shade(K()); } break;
+            case 17: Stache(.38f, .07f); for (int s = -1; s <= 1; s += 2) { p.Begin(); p.Curve(F2(s * .38f, .56f), F2(s * .44f, .9f), F2(s * .4f, 1.45f) + new Vector2(sw, 0), .9f, c, false); } break;
+            case 18: for (int s = -1; s <= 1; s += 2) { p.Begin().Blob(F2(s * .98f, -.05f), F2(s * .97f, .4f), F2(s * .82f, .78f), F2(s * .55f, .8f), F2(s * .42f, .58f), F2(s * .6f, .45f), F2(s * .82f, .2f)); p.Shade(K()); } Stache(.46f, .11f); break;
+            case 19: p.Begin().Blob(F2(-.98f, 0), F2(-1.0f, .5f), F2(-.78f, 1.08f), F2(-.3f, 1.4f), F2(.3f, 1.4f), F2(.78f, 1.08f), F2(1.0f, .5f), F2(.98f, 0), F2(.82f, .3f), F2(.6f, .5f), F2(0, .44f), F2(-.6f, .5f), F2(-.82f, .3f)); p.CutEllipse(F2(0, .63f).X, F2(0, .63f).Y, r.HeadRx * .27f, r.HeadRy * .085f); p.Shade(K(-.04f)); Stache(.5f, .13f); break;
+            case 20: Stache(.44f, .11f); p.Begin().Blob(F2(-.42f, .72f), F2(-.2f, .7f), F2(0, .74f), F2(.2f, .7f), F2(.42f, .72f), F2(.34f, .96f), F2(0, 1.12f), F2(-.34f, .96f)); p.CutEllipse(F2(0, .63f).X, F2(0, .63f).Y, r.HeadRx * .27f, r.HeadRy * .085f); p.Shade(K()); break;
+            case 21: Stache(.34f, .05f); p.Begin().Blob(F2(-.62f, .82f), F2(-.3f, .9f), F2(0, .86f), F2(.3f, .9f), F2(.62f, .82f), F2(.3f, .98f), F2(0, 1.18f), F2(-.3f, .98f)); p.Shade(K()); break;
+            case 22: { p.Begin().Blob(F2(-.62f, .46f), F2(-.48f, .52f), F2(-.2f, .5f), F2(0, .51f), F2(.2f, .5f), F2(.48f, .52f), F2(.62f, .46f), F2(.5f, .6f), F2(0, .56f), F2(-.5f, .6f)); p.Shade(K()); p.Begin().Blob(F2(-.08f, .76f), F2(.08f, .76f), F2(0, .98f)); p.Shade(K()); break; }
             case 13: p.Begin().Blob(F2(-.6f, .72f), F2(-.48f, .5f), F2(0, .44f), F2(.48f, .5f), F2(.6f, .72f), F2(.3f, .66f), F2(0, .6f), F2(-.3f, .66f)); p.Shade(K()); break;
         }
     }
@@ -396,10 +408,10 @@ public sealed partial class AvatarPainter
         if (Hawk(T, fx)) return;
         // skull cap with hairline
         float side = fade ? .86f : 1.0f + MathF.Min(SV, .25f) * .7f; float low = fade ? -.42f : hd.SideLen > .05f ? .12f : .02f; if (hd.Name == "Buzz Cut" ) { side = 1.0f; low = -.02f; }
-        float hl = f switch { Fringe.Slick => -.6f, Fringe.Crop => -.5f, Fringe.Faux or Fringe.Wings => -.56f, Fringe.Twists => -.52f, Fringe.Puff => -.48f, Fringe.Pomp or Fringe.Quiff => -.56f, _ => -.5f }; float sideR = side, lowR = low, svR = SV; if (Fx(HairFx.SideShave)) { sideR = .62f; lowR = -.52f; svR = 0; }
+        float hl = f switch { Fringe.Slick => -.6f, Fringe.Crop => -.5f, Fringe.Faux or Fringe.Wings => -.56f, Fringe.Twists => -.52f, Fringe.Puff => -.48f, Fringe.Pomp or Fringe.Quiff => -.56f, _ => -.5f }; int hln = show == Show.Mannequin ? 0 : d.Hair.Hairline; hl += hln switch { 1 => -.12f, 2 => .08f, _ => 0 }; float tempL = hln is 3 or 5 ? -.24f : 0, peak = hln is 4 ? .14f : hln == 5 ? .05f : 0; float sideR = side, lowR = low, svR = SV; if (Fx(HairFx.SideShave)) { sideR = .62f; lowR = -.52f; svR = 0; }
         p.Begin();
         bool bumpy = hd.Tex is 2 or 3 && T + SV > .15f;
-        var cv = HairSway(.45f * M.Clamp(T * 4)); hl += po.Bend * .16f; Span<Vector2> cap = [H(-side, low), H(-side - .02f, -.35f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1.0f - T * .92f) + cv, H(0, -1.04f - T) + cv, H(.42f, -1.0f - T * .92f) + cv, H(MathF.Min(.82f, sideR + .02f) + svR * .3f, -.82f - T * .55f * (svR == SV ? 1 : .6f)) + cv * .5f, H(sideR + .02f, svR == SV ? -.35f : -.62f), H(sideR, lowR), H(MathF.Min(.86f, sideR), lowR - .02f), H(svR == SV ? .8f : .5f, svR == SV ? -.3f : -.52f), H(.5f + fx * .5f, hl - .02f), H(fx, hl + .02f), H(-.5f + fx * .5f, hl - .02f), H(-.8f, -.3f), H(-.86f, low - .02f)];
+        var cv = HairSway(.45f * M.Clamp(T * 4)); hl += po.Bend * .16f; Span<Vector2> cap = [H(-side, low), H(-side - .02f, -.35f), H(-.82f - SV * .3f, -.82f - T * .55f), H(-.42f, -1.0f - T * .92f) + cv, H(0, -1.04f - T) + cv, H(.42f, -1.0f - T * .92f) + cv, H(MathF.Min(.82f, sideR + .02f) + svR * .3f, -.82f - T * .55f * (svR == SV ? 1 : .6f)) + cv * .5f, H(sideR + .02f, svR == SV ? -.35f : -.62f), H(sideR, lowR), H(MathF.Min(.86f, sideR), lowR - .02f), H(svR == SV ? .8f : .5f, svR == SV ? -.3f : -.52f), H(.5f + fx * .5f, hl - .02f + tempL), H(fx, hl + .02f + peak), H(-.5f + fx * .5f, hl - .02f + tempL), H(-.8f, -.3f + tempL * .6f), H(-.86f, low - .02f)];
         if (Fx(HairFx.Square) && !hatCover) p.Blob([H(-.86f, -.45f), H(-.90f, -.86f), H(-.84f, -1.0f - T), H(-.74f, -1.06f - T), H(0, -1.08f - T), H(.74f, -1.06f - T), H(.84f, -1.0f - T), H(.90f, -.86f), H(.86f, -.45f), H(.6f, hl), H(-.6f, hl)], 1, 4); else if (hd.Name == "High Top Fade" && !hatCover) { p.Poly(H(-.86f, -.45f), H(-.92f, -1.0f - T * .9f), H(-.8f, -1.05f - T), H(.8f, -1.05f - T), H(.92f, -1.0f - T * .9f), H(.86f, -.45f), H(.6f, hl), H(-.6f, hl)); }
         else p.Blob(cap, 1, 4);
         if (bumpy && !hatCover)
@@ -410,6 +422,7 @@ public sealed partial class AvatarPainter
         HairClip(); p.Shade(HairInk(-1, false, 0, 3.4f));
         if (hd.Tex == 2 && bumpy && fine) for (int i = 0; i < 16; i++) { float an = M.Lerp(-1.6f, 1.6f, M.Hash(i, 2)), q = .72f + M.Hash(i, 4) * (.3f + T); var c = H(MathF.Sin(an) * q, -MathF.Cos(an) * q); p.Curve(c + new Vector2(-1.4f, .4f), c + new Vector2(0, -1.7f), c + new Vector2(1.4f, .3f), .4f, default, true, 1, i % 3 == 0 ? 1.25f : .74f); }
         CapDetails(fx, hl, T);
+        if (hln >= 6 && !hatCover) { var c = H(fx * .5f, -.86f - T * .5f); p.Begin().Ellipse(c.X, c.Y, r.HeadRx * (hln == 7 ? .62f : .5f), r.HeadRy * (hln == 7 ? .3f : .22f)); p.IntersectAlpha(); if (hln == 7) p.Shade(new Ink(skin, 3, .6f, .3f) { Ao = 0 }); else p.Tint(skin, .42f); }
         if (hd.Name is "Cornrow Tails") for (int i = -3; i <= 3; i++) { p.Curve(H(i * .22f + fx, hl), H(i * .26f, -.85f), H(i * .2f, -1.05f), .6f, default, true, 1, .62f); p.Curve(H(i * .22f + .1f + fx, hl), H(i * .26f + .1f, -.85f), H(i * .2f + .06f, -1.05f), .4f, default, true, 1, 1.25f); }
         if (hd.U == Updo.CrownBraid && !hatCover) for (int i = 0; i < 13; i++) { float an = M.Lerp(-1.35f, 1.35f, i / 12f); var c = H(MathF.Sin(an) * .95f, -MathF.Cos(an) * .9f - .04f); p.Begin().Ellipse(c.X, c.Y, 1.9f, 1.6f); p.Shade(HairInk(-1, false, (i & 1) == 0 ? -.08f : .08f, 1.6f)); }
         Fringes(f, fx, hl, T, SV); FrontDetails(fx, T);
@@ -421,7 +434,7 @@ public sealed partial class AvatarPainter
     {
         float rx = r.HeadRx; var sw0 = HairSway(.95f); var sw = sw0; bool hat = hatCover; float lift = hat ? 0 : T; float w = rx * .2f;
         void L(float x0, float y0, float x1, float y1, float x2, float y2, float w0, float w1, float w2, int id)
-        { float len = Vector2.Distance(H(x0, y0), H(x2, y2)) / r.HeadRy; var sw = HairSway(MathF.Min(1.5f, .35f + len * .8f), id); p.Begin(); Lock(H(x0 + fx * .5f, y0), H(x1 + fx, y1 + po.Bend * .1f) + sw * .25f, H(x2 + fx, y2 + po.Bend * .2f) + sw, w0, w1, w2, id); HairClip(); p.Shade(HairInk(hd.Tex >= 4 ? id : -1)); if (hd.Tex < 2 && fine) StrandLines(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, .8f); }
+        { if (d.Hair.Flip) { x0 = -x0; x1 = -x1; x2 = -x2; } float len = Vector2.Distance(H(x0, y0), H(x2, y2)) / r.HeadRy; var sw = HairSway(MathF.Min(1.5f, .35f + len * .8f), id); p.Begin(); Lock(H(x0 + fx * .5f, y0), H(x1 + fx, y1 + po.Bend * .1f) + sw * .25f, H(x2 + fx, y2 + po.Bend * .2f) + sw, w0, w1, w2, id); HairClip(); p.Shade(HairInk(hd.Tex >= 4 ? id : -1)); if (hd.Tex < 2 && fine) StrandLines(H(x0 + fx * .5f, y0), H(x1 + fx, y1), H(x2 + fx, y2) + sw, .8f); }
         float top = hat ? -.62f : -.95f - lift * .75f;
         switch (f)
         {
@@ -454,38 +467,9 @@ public sealed partial class AvatarPainter
     }
 
     // ---------------------------------------------------------------- accessories
-    void Glasses()
+    void FrameEdge(byte[] m, Col c, int th = 0)
     {
-        var pc = d[Slot.Glasses]; if (pc.Id == 0) return; Col A = pc.A, B = pc.B; float fx = po.Turn * .17f; Vector2 F2(float x, float y) => H(x + fx, y);
-        bool shade = pc.Id is 3 or 6 or 7 or 8; float al = shade ? .82f : .18f;
-        for (int s = -1; s <= 1; s += 2)
-        {
-            if (pc.Id == 9 && s < 0) continue; var c = F2(s * .41f, .09f); float rx = 2.7f, ry = 2.5f; p.Begin();
-            switch (pc.Id)
-            {
-                case 2: case 6: p.Poly(c + new Vector2(-rx, -ry * .85f), c + new Vector2(rx, -ry * .85f), c + new Vector2(rx * .92f, ry * .8f), c + new Vector2(-rx * .92f, ry * .8f)); break;
-                case 3: p.Blob(c + new Vector2(-rx, -ry * .9f), c + new Vector2(rx, -ry * .9f), c + new Vector2(rx * (s > 0 ? 1.05f : .6f), ry * .8f), c + new Vector2(0, ry * 1.2f), c + new Vector2(-rx * (s > 0 ? .6f : 1.05f), ry * .8f)); break;
-                case 4: p.Blob(c + new Vector2(-s * rx, -ry * .4f), c + new Vector2(s * rx * 1.25f, -ry * 1.15f), c + new Vector2(s * rx * .8f, ry * .6f), c + new Vector2(-s * rx * .5f, ry * .8f)); break;
-                case 8: p.Ellipse(c.X - 1.1f, c.Y - .8f, 1.6f, 1.6f).Ellipse(c.X + 1.1f, c.Y - .8f, 1.6f, 1.6f).Poly(c + new Vector2(-2.6f, -.4f), c + new Vector2(2.6f, -.4f), c + new Vector2(0, 2.8f)); break;
-                case 10: p.Ellipse(c.X, c.Y, rx * 1.25f, ry * 1.2f); break;
-                case 11: p.Blob(c + new Vector2(-rx * .9f, .5f), c + new Vector2(rx * .9f, .5f), c + new Vector2(rx * .6f, ry * .9f), c + new Vector2(-rx * .6f, ry * .9f)); break;
-                default: p.Ellipse(c.X, c.Y, rx * .95f, ry); break;
-            }
-            if (pc.Id == 5) { p.Tint(B, .15f); p.Line(c + new Vector2(-rx, -ry * .6f), c + new Vector2(rx, -ry * .6f), .9f, A, false); continue; }
-            var m = p.CopyMask(); if (pc.Id == 10) { p.Shade(new Ink(A, 1.2f, .5f)); p.Begin().Ellipse(c.X, c.Y, rx * .85f, ry * .8f); m = p.CopyMask(); p.Flat(B); al = 1; }
-            else { p.Tint(shade ? B.Shade(-.2f) : B, al); }
-            if (fine) { p.Line(c + new Vector2(-1.4f, .8f), c + new Vector2(.6f, -1.4f), .5f, 0xffffff, true, .55f); }
-            else p.Dot(c.X - 1, c.Y - 1.2f, 0xffffff, .5f);
-            // frame = edge of the lens mask
-            if (pc.Id != 10) { p.Shade(new Ink((x, y) => A, .1f, 0, 0) { Ao = 0, Alpha = 0.001f }); FrameEdge(m, A); }
-        }
-        if (pc.Id != 9) { p.Curve(F2(-.12f, .04f), F2(0, -.04f), F2(.12f, .04f), .55f, A, false); for (int s = -1; s <= 1; s += 2) p.Line(F2(s * .72f, .02f), F2(s * .98f, .06f), .5f, A, false); }
-        else p.Curve(F2(.6f, .2f), F2(.8f, .7f), F2(.6f, 1.1f), .35f, A, false);
-        if (pc.Id == 10) for (int s = -1; s <= 1; s += 2) p.Line(F2(s * .75f, .05f), F2(s * 1.02f, .0f), 1.4f, A.Shade(-.3f), false);
-    }
-    void FrameEdge(byte[] m, Col c)
-    {
-        int W = p.W, H2 = p.H; int th = fine ? Math.Max(1, (int)(S * .4f)) : 1; var rc = c.Rl();
+        int W = p.W, H2 = p.H; if (th <= 0) th = fine ? Math.Max(1, (int)(S * .4f)) : 1; var rc = c.Rl();
         for (int y = th; y < H2 - th; y++) for (int x = th; x < W - th; x++)
             {
                 if (m[y * W + x] == 0) continue; bool e = false; for (int k = 1; k <= th && !e; k++) e = m[y * W + x - k] == 0 || m[y * W + x + k] == 0 || m[(y - k) * W + x] == 0 || m[(y + k) * W + x] == 0;

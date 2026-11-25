@@ -26,7 +26,7 @@ public sealed class Rig
         float w = (d.Weight - .42f) * 2, f = w > 0 ? w : w * .62f, sh = (d.Shoulder - .5f) * 2, wa = (d.Waist - .5f) * 2, hi = (d.Hip - .5f) * 2;
         Fat = f; Belly = MathF.Max(0, w - .25f);
         float hd = M.Lerp(.91f, 1.09f, d.Head) * M.Lerp(1, hs, .35f) * (d.Age == 0 ? 1.05f : 1);
-        HeadRx = (7.25f + f * .65f) * hd; HeadRy = (8.95f + f * .12f) * hd;
+        HeadRx = (7.25f + f * .65f) * hd; HeadRy = (8.95f + f * .12f) * hd * M.Lerp(.92f, 1.08f, d.FaceLength);
         Neck = (3.1f + f * .55f + sh * .3f) * ws; NeckLen = 3.4f * hs;
         ShX = (12.7f + sh * 2.1f + f * 2.2f) * ws; Chest = (9.0f + sh * 1.2f + f * 2.3f) * ws; Waist = (7.8f + wa * 1.7f + f * 4.0f + Belly * 1.5f) * ws; Hip = (8.8f + hi * 2.0f + f * 2.9f) * ws;
         Torso = 29 * hs; float ar = M.Lerp(.9f, 1.1f, d.Arm), lg = M.Lerp(.88f, 1.12f, d.Leg);
@@ -145,9 +145,9 @@ public sealed partial class AvatarPainter
         NeckSkinAndHead(() => { if (jacket) JacketCollar(jk); });
         if (Vis(Slot.Neck)) Neckwear();
         FaceAll();
+        if (Vis(Slot.Earrings)) Earrings(); // hair over the ears hides them, as it would
         HairFront();
         if (Vis(Slot.Glasses)) Glasses();
-        if (Vis(Slot.Earrings)) Earrings();
         if (Vis(Slot.Hat)) Hat();
         if (Vis(Slot.Neck)) NeckwearFront();
         if (side) Arm(near, true); else { if (overL) Arm(-1, true); if (overR) Arm(1, true); }
@@ -286,7 +286,7 @@ public sealed partial class AvatarPainter
     {
         Vector2 a = sd < 0 ? shL : shR, b = sd < 0 ? elL : elR, c = sd < 0 ? haL : haR;
         float dk = at > .3f && sd == -near ? -.12f : 0;
-        var sk = new Ink(skin, 2.4f, .5f) { Ao = .8f, Tone = dk != 0 ? (x, y) => dk : null };
+        var sk = SkinInk(2.4f, .5f, .8f); sk.Tone = dk != 0 ? (x, y) => dk : null;
         // hand
         var dir = Vector2.Normalize(c - b); { float wr = sd < 0 ? po.WristL : po.WristR; if (wr != 0) { float wc = M.Cos(wr), ws = M.Sin(wr); dir = new(dir.X * wc - dir.Y * ws, dir.X * ws + dir.Y * wc); } }
         var n = new Vector2(-dir.Y, dir.X) * sd; bool open = (sd < 0 ? po.OpenL : po.OpenR) > .5f;
@@ -312,12 +312,14 @@ public sealed partial class AvatarPainter
         if (g == 3) { p.Begin().Ellipse(c.X + dir.X * hr * .1f, c.Y + dir.Y * hr * .1f, hr, hr * .9f); p.Shade(new Ink((Col)pc.A, 2, .5f) { Ao = 0 }); }
         if (g is 1 or 2 or 3) { p.Begin(); Limb3(a, b, c, .87f, 1f, .5f); p.Shade(new Ink((Col)pc.B, 1.5f, .5f) { Ao = 0 }); }
         if (g == 7) { p.Begin(); Limb3(a, b, c, .56f, 1f, .45f); p.Shade(new Ink((Col)pc.A, 2, .5f) { Ao = .5f }); }
-        // shirt sleeve
-        if (Vis(Slot.Top)) Sleeve(Catalog.Tops[d[Slot.Top].Id], sd, a, b, c, dk);
+        ArmTattoos(sd, a, b, c, c, dir, n, hr); if (!glove) Nails(c, dir, n, hr, open && g != 2);
+        // watches, bracelets and arm warmers sit on the skin, so a sleeve covers them rather than them floating on top of it
         if (g == 4 && sd > 0) { p.Begin(); Limb3(a, b, c, .86f, .94f, .7f); p.Shade(new Ink((Col)pc.B, 1, .4f) { Ao = 0 }); var w = LimbAt(a, b, c, .9f).pos; p.Begin().Ellipse(w.X, w.Y, 1.5f, 1.5f); p.Shade(new Ink((Col)pc.C, 1, .5f)); }
         if (g == 5) for (int i = 0; i < 3; i++) { p.Begin(); Limb3(a, b, c, .78f + i * .06f, .81f + i * .06f, .6f); p.Shade(new Ink((Col)(i == 0 ? pc.A : i == 1 ? pc.B : pc.C), 1, .4f, .6f) { Ao = 0 }); }
         if (g == 6) { p.Begin(); Limb3(a, b, c, .8f, .93f, .6f); p.Shade(new Ink((Col)pc.A, 1.4f, .5f) { Ao = 0 }); p.Begin(); Limb3(a, b, c, .855f, .875f, .7f); p.Shade(new Ink((Col)pc.B, 1.4f, .5f, 0) { Ao = 0 }); }
         if (g == 8) { p.Begin(); Limb3(a, b, c, .6f, 1f, .9f); var uv = LimbUv(a, b, c); Col A = pc.A, B = pc.B; p.Shade(new Ink((x, y) => ((int)(uv(x, y).v / 2.6f) & 1) == 0 ? A : B, 2, .5f) { Ao = .5f }); }
+        // shirt sleeve
+        if (Vis(Slot.Top)) Sleeve(Catalog.Tops[d[Slot.Top].Id], sd, a, b, c, dk);
         if (withJacket && d[Slot.Jacket].Id > 0 && Vis(Slot.Jacket)) { var jk = Catalog.Jackets[d[Slot.Jacket].Id]; if (!jk.Cape) JacketSleeve(jk, sd); }
     }
     internal void Limb2Impl(Vector2 a, Vector2 b, Vector2 c) => Limb(a, b, c, 1, ArmRad, default, false);

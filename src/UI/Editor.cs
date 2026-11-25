@@ -22,7 +22,7 @@ sealed class Puffs
 }
 
 /// The avatar wardrobe: room and character on the left, item drawers on the right.
-public sealed class EditorScreen
+public sealed partial class EditorScreen
 {
     public AvatarData D; public Action Done; public Action Back; public bool CanBack; public Saves.Slot Editing; readonly AvatarPainter ap = new(); readonly Painter pt = new(250, 350); Texture2D tex, room; readonly AvatarAnim an = new() { Fps = 12 }; readonly Puffs fx = new(); readonly Rng rng = new(Environment.TickCount);
     const float S = 2.62f; int tab; readonly int[] sub = new int[12]; float scroll, scrollT; int chip; bool fan; float fanSpin, fanPow; int preview; float poseT; float tabSlide = 1; string name; bool typing; float shake; float finishT = -1; readonly List<AvatarData> undo = new(), redo = new(); readonly HashSet<string> locks = new(); bool outfits; float diceRot; float introT, taken; bool sliderUndo; float avX;
@@ -36,7 +36,9 @@ public sealed class EditorScreen
     }
     public void SetNameForTest(string s) => name = s;
     public Vector2 AvatarCenter => new(avX, 190);
-    void Redraw() { pt.Clear(); ap.Draw(pt, D, an.Pose, S, 125, 336, outlinePx: 2); pt.Upload(tex); }
+    /// On the face and hair pages the camera moves in close, painted at the larger size so it stays crisp.
+    float zoom, zoomDrawn = -1; float ZoomScale => M.Lerp(S, 6.2f, Ease.InOut(zoom));
+    void Redraw() { float sc = ZoomScale, gy0 = M.Lerp(336, 158 + 87.5f * sc, Ease.InOut(zoom)); pt.Clear(); ap.Draw(pt, D, an.Pose, sc, 125, gy0, outlinePx: 2); pt.Upload(tex); headC = ap.HeadC; headRx = ap.Rig.HeadRx * sc; headRy = ap.Rig.HeadRy * sc; zoomDrawn = zoom; }
 
     void Snap() { undo.Add(D.Clone()); if (undo.Count > 60) undo.RemoveAt(0); redo.Clear(); }
     void Changed(int admire, bool pop = true)
@@ -50,8 +52,9 @@ public sealed class EditorScreen
     {
         introT += dt; budget = 3; an.IdleStyle = D.Idle; an.Stride = AvatarPainter.StrideOf(D); fanPow = M.Damp(fanPow, fan ? 1 : 0, 3, dt); an.Wind = fanPow * 2.3f + .12f; fanSpin += fanPow * dt * 26;
         poseT -= dt; if (finishT < 0) { if (preview == 0) { if (poseT <= 0) an.Set(Anim.Idle); an.Vel = M.Damp(an.Vel, default, 10, dt); } else { an.Dir = preview == 1 ? 1 : -1; an.Vel = new(an.Dir * (preview == 1 ? 64 : 64), 0); an.Set(Anim.Walk); } }
-        if (an.Update(dt)) Redraw();
-        if (typing)
+        float zt = (tab == 2 || (tab == 1 && sub[1] != 7)) && finishT < 0 ? 1 : 0; zoom = Store.Cfg.ReduceMotion ? zt : M.Approach(zoom, zt, dt * 2.6f); if (an.Update(dt) || MathF.Abs(zoom - zoomDrawn) > .001f) Redraw();
+        if (numEdit >= 0) NumTyping();
+        else if (typing)
         {
             int c; while ((c = Raylib.GetCharPressed()) > 0) if (name.Length < 10 && (char.IsAsciiLetterOrDigit((char)c) || c is ' ' or '_' or '-')) { name += (char)c; Snd.Play("type", .8f, .9f + rng.F() * .3f); } else { shake = .25f; Snd.Play("error", .4f); }
             if ((Raylib.IsKeyPressed(KeyboardKey.Backspace) || Raylib.IsKeyPressedRepeat(KeyboardKey.Backspace)) && name.Length > 0) { name = name[..^1]; Snd.Play("type", .7f, .75f); }
@@ -60,7 +63,7 @@ public sealed class EditorScreen
         else if (finishT < 0)
         {
             if (Raylib.IsKeyDown(KeyboardKey.LeftControl)) { if (Raylib.IsKeyPressed(KeyboardKey.Z)) Undo(); if (Raylib.IsKeyPressed(KeyboardKey.Y)) Redo(); }
-            if (CanBack && Raylib.IsKeyPressed(KeyboardKey.Escape)) Back?.Invoke();
+            if (CanBack && numEdit < 0 && Raylib.IsKeyPressed(KeyboardKey.Escape)) Back?.Invoke();
         }
         shake = MathF.Max(0, shake - dt);
         if (finishT >= 0) { finishT += dt; if (finishT > 1.25f) { finishT = -100; Done?.Invoke(); } }
@@ -91,7 +94,8 @@ public sealed class EditorScreen
         if (fanPow > .02f) Fan(rx);
         // avatar on the rug, squash and stretch from the feet
         float sq = M.Clamp(an.Squash, -.35f, .35f), ap2 = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp(introT * 1.6f)); float sx = (1 + sq * .55f) * ap2, sy = (1 - sq * .6f) * ap2, gy = 318;
-        Raylib.DrawEllipse((int)avX, (int)gy, 44 * sx, 7, new Color(40, 20, 26, 90)); Raylib.DrawTexturePro(tex, new Rectangle(0, 0, pt.W, pt.H), new Rectangle(avX - 125 * sx, gy - 336 * sy, pt.W * sx, pt.H * sy), Vector2.Zero, 0, Color.White);
+        Raylib.DrawEllipse((int)avX, (int)gy, 44 * sx, 7, new Color(40, 20, 26, (int)(90 * (1 - zoom)))); Raylib.DrawTexturePro(tex, new Rectangle(0, 0, pt.W, pt.H), new Rectangle(avX - 125 * sx, gy - 336 * sy, pt.W * sx, pt.H * sy), Vector2.Zero, 0, Color.White);
+        MoleClick(avX - 125 * sx, gy - 336 * sy, sx, sy);
         fx.Draw(Ui.DT);
         Raylib.DrawRectangleGradientV(0, 290, (int)W, 72, new Color(30, 12, 20, 0), new Color(30, 12, 20, 110)); Raylib.DrawRectangleGradientH(0, 0, 60, (int)H, new Color(30, 12, 20, 110), new Color(30, 12, 20, 0));
         bool en = finishT < 0; Ui.Enabled = en;
@@ -263,7 +267,7 @@ public sealed class EditorScreen
         for (int i = 0; i < sl.Length; i++)
         {
             float yy = y + 2 + i * 19; Font.Draw(sl[i].n, x + 2, yy, Ui.Ink); float v = sl[i].g(); if (Ui.Click && Ui.Over(x + 70, yy - 3, w - 100, 14)) Snap();
-            if (Ui.Slider("b" + i, ref v, x + 76, yy, w - 122)) { sl[i].s(v); if (rng.P(.1f)) an.Punch(1); } Font.Draw(Measure(i), x + w - 2, yy, Ui.Ink, 1, 1);
+            if (Ui.Slider("b" + i, ref v, x + 76, yy, w - 122)) { sl[i].s(v); if (rng.P(.1f)) an.Punch(1); } Readout(i, x + w - 2, yy, Measure(i));
         }
         float y2 = y + 158; Font.Draw("Age", x + 2, y2 + 4, Ui.Ink); for (int i = 0; i < 4; i++) if (Ui.Button("age" + i, Catalog.Ages[i], x + 34 + i * 66, y2, 63, 18, "btnP", on: D.Age == i)) { Snap(); D.Age = i; Changed(6); }
         Font.Draw("Skin", x + 2, y2 + 26, Ui.Ink); int[] sk = AvatarData.SkinTones; float cw = w / 14; for (int i = 0; i < 14; i++)
@@ -275,25 +279,10 @@ public sealed class EditorScreen
         c |= Ui.Slider("skV", ref val, x + 68 + sw2, y2 + 66, sw2 - 4, (tx, ty, tw) => { Raylib.DrawRectangleGradientH((int)tx, (int)ty + 2, (int)tw, 6, Col.Hsv(.05f, .6f, .25f).Rl(), Col.Hsv(.07f, .2f, 1).Rl()); Raylib.DrawRectangleLinesEx(new Rectangle(tx - 1, ty + 1, tw + 2, 8), 1, Ui.Ink); });
         if (c) D.Skin = Col.Hsv(.02f + hue * .08f, M.Lerp(.62f, .2f, val), .2f + val * .8f).Hex;
     }
-    (Texture2D, bool) FaceThumb(string k, int i, Action<AvatarData> set) => Thumb("f" + k + i, HashCode.Combine(D.Skin, D.Hair.Base, D.EyeCol, D.Lip, D[Slot.Beard].A, D.Age, D.Eye * 31 + D.Mouth), p => { var d = D.Clone(); d[Slot.Hat].Id = 0; d[Slot.Glasses].Id = 0; d.Hair.Id = 0; d.Height = .5f; d.Leg = .5f; d.Age = D.Age == 3 ? 3 : 1; d.Head = .5f; set(d); ap.Draw(p, d, Pose.Stand with { HeadTilt = 0 }, 4.4f, 48, 440, outlinePx: 1); });
-    void FaceTab(float x, float y, float w)
-    {
-        int s = Subs(["Eyes", "Brows", "Nose", "Mouth", "Marks", "Beard"], x, y, w); y += 22; float gh = 344 - (y - 6) - 128; int i;
-        switch (s)
-        {
-            case 0: i = Grid("eye", Catalog.Eyes.Length, k => D.Eye == k, k => FaceThumb("e", k, d => d.Eye = k), k => Catalog.Eyes[k], x, y + 4, w, gh); if (i >= 0) { Snap(); D.Eye = i; Changed(5); } break;
-            case 1: i = Grid("brow", Catalog.Brows.Length, k => D.Brow == k, k => FaceThumb("b", k, d => d.Brow = k), k => Catalog.Brows[k], x, y + 4, w, gh); if (i >= 0) { Snap(); D.Brow = i; Changed(5); } break;
-            case 2: i = Grid("nose", Catalog.Noses.Length, k => D.Nose == k, k => FaceThumb("n", k, d => d.Nose = k), k => Catalog.Noses[k], x, y + 4, w, gh); if (i >= 0) { Snap(); D.Nose = i; Changed(5); } break;
-            case 3: i = Grid("mouth", Catalog.Mouths.Length, k => D.Mouth == k, k => FaceThumb("m", k, d => d.Mouth = k), k => Catalog.Mouths[k], x, y + 4, w, gh); if (i >= 0) { Snap(); D.Mouth = i; Changed(5); } break;
-            case 4: i = Grid("mark", Catalog.Marks.Length, k => D.Marks == k, k => FaceThumb("k", k, d => d.Marks = k), k => Catalog.Marks[k], x, y + 4, w, gh); if (i >= 0) { Snap(); D.Marks = i; Changed(5); } break;
-            default: i = Grid("beard", Catalog.Beards.Length, k => D[Slot.Beard].Id == k, k => FaceThumb("d", k, d => d[Slot.Beard].Id = k), k => Catalog.Beards[k], x, y + 4, w, gh); if (i >= 0) { Snap(); D[Slot.Beard].Id = i; Changed(5); } break;
-        }
-        float cy = y + gh + 14; if (s is 0 or 1 or 2 or 4) { Font.Draw("Eye color", x, cy, Ui.Ink, 1.25f); Palette(AvatarData.EyeCols, D.EyeCol, c => D.EyeCol = c, x, cy + 16, w, 5); }
-        else if (s == 3) { Font.Draw("Lip color", x, cy, Ui.Ink, 1.25f); Palette([0xb5605a, 0xc87a70, 0xa04a4a, 0x8c2f35, 0xd86f86, 0xe3a1a1, 0x7a3a34, 0x5a2a28, 0x9c4a7a, 0xb8473f], D.Lip, c => D.Lip = c, x, cy + 16, w, 5); }
-        else { Font.Draw("Beard color", x, cy, Ui.Ink, 1.25f); Palette(AvatarData.HairCols, D[Slot.Beard].A, c => D[Slot.Beard].A = c, x, cy + 16, w, 5); }
-    }
+    (Texture2D, bool) FaceThumb(string k, int i, Action<AvatarData> set) => Thumb("f" + k + i, HashCode.Combine(D.Skin, D.Hair.Base, D.EyeCol, D.Lip, D[Slot.Beard].A, D.Age, D.Eye * 31 + D.Mouth, FaceHash()), p => { var d = D.Clone(); d[Slot.Hat].Id = 0; d[Slot.Glasses].Id = 0; d.Hair.Id = 0; d.Height = .5f; d.Leg = .5f; d.Age = D.Age == 3 ? 3 : 1; d.Head = .5f; set(d); ap.Draw(p, d, Pose.Stand with { HeadTilt = 0 }, 4.4f, 48, 440, outlinePx: 1); });
     void HairTab(float x, float y, float w)
     {
+        if (Subs(["Style", "Shape"], x, y, w) == 1) { HairShapePage(x, y + 24, w); return; } y += 22;
         float gh = 344 - (y - 6) - 148; var hr = D.Hair; int hs = HashCode.Combine(hr.Base, hr.Highlight, hr.HighlightAmt, HashCode.Combine(hr.SplitOn, hr.Split, hr.Ombre, hr.OmbreCol), HashCode.Combine(hr.Roots, hr.RootCol, hr.UnderOn, hr.Under), D.Skin);
         int i = Grid("hair", Catalog.Hair.Length, k => hr.Id == k, k => Thumb("hair" + k, hs, p => { var d = new AvatarData { Hair = hr.Clone(), Skin = D.Skin, Eye = D.Eye, EyeCol = D.EyeCol, Mouth = D.Mouth }; foreach (var q in d.P) q.Id = 0; d.Hair.Id = k; d.OutlineCol = 0x3e2420; float L = Catalog.Hair[k].BackLen; ap.Draw(p, d, Pose.Stand with { HeadTilt = 0 }, L > 1.2f ? 2.5f : 3.1f, 48, L > 1.2f ? 266 : 322, outlinePx: 1); }), k => Catalog.Hair[k].Name, x, y + 4, w, gh);
         if (i >= 0) { Snap(); hr.Id = i; Changed(5); }

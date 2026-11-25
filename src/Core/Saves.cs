@@ -34,10 +34,10 @@ public sealed class SaveData
     }
 }
 
-/// Up to six save files, each named after its one character.
+/// Up to nine save files, each named after its one character.
 public static class Saves
 {
-    public const int Max = 6;
+    public const int Max = 9;
     public sealed class Slot { public string File; public SaveData Data; }
     static readonly JsonSerializerOptions O = new() { WriteIndented = true };
     public static string Dir => Path.Combine(Store.Dir, "saves");

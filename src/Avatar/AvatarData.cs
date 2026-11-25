@@ -29,6 +29,11 @@ public sealed class HairData
     public int RootCol { get; set; } = 0x2c1c16;
     public bool UnderOn { get; set; }
     public int Under { get; set; } = 0x5b8fd6;
+    // shape: 0 natural, then high, low, receding, widow's peak, M-shaped, thinning, bald on top
+    public int Hairline { get; set; }
+    public float Length { get; set; } = .5f;
+    public float Curl { get; set; } = .5f;
+    public bool Flip { get; set; }
     public HairData Clone() => (HairData)MemberwiseClone();
 }
 
@@ -53,6 +58,50 @@ public sealed class AvatarData
     public int Mouth { get; set; } = 0;
     public int Lip { get; set; } = 0xb5605a;
     public int Marks { get; set; } = 0; // none, freckles, blush, both, beauty mark...
+    // face sculpting, 0..1 with .5 = as drawn by default
+    public float Jaw { get; set; } = .5f;
+    public float Chin { get; set; } = .5f;
+    public float Cheeks { get; set; } = .5f;
+    public float FaceLength { get; set; } = .5f;
+    public float EyeSize { get; set; } = .5f;
+    public float EyeGap { get; set; } = .5f;
+    public float EyeHeight { get; set; } = .5f;
+    public float BrowHeight { get; set; } = .5f;
+    public float NoseSize { get; set; } = .5f;
+    public float NoseWidth { get; set; } = .5f;
+    public float MouthWidth { get; set; } = .5f;
+    public float LipSize { get; set; } = .5f;
+    public float EarSize { get; set; } = .5f;
+    // skin
+    public float Freckles { get; set; }
+    public float Wrinkles { get; set; }
+    public float LaughLines { get; set; }
+    public float UnderEyes { get; set; }
+    public float Vitiligo { get; set; }
+    public int Scar { get; set; }
+    public int Birthmark { get; set; }
+    public List<float> Moles { get; set; } = new(); // x, y pairs in head space
+    public int BrowCol { get; set; } // 0 = same as the hair
+    // makeup
+    public int Liner { get; set; }
+    public int LinerCol { get; set; } = 0x1c1216;
+    public float Shadow { get; set; }
+    public int ShadowCol { get; set; } = 0xb07a8a;
+    public float Lipstick { get; set; }
+    public int LipstickCol { get; set; } = 0xb8304a;
+    public float Blush { get; set; }
+    public int BlushCol { get; set; } = 0xe0564f;
+    public int Nails { get; set; } // 0 = bare
+    // tattoos: a design for each spot, and piercings as a set of flags
+    public int[] Tattoos { get; set; } = new int[7];
+    public int TatCol { get; set; } = 0x2a2c38;
+    public bool TatColor { get; set; }
+    public int Piercings { get; set; }
+    public int Metal { get; set; } = 0xc8ccd2;
+    // beard
+    public float BeardLen { get; set; } = .5f;
+    public float BeardThick { get; set; } = .7f;
+    public float BeardGrey { get; set; }
     public HairData Hair { get; set; } = new();
     public Piece[] P { get; set; } = Default();
     public int OutlineCol { get; set; } = 0x2a1a1c;
@@ -70,7 +119,7 @@ public sealed class AvatarData
     public AvatarData Clone()
     {
         var d = (AvatarData)MemberwiseClone();
-        d.Hair = Hair.Clone(); d.P = P.Select(p => p.Clone()).ToArray();
+        d.Hair = Hair.Clone(); d.P = P.Select(p => p.Clone()).ToArray(); d.Moles = new(Moles ?? new()); d.Tattoos = (int[])(Tattoos ?? new int[7]).Clone();
         return d;
     }
 
@@ -85,6 +134,12 @@ public sealed class AvatarData
         Age = Math.Clamp(Age, 0, 3); Eye = Math.Clamp(Eye, 0, Catalog.Eyes.Length - 1); Brow = Math.Clamp(Brow, 0, Catalog.Brows.Length - 1);
         Nose = Math.Clamp(Nose, 0, Catalog.Noses.Length - 1); Mouth = Math.Clamp(Mouth, 0, Catalog.Mouths.Length - 1); Marks = Math.Clamp(Marks, 0, Catalog.Marks.Length - 1);
         Idle = Math.Clamp(Idle, 0, Catalog.Idles.Length - 1); Voice = Math.Clamp(Voice, 0, Catalog.Voices.Length - 1);
+        Jaw = M.Clamp(Jaw); Chin = M.Clamp(Chin); Cheeks = M.Clamp(Cheeks); FaceLength = M.Clamp(FaceLength); EyeSize = M.Clamp(EyeSize); EyeGap = M.Clamp(EyeGap); EyeHeight = M.Clamp(EyeHeight); BrowHeight = M.Clamp(BrowHeight); NoseSize = M.Clamp(NoseSize); NoseWidth = M.Clamp(NoseWidth); MouthWidth = M.Clamp(MouthWidth); LipSize = M.Clamp(LipSize); EarSize = M.Clamp(EarSize);
+        Freckles = M.Clamp(Freckles); Wrinkles = M.Clamp(Wrinkles); LaughLines = M.Clamp(LaughLines); UnderEyes = M.Clamp(UnderEyes); Vitiligo = M.Clamp(Vitiligo); Scar = Math.Clamp(Scar, 0, Catalog.Scars.Length - 1); Birthmark = Math.Clamp(Birthmark, 0, Catalog.Birthmarks.Length - 1);
+        Moles ??= new(); if (Moles.Count % 2 == 1) Moles.RemoveAt(Moles.Count - 1); if (Moles.Count > 24) Moles.RemoveRange(24, Moles.Count - 24); for (int i = 0; i < Moles.Count; i++) Moles[i] = float.IsFinite(Moles[i]) ? Math.Clamp(Moles[i], -1.2f, 1.2f) : 0;
+        Liner = Math.Clamp(Liner, 0, Catalog.Liners.Length - 1); Shadow = M.Clamp(Shadow); Lipstick = M.Clamp(Lipstick); Blush = M.Clamp(Blush);
+        var t = Tattoos ?? new int[7]; if (t.Length != 7) Array.Resize(ref t, 7); for (int i = 0; i < 7; i++) t[i] = Math.Clamp(t[i], 0, Catalog.TattooDesigns.Length - 1); Tattoos = t; Piercings &= (1 << Catalog.Piercings.Length) - 1;
+        Hair.Hairline = Math.Clamp(Hair.Hairline, 0, Catalog.Hairlines.Length - 1); Hair.Length = M.Clamp(Hair.Length); Hair.Curl = M.Clamp(Hair.Curl); BeardLen = M.Clamp(BeardLen); BeardThick = M.Clamp(BeardThick); BeardGrey = M.Clamp(BeardGrey);
         Height = M.Clamp(Height); Weight = M.Clamp(Weight); Shoulder = M.Clamp(Shoulder); Waist = M.Clamp(Waist); Hip = M.Clamp(Hip); Arm = M.Clamp(Arm); Leg = M.Clamp(Leg); Head = M.Clamp(Head);
     }
 

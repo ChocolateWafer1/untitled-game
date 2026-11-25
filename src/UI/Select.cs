@@ -2,11 +2,11 @@ using System.Numerics;
 using Raylib_cs;
 namespace UntitledGame;
 
-/// Character select: six save files, each showing the one character it belongs to.
+/// Character select: nine save files, each showing the one character it belongs to.
 public sealed class SelectScreen
 {
     readonly AvatarAnim[] an = new AvatarAnim[Saves.Max]; readonly Painter[] pt = new Painter[Saves.Max]; readonly Texture2D[] tex = new Texture2D[Saves.Max]; readonly AvatarPainter ap = new(); float openT; Saves.Slot asking; float askT; readonly float[] wave = new float[Saves.Max];
-    const float CW = 188, CH = 122;
+    const float CW = 188, CH = 88, Gap = 6, Top = 52;
     public void Open() { openT = 0; asking = null; Saves.Refresh(); for (int i = 0; i < Saves.Max; i++) { an[i] ??= new AvatarAnim(); an[i].Set(Anim.Idle); if (pt[i] == null) { pt[i] = new Painter(110, 150); tex[i] = pt[i].ToTexture(); } pt[i].Clear(); pt[i].Upload(tex[i]); } for (int i = 0; i < Saves.All.Count; i++) Paint(i); }
     void Paint(int i) { pt[i].Clear(); ap.Draw(pt[i], Saves.All[i].Data.Avatar, an[i].Pose, 1.02f, 55, 142, outlinePx: 1); pt[i].Upload(tex[i]); }
     static string Time(double s) => s < 60 ? "just started" : s < 3600 ? (int)(s / 60) + "m played" : (int)(s / 3600) + "h " + (int)(s / 60 % 60) + "m played";
@@ -18,26 +18,26 @@ public sealed class SelectScreen
     public void Draw()
     {
         float W = Ui.VW, H = Ui.VH; Raylib.DrawRectangle(-2, -2, (int)W + 4, (int)H + 4, new Color(34, 18, 26, (int)(M.Clamp(openT * 3) * 130))); Font.Draw("Choose a character", W / 2, 18, Ui.Cream, 2.4f, .5f, Ui.Ink, 1); Font.Draw(Saves.All.Count + " of " + Saves.Max + " save files", W / 2, 43, new Color(240, 214, 176, 255), 1, .5f, Ui.Ink);
-        float k3 = MathF.Min(1, (W - 20) / (CW * 3 + 24)); float gx = (W - CW * 3 - 24) / 2, gy = 58; bool en = Ui.Enabled; if (asking != null) Ui.Enabled = false;
+        float k3 = MathF.Min(1, (W - 20) / (CW * 3 + 24)); float gx = (W - CW * 3 - 24) / 2, gy = Top; bool en = Ui.Enabled; if (asking != null) Ui.Enabled = false;
         for (int i = 0; i < Saves.Max; i++)
         {
-            float x = gx + i % 3 * (CW + 12), y = gy + i / 3 * (CH + 10); float born = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp(openT * 2.6f - i * .12f)); if (born <= 0) continue; Ui.PushScale(x + CW / 2, y + CH / 2, born, born);
+            float x = gx + i % 3 * (CW + 12), y = gy + i / 3 * (CH + Gap); float born = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp(openT * 2.6f - i * .08f)); if (born <= 0) continue; Ui.PushScale(x + CW / 2, y + CH / 2, born, born);
             if (i < Saves.All.Count) Card(i, x, y); else Empty(i, x, y); Ui.PopScale();
         }
-        if (Ui.Button("selback", "Back", 14, H - 33, 84, 25, "btn", "left", text: 1.25f)) Program.BackToTitle(); Ui.Enabled = en; if (asking != null) Ask();
+        if (Ui.Button("selback", "Back", 12, 12, 72, 24, "btn", "left", text: 1.25f)) Program.BackToTitle(); Ui.Enabled = en; if (asking != null) Ask();
     }
     void Card(int i, float x, float y)
     {
         var s = Saves.All[i]; var d = s.Data; var a = Ui.A("sel" + i); bool over = Ui.Over(x, y, CW, CH); a.Hover.Update(over ? 1 : 0, 300, 18, Ui.DT); if (over && !a.Was) { Snd.Play("hover", .4f); an[i].Set(Anim.Wave); an[i].StateT = 0; wave[i] = 1.5f; } a.Was = over; y += MathF.Round(-a.Hover.X * 3 * (Store.Cfg.ReduceMotion ? 0 : 1));
-        Ui.Nine("panel", x, y, CW, CH, Color.White); Raylib.DrawRectangleGradientV((int)x + 12, (int)y + 12, 66, (int)CH - 24, new Color(250, 222, 170, 255), new Color(224, 176, 124, 255)); Raylib.BeginBlendMode(BlendMode.Additive); Ui.GlowAt(x + 45, y + 54, 48, new Color(255, 220, 150, (int)(50 + 40 * M.Clamp(a.Hover.X)))); Raylib.EndBlendMode(); Raylib.DrawEllipse((int)x + 45, (int)(y + CH - 19), 20, 3.4f, new Color(90, 50, 40, 100)); Ui.Clip(x + 11, y + 4, 68, CH - 14); Ui.Tex(tex[i], x + 45 - 55, y + CH - 18 - 142, 1, Color.White); Ui.Unclip();
-        Font.Draw(d.Avatar.Name, x + 88, y + 14, Ui.Ink, Font.Width(d.Avatar.Name, 1.75f) > CW - 102 ? 1.25f : 1.75f); Font.Draw("Day " + d.Day, x + 88, y + 34, Ui.Soft); Font.Draw(d.Mined + " blocks dug", x + 88, y + 46, Ui.Soft); Font.Draw(Time(d.Seconds), x + 88, y + 58, Ui.Soft);
-        if (Ui.Button("play" + i, "Play", x + 85, y + CH - 45, 38, 28, "btnG", text: 1.25f)) { an[i].Set(Anim.Cheer); wave[i] = 3; Program.PlaySave(s, new(x + 45, y + CH / 2)); }
-        if (Ui.Button("edit" + i, null, x + 126, y + CH - 43, 24, 24, "btnB", "top", "Edit avatar")) Program.EditAvatar(s, new(x + 45, y + CH / 2), false);
-        if (Ui.Button("del" + i, null, x + CW - 36, y + CH - 43, 24, 24, "btnR", "x", "Delete")) { asking = s; askT = 0; Snd.Play("open", .7f); }
+        Ui.Nine("panel", x, y, CW, CH, Color.White); Raylib.DrawRectangleGradientV((int)x + 12, (int)y + 11, 62, (int)CH - 22, new Color(250, 222, 170, 255), new Color(224, 176, 124, 255)); Raylib.BeginBlendMode(BlendMode.Additive); Ui.GlowAt(x + 43, y + 40, 40, new Color(255, 220, 150, (int)(50 + 40 * M.Clamp(a.Hover.X)))); Raylib.EndBlendMode(); Ui.Clip(x + 12, y + 3, 62, CH - 14); Ui.Tex(tex[i], x + 43 - 55, y + 6 - 38, 1, Color.White); Ui.Unclip();
+        Font.Draw(d.Avatar.Name, x + 84, y + 11, Ui.Ink, Font.Width(d.Avatar.Name, 1.5f) > CW - 98 ? 1.15f : 1.5f); Font.Draw("Day " + d.Day + "   " + d.Mined + " dug", x + 84, y + 27, Ui.Soft); Font.Draw(Time(d.Seconds), x + 84, y + 38, Ui.Soft);
+        if (Ui.Button("play" + i, "Play", x + 83, y + CH - 33, 42, 24, "btnG", text: 1.25f)) { an[i].Set(Anim.Cheer); wave[i] = 3; Program.PlaySave(s, new(x + 45, y + CH / 2)); }
+        if (Ui.Button("edit" + i, null, x + 128, y + CH - 33, 24, 24, "btnB", "top", "Edit avatar")) Program.EditAvatar(s, new(x + 45, y + CH / 2), false);
+        if (Ui.Button("del" + i, null, x + CW - 35, y + CH - 33, 24, 24, "btnR", "x", "Delete")) { asking = s; askT = 0; Snd.Play("open", .7f); }
     }
     void Empty(int i, float x, float y)
     {
-        var (a, hit, over) = Ui.Widget("new" + i, x, y, CW, CH); float p = M.Clamp(a.Press.X, -.5f, .5f) * .3f; Ui.PushScale(x + CW / 2, y + CH / 2, 1 + a.Hover.X * .03f + p, 1 + a.Hover.X * .03f - p); Ui.Nine("paper", x, y, CW, CH, new Color(255, 255, 255, (int)(150 + 80 * M.Clamp(a.Hover.X)))); float b = M.Sin(Ui.T * 2.4f + i) * 2; Font.Draw("+", x + CW / 2, y + 34 + b, over ? Ui.Orange : Ui.Soft, 4, .5f); Font.Draw("New character", x + CW / 2, y + 78, over ? Ui.Ink : Ui.Soft, 1.25f, .5f); Ui.PopScale(); if (hit) Program.NewCharacter();
+        var (a, hit, over) = Ui.Widget("new" + i, x, y, CW, CH); float p = M.Clamp(a.Press.X, -.5f, .5f) * .3f; Ui.PushScale(x + CW / 2, y + CH / 2, 1 + a.Hover.X * .03f + p, 1 + a.Hover.X * .03f - p); Ui.Nine("paper", x, y, CW, CH, new Color(255, 255, 255, (int)(150 + 80 * M.Clamp(a.Hover.X)))); float b = M.Sin(Ui.T * 2.4f + i) * 2; Font.Draw("+", x + CW / 2, y + 18 + b, over ? Ui.Orange : Ui.Soft, 4, .5f); Font.Draw("New character", x + CW / 2, y + 58, over ? Ui.Ink : Ui.Soft, 1.25f, .5f); Ui.PopScale(); if (hit) Program.NewCharacter();
     }
     void Ask()
     {

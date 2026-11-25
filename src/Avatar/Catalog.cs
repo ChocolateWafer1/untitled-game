@@ -121,12 +121,22 @@ public static class Catalog
     public static readonly string[] Noses = ["Button", "Round", "Straight", "Wide", "Long", "Small", "Upturned", "Hooked"];
     public static readonly string[] Mouths = ["Soft Smile", "Grin", "Neutral", "Smirk", "Open Smile", "Full Lips", "Small", "Pout", "Cat Smile", "Gap Tooth"];
     public static readonly string[] Marks = ["None", "Freckles", "Rosy Cheeks", "Freckles + Rosy", "Beauty Mark", "Dimples", "Band-Aid", "Sun Kissed"];
-    public static readonly string[] Beards = ["None", "Stubble", "Mustache", "Handlebar", "Goatee", "Soul Patch", "Chin Strap", "Short Beard", "Full Beard", "Long Beard", "Braided Beard", "Sideburns", "Van Dyke", "Walrus"];
-    public static readonly string[] Glasses = ["None", "Round", "Square", "Aviator", "Cat Eye", "Half Rim", "Sunglasses", "Round Shades", "Heart Shades", "Monocle", "Goggles", "Reading"];
+    public static readonly string[] Beards = ["None", "Stubble", "Mustache", "Handlebar", "Goatee", "Soul Patch", "Chin Strap", "Short Beard", "Full Beard", "Long Beard", "Braided Beard", "Sideburns", "Van Dyke", "Walrus", "Pencil", "Chevron", "Horseshoe", "Fu Manchu", "Mutton Chops", "Garibaldi", "Balbo", "Anchor", "Imperial"];
+    public static readonly GlassDef[] GlassDefs = [new("None", GShape.None), new("Round", GShape.Round), new("Square", GShape.Square), new("Aviator", GShape.Aviator, true), new("Cat Eye", GShape.CatEye), new("Half Rim", GShape.HalfRim), new("Sunglasses", GShape.Square, true), new("Round Shades", GShape.Round, true), new("Heart Shades", GShape.Heart, true), new("Monocle", GShape.Monocle), new("Goggles", GShape.Goggles), new("Reading", GShape.Reading),
+        new("Rectangle", GShape.Rect), new("Thick Square", GShape.Square, false, 2), new("Wayfarer", GShape.Wayfarer, false, 2), new("Browline", GShape.Browline, false, 2), new("Oval", GShape.Oval), new("Rimless", GShape.Rimless), new("Oversized", GShape.Big, false, 2), new("Wire Round", GShape.Wire), new("Hexagon", GShape.Hex), new("Clear Aviator", GShape.Aviator),
+        new("Wayfarer Shades", GShape.Wayfarer, true, 2), new("Cat Eye Shades", GShape.CatEye, true, 2), new("Oversized Shades", GShape.Big, true, 2), new("Sport Shades", GShape.Shield, true)];
+    public static readonly string[] Glasses = GlassDefs.Select(g => g.Name).ToArray();
     public static readonly string[] Earrings = ["None", "Studs", "Hoops", "Drops", "Pearls", "Stars", "Feathers", "Single Hoop", "Curls"];
     public static readonly string[] Necks = ["None", "Scarf", "Long Scarf", "Chunky Scarf", "Bandana", "Pendant", "Pearls", "Beads", "Necktie", "Bow Tie", "Choker", "Neckerchief", "Camera"];
     public static readonly string[] Backs = ["None", "Backpack", "Hiking Pack", "Satchel", "Tote Bag", "Wicker Basket", "Crossbody", "Frog Pack", "Guitar Case", "Duffel Bag"];
     public static readonly string[] Gloves = ["None", "Gloves", "Mittens", "Fingerless", "Watch", "Bracelets", "Wristband", "Long Gloves", "Arm Warmers"];
+    public static readonly string[] Scars = ["None", "Brow", "Cheek", "Lip", "Nose", "Eye", "Chin"];
+    public static readonly string[] Birthmarks = ["None", "Cheek", "Forehead", "Jaw", "Temple", "Neck"];
+    public static readonly string[] Liners = ["None", "Thin", "Winged", "Smoky", "Bold Wing", "Lower Line"];
+    public static readonly string[] TattooSpots = ["Left forearm", "Right forearm", "Left upper arm", "Right upper arm", "Neck", "Face", "Hands"];
+    public static readonly string[] TattooDesigns = ["None", "Anchor", "Heart", "Rose", "Star", "Swallow", "Dagger", "Snake", "Moon", "Wave", "Script", "Band", "Full Sleeve", "Vine", "Cross", "Paw", "Butterfly", "Lightning", "Dots", "Sun", "Feather"];
+    public static readonly string[] Piercings = ["Nose stud", "Nose ring", "Septum", "Eyebrow", "Lip ring", "Labret", "Snake bites", "Bridge", "Monroe", "Cheeks", "Ear cuff", "Industrial"];
+    public static readonly string[] Hairlines = ["Natural", "High", "Low", "Receding", "Widow's Peak", "M-Shaped", "Thinning", "Bald Top"];
     public static readonly string[] Ages = ["Teen", "Young Adult", "Adult", "Elder"];
     public static readonly string[] Idles = ["Relaxed", "Hands on Hips", "Bouncy", "Shy", "Confident", "Sleepy"];
     public static readonly string[] Voices = ["Warm", "Bright", "Deep", "Squeaky", "Mumbly", "Airy"];
