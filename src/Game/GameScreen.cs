@@ -31,7 +31,7 @@ public sealed partial class GameScreen
     public Vector2 ToScreen(Vector2 w) => new(w.X - CamX, w.Y - CamY);
     public bool MenuOpen => panel != Panel.None;
     bool hidePlayer; /// For pictures of the world: no character and no HUD.
-    public void CleanForShots(bool on) { hidePlayer = on; hideHud = on; }
+    public void CleanForShots(bool on, bool keepPlayer = false) { hidePlayer = on && !keepPlayer; hideHud = on; }
 
     public void Update(float dt)
     {

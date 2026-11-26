@@ -21,7 +21,7 @@ public static class Program
     static void Run(bool dev)
     {
         Store.LoadAll(); Raylib.SetTraceLogLevel(dev && shot == "passes" ? TraceLogLevel.Info : TraceLogLevel.Warning);
-        Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "Untitled Game"); if (dev && shot == "backdrops") { Dev.Rt = Raylib.LoadRenderTexture(1920, 1080); Ui.SizeOverride = (1920, 1080); } Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
+        Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "Untitled Game"); if (dev && shot is "backdrops" or "iconshot") { Dev.Rt = Raylib.LoadRenderTexture(1920, 1080); Ui.SizeOverride = (1920, 1080); } Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
         if (!dev) ApplyWindow();
         Snd.Load(dev); Ui.Load(); Editor = new EditorScreen { Done = EditorDone, Back = EditorBack }; Game = new GameScreen(new World(dev ? 4242 : Saves.All.OrderByDescending(q => q.Data.Played).FirstOrDefault()?.Data.Seed ?? Random.Shared.Next(1, int.MaxValue)));
         Dev.Shots = shotDir;
@@ -109,7 +109,7 @@ public static class Dev
     {
         switch (a[0])
         {
-            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--launcher": LauncherArt(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--hand": { var big = new Painter(1000, 340); int k = 0; foreach (Col sk in new Col[] { 0xf0c4a0, 0xc68a5e, 0x7e4b30 }) { Blit(GameScreen.HandArt(34, sk, k == 0 ? 0x2f9a94 : 0xc65a4a), big, 10 + k * 320, 10, 8); k++; } Finish(big, a[1]); return true; } case "--weight": { int[] lbs = [100, 110, 120, 130, 140, 150, 170, 190, 220, 260, 300]; var big = new Painter(lbs.Length * 130, 300); var ap = new AvatarPainter(); var one = new Painter(130, 300); for (int i = 0; i < lbs.Length; i++) { float lo = 0, hi = 1; for (int k = 0; k < 24; k++) { float m = (lo + hi) / 2; if (Rig.Pounds(new AvatarData { Weight = m }) < lbs[i]) lo = m; else hi = m; } one.Clear(); var d = new AvatarData { Weight = lo }; var rg = new Rig(d); ap.Draw(one, d, Pose.Stand, 2.5f, 65, 290, outlinePx: 2); Blit(one, big, i * 130, 0); Console.WriteLine($"{lbs[i]} lb at average height: slider {lo:0.00}, waist {rg.Waist * 67 / 95.2f * 5.8f:0.0} in"); } Finish(big, a[1]); return true; } case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
+            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--launcher": LauncherArt(a[1]); return true; case "--icon2": Icon2(a[1], a.Length > 2 ? int.Parse(a[2]) : 8); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--hand": { var big = new Painter(1000, 340); int k = 0; foreach (Col sk in new Col[] { 0xf0c4a0, 0xc68a5e, 0x7e4b30 }) { Blit(GameScreen.HandArt(34, sk, k == 0 ? 0x2f9a94 : 0xc65a4a), big, 10 + k * 320, 10, 8); k++; } Finish(big, a[1]); return true; } case "--weight": { int[] lbs = [100, 110, 120, 130, 140, 150, 170, 190, 220, 260, 300]; var big = new Painter(lbs.Length * 130, 300); var ap = new AvatarPainter(); var one = new Painter(130, 300); for (int i = 0; i < lbs.Length; i++) { float lo = 0, hi = 1; for (int k = 0; k < 24; k++) { float m = (lo + hi) / 2; if (Rig.Pounds(new AvatarData { Weight = m }) < lbs[i]) lo = m; else hi = m; } one.Clear(); var d = new AvatarData { Weight = lo }; var rg = new Rig(d); ap.Draw(one, d, Pose.Stand, 2.5f, 65, 290, outlinePx: 2); Blit(one, big, i * 130, 0); Console.WriteLine($"{lbs[i]} lb at average height: slider {lo:0.00}, waist {rg.Waist * 67 / 95.2f * 5.8f:0.0} in"); } Finish(big, a[1]); return true; } case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
         }
         return false;
     }
@@ -204,6 +204,20 @@ public static class Dev
         void At(Vector2 p, float clock, Weather w = Weather.Clear) { G.Travel(p); G.Env.Clock = clock; G.Env.SetWeather(w, true); G.Env.WeatherT = 999; }
         void Shot(string nm, Vector2? p, float clock, Weather w = Weather.Clear, int warm = 110) { if (p == null) { Console.WriteLine("no spot for " + nm); return; } At(p.Value, clock, w); Steps(warm); G.Env.Clock = clock; Steps(2); Save(nm); }
         Vector2 Ground(int x) => new(x * 24 + 12, G.W.Top[x] * 24);
+        if (n == "iconshot")
+        {
+            // the character digging, for the launcher icon: a few spots and moments, cropped later
+            G.CleanForShots(true, true); int k = 0;
+            foreach (var (b, clock, seed) in new (Biome, float, int)[] { (Biome.Meadow, .70f, 3), (Biome.Meadow, .45f, 8), (Biome.Blossom, .46f, 5), (Biome.Amber, .72f, 11) })
+            {
+                var av = AvatarData.Random(new Rng(seed)); av.Name = "Icon"; av[Slot.Glasses].Id = 0; G.P.SetAvatar(av); var at = G.FindBiome(b); if (at == null) continue; At(at.Value, clock); Steps(140); G.Env.Clock = clock;
+                int px = (int)(G.P.P.X / 24), py = (int)((G.P.P.Y - 1) / 24); G.P.Dir = 1; G.W.Set(px + 1, py, T.Dirt); G.W.Set(px + 1, py - 1, T.Stone); Steps(4);
+                Vector2 Scr2(int x, int y) => new(x * 24 + 12 - G.CamX, y * 24 + 12 - G.CamY); Ui.FakeClick = true; Ui.FakeHold = true;
+                for (int f = 0; f < 34; f++) { Ui.FakeMouse = Scr2(px + 1, py - 1); Steps(1); if (f >= 14 && f % 2 == 0) { var c = G.ToScreen(G.P.P + new Vector2(0, -30)); Save($"ic_{k}_{f}"); Console.WriteLine($"ic_{k}_{f} {c.X * 3:0} {c.Y * 3:0}"); } }
+                Ui.FakeHold = false; Steps(2); k++;
+            }
+            return;
+        }
         if (n == "backdrops")
         {
             G.CleanForShots(true); Ui.FakeMouse = new(1, 1);
@@ -381,6 +395,40 @@ public static class Dev
         // trim empty rows and columns
         int x0 = lg.W, x1 = 0, y0 = lg.H, y1 = 0; for (int y = 0; y < lg.H; y++) for (int x = 0; x < lg.W; x++) if (lg.Px[y * lg.W + x].A > 0) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
         var tr = new Painter(x1 - x0 + 1, y1 - y0 + 1); for (int y = 0; y < tr.H; y++) for (int x = 0; x < tr.W; x++) tr.Px[y * tr.W + x] = lg.Px[(y + y0) * lg.W + x + x0]; tr.Export(Path.Combine(dir, "logo.png")); Console.WriteLine($"icon 256x256, logo {tr.W}x{tr.H}");
+    }
+    /// The launcher icon as a little scene from the game: your character punching a cracking block on a grassy ledge
+    /// under a dusk sky. Painted at 128 px with the game's own tiles and avatar, then doubled so it stays pixel art.
+    static void Icon2(string dir, int seed)
+    {
+        const int N = 128; var c = new Painter(N, N); var rng = new Rng(seed);
+        // sky: lavender to peach, in soft bands, with a low sun
+        for (int y = 0; y < N; y++) for (int x = 0; x < N; x++) { float k = MathF.Floor(y / 6f) * 6 / N; Col col = Col.Lerp(0x9c7fc8, 0xf6b89a, M.Smooth(0, .95f, k)); float d = MathF.Sqrt((x - 34) * (x - 34) + (y - 66) * (y - 66)); if (d < 13) col = Col.Lerp(col, 0xfff0c8, .85f); else if (d < 30) col = Col.Lerp(col, 0xffd8a8, .35f * (1 - (d - 13) / 17)); c.Px[y * N + x] = col.Rl(); }
+        // far hills
+        for (int x = 0; x < N; x++) { int h1 = 78 + (int)(M.Sin(x * .07f + 1) * 5 + M.Sin(x * .19f) * 2), h2 = 88 + (int)(M.Sin(x * .05f + 3) * 4 + M.Sin(x * .23f + 1) * 2); for (int y = h1; y < N; y++) c.Px[y * N + x] = ((Col)0xb98aa8).Rl(); for (int y = h2; y < N; y++) c.Px[y * N + x] = ((Col)0x9d7896).Rl(); }
+        // ground: grass-topped dirt blocks along the bottom, one stone block in front of the character being hit
+        const int B = 20; int gy = N - B - 4; var dirt = Tiles.Chunk(T.Dirt, B); var stone = Tiles.Chunk(T.Stone, B);
+        void Blit2(Painter src, int ox, int oy) { for (int y = 0; y < src.H; y++) for (int x = 0; x < src.W; x++) { var q = src.Px[y * src.W + x]; int px = ox + x, py = oy + y; if (q.A > 0 && px >= 0 && py >= 0 && px < N && py < N) c.Px[py * N + px] = q; } }
+        for (int bx = -6; bx < N; bx += B) { Blit2(dirt, bx, gy); Blit2(dirt, bx, gy + B); }
+        Col g0 = 0x86b050, g1 = 0x5f8a3a, g2 = 0xa8cc6a; for (int x = 0; x < N; x++) { int t = (x * 7 + 3) % 5 == 0 ? 2 : (x * 3) % 4 == 0 ? 1 : 0; for (int y = gy - t; y < gy + 4; y++) c.Px[y * N + x] = (y == gy - t ? g2 : y >= gy + 2 ? g1 : g0).Rl(); }
+        int sx = 76; Blit2(dirt, sx, gy - B); for (int x = sx; x < sx + B; x++) for (int y = gy - B - 2; y < gy - B + 3; y++) c.Px[y * N + x] = (y == gy - B - 2 ? g2 : y >= gy - B + 1 ? g1 : g0).Rl(); Blit2(stone, sx, gy - 2 * B);
+        // cracks running from where the fist lands
+        Col ck = 0x3a3440; int cy0 = gy - 2 * B + 10; foreach (var (x0, y0, x1, y1) in new[] { (sx + 1, cy0, sx + 8, cy0 + 3), (sx + 8, cy0 + 3, sx + 12, cy0 - 4), (sx + 8, cy0 + 3, sx + 11, cy0 + 8), (sx + 12, cy0 - 4, sx + 16, cy0 - 6) }) { int n = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0)); for (int i = 0; i <= n; i++) { int x = x0 + (x1 - x0) * i / Math.Max(1, n), y = y0 + (y1 - y0) * i / Math.Max(1, n); c.Px[y * N + x] = ck.Rl(); } }
+        // the character, mid-blow, painted at pixel size
+        var av = AvatarData.Random(new Rng(seed)); av[Slot.Glasses].Id = 0; av[Slot.Hat].Id = 0;
+        var an = new AvatarAnim { Dir = 1, Aim = Vector2.Normalize(new Vector2(1, -.05f)), MineAmt = 1, Fps = 18, StrikeLen = .5f }; an.Set(Anim.Mine); float best = -1e9f; Pose hitPose = an.Pose; var ap = new AvatarPainter(); var scratch = new Painter(N, N); const float SC = .68f; const int AX = 52;
+        for (int i = 0; i < 480; i++) { if (!an.Update(1 / 120f) || an.StrikeN % 4 != 0) continue; scratch.Clear(); ap.Draw(scratch, av, an.Pose, SC, AX, gy, outlinePx: 1); var face = new Vector2((sx + 3 - AX) / SC, (gy - 2 * B + 10 - gy) / SC); float reach = -MathF.Min(Vector2.Distance(ap.HandL, face), Vector2.Distance(ap.HandR, face)); if (reach > best) { best = reach; hitPose = an.Pose; } }
+        var one = new Painter(N, N); ap.Draw(one, av, hitPose, SC, AX, gy, outlinePx: 1); Blit2(one, 0, 0);
+        // flying chips and the impact sparkle
+        foreach (var (x, y, col) in new[] { (sx - 4, cy0 - 7, 0x9a958f), (sx - 8, cy0 - 12, 0x857f88), (sx - 2, cy0 - 14, 0xb0aab4), (sx - 10, cy0 - 3, 0x857f88), (sx + 22, cy0 - 9, 0x9a958f) }) for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) c.Px[(y + j) * N + x + i] = ((Col)col).Rl();
+        Col sp = 0xfff6dc; int ix = sx - 1, iy = cy0 + 1; foreach (var (dx, dy) in new[] { (0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (2, -2), (-2, 2) }) c.Px[(iy + dy) * N + ix + dx] = sp.Rl();
+        // doubled, with rounded corners and a soft dark rim
+        var ic = new Painter(256, 256); const float R = 60;
+        for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++)
+        {
+            float cx = M.Clamp(x + .5f, R, 256 - R), cy = M.Clamp(y + .5f, R, 256 - R), d = MathF.Sqrt((x + .5f - cx) * (x + .5f - cx) + (y + .5f - cy) * (y + .5f - cy)); float a = M.Clamp(R + .5f - d); if (a <= 0) continue;
+            var q = c.Px[(y / 2) * N + x / 2]; var col = new Col(q.R / 255f, q.G / 255f, q.B / 255f); if (d > R - 4) col = col.Shade(-.25f); ic.Px[y * 256 + x] = col.Rl(a);
+        }
+        ic.Export(Path.Combine(dir, "icon.png")); var small = new Painter(N, N); Array.Copy(c.Px, small.Px, N * N); small.Export(Path.Combine(dir, "icon-128.png"));
     }
     static void TatBig(string path)
     {
