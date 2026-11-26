@@ -417,16 +417,17 @@ public static class Dev
         var av = AvatarData.Random(new Rng(seed)); av[Slot.Glasses].Id = 0; av[Slot.Hat].Id = 0;
         var an = new AvatarAnim { Dir = 1, Aim = Vector2.Normalize(new Vector2(1, -.05f)), MineAmt = 1, Fps = 18, StrikeLen = .5f }; an.Set(Anim.Mine); float best = -1e9f; Pose hitPose = an.Pose; var ap = new AvatarPainter(); var scratch = new Painter(N, N); const float SC = .68f; const int AX = 52;
         for (int i = 0; i < 480; i++) { if (!an.Update(1 / 120f) || an.StrikeN % 4 != 0) continue; scratch.Clear(); ap.Draw(scratch, av, an.Pose, SC, AX, gy, outlinePx: 1); var face = new Vector2((sx + 3 - AX) / SC, (gy - 2 * B + 10 - gy) / SC); float reach = -MathF.Min(Vector2.Distance(ap.HandL, face), Vector2.Distance(ap.HandR, face)); if (reach > best) { best = reach; hitPose = an.Pose; } }
-        var one = new Painter(N, N); ap.Draw(one, av, hitPose, SC, AX, gy, outlinePx: 1); Blit2(one, 0, 0);
+        var one = new Painter(N, N); ap.Draw(one, av, hitPose, SC, AX, gy, outlinePx: 1); Blit2(one, 0, 0); int bx0 = N, bx1 = sx + B, by0 = N; for (int y = 0; y < N; y++) for (int x = 0; x < N; x++) if (one.Px[y * N + x].A > 0) { bx0 = Math.Min(bx0, x); by0 = Math.Min(by0, y); }
         // flying chips and the impact sparkle
         foreach (var (x, y, col) in new[] { (sx - 4, cy0 - 7, 0x9a958f), (sx - 8, cy0 - 12, 0x857f88), (sx - 2, cy0 - 14, 0xb0aab4), (sx - 10, cy0 - 3, 0x857f88), (sx + 22, cy0 - 9, 0x9a958f) }) for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) c.Px[(y + j) * N + x + i] = ((Col)col).Rl();
         Col sp = 0xfff6dc; int ix = sx - 1, iy = cy0 + 1; foreach (var (dx, dy) in new[] { (0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (2, -2), (-2, 2) }) c.Px[(iy + dy) * N + ix + dx] = sp.Rl();
-        // doubled, with rounded corners and a soft dark rim
+        // zoomed onto the character and the block (3x when it fits, so every game pixel stays square), rounded corners, dark rim
+        int span = Math.Max(bx1 - bx0, gy + 6 - by0) + 8, k3 = span <= 85 ? 3 : 2, cs = 256 / k3; int ox0 = Math.Clamp((bx0 + bx1) / 2 - cs / 2, 0, N - cs), oy0 = Math.Clamp(gy + 8 - cs, 0, N - cs); Console.WriteLine($"icon crop {cs}px at {ox0},{oy0}, x{k3}");
         var ic = new Painter(256, 256); const float R = 60;
         for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++)
         {
             float cx = M.Clamp(x + .5f, R, 256 - R), cy = M.Clamp(y + .5f, R, 256 - R), d = MathF.Sqrt((x + .5f - cx) * (x + .5f - cx) + (y + .5f - cy) * (y + .5f - cy)); float a = M.Clamp(R + .5f - d); if (a <= 0) continue;
-            var q = c.Px[(y / 2) * N + x / 2]; var col = new Col(q.R / 255f, q.G / 255f, q.B / 255f); if (d > R - 4) col = col.Shade(-.25f); ic.Px[y * 256 + x] = col.Rl(a);
+            var q = c.Px[Math.Min(N - 1, oy0 + y / k3) * N + Math.Min(N - 1, ox0 + x / k3)]; var col = new Col(q.R / 255f, q.G / 255f, q.B / 255f); if (d > R - 4) col = col.Shade(-.25f); ic.Px[y * 256 + x] = col.Rl(a);
         }
         ic.Export(Path.Combine(dir, "icon.png")); var small = new Painter(N, N); Array.Copy(c.Px, small.Px, N * N); small.Export(Path.Combine(dir, "icon-128.png"));
     }
