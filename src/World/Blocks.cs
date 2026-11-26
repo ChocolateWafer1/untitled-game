@@ -41,4 +41,6 @@ public static class Blocks
     public static bool Minable(T t) => t != T.Air && t != T.Heartstone;
     public static bool Grows(T t) => All[(int)t].Grows;
     public static bool Glows(T t) => All[(int)t].Glow != 0;
+    /// The material a block sounds and breaks like.
+    public static string Mat(T t) => t switch { T.Ice => "ice", T.Crystal => "crystal", T.Glowrock or T.Geode or T.Ember => "ore", T.Amberwood => "wood", T.Snow => "snow", _ => All[(int)t].Surf switch { "sand" => "sand", "dirt" => "dirt", "wood" => "wood", "snow" => "snow", _ => "stone" } };
 }

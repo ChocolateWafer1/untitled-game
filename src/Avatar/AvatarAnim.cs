@@ -1,14 +1,14 @@
 using System.Numerics;
 namespace UntitledGame;
 
-public enum Anim { Idle, Walk, Run, Jump, Fall, Land, Crouch, CrouchWalk, Slide, Climb, Swim, Tread, Sit, Wave, Dance, Laugh, Point, Cheer, Think, Sleep, Admire, Ledge, ShowOff, Shrug, Bow, SitGround, Mine }
+public enum Anim { Idle, Walk, Run, Jump, Fall, Land, Crouch, CrouchWalk, Slide, Climb, Swim, Tread, Sit, Wave, Dance, Laugh, Point, Cheer, Think, Sleep, Admire, Ledge, ShowOff, Shrug, Bow, SitGround, Mine, ShakeOut }
 
 /// Turns movement into poses. Poses are sampled 12 times a second ("on twos") for a hand drawn feel,
 /// while position, cloth and physics keep running smoothly underneath.
 public sealed class AvatarAnim
 {
     public Anim State = Anim.Idle; public float StateT, Phase; public int Dir = 1; public Vector2 Vel; public float Wind, Fps = 12, Talk;
-    public Vector2 Look; public int AdmireSlot; public int IdleStyle; public float Stride = 1; public Vector2 Aim = new(1, 0); public float MineAmt, Strike; public int StrikeN; float strikeT;
+    public Vector2 Look; public int AdmireSlot; public int IdleStyle; public float Stride = 1; public Vector2 Aim = new(1, 0); public float MineAmt, Strike; public int StrikeN; public bool Final; public int ShakeKind; float strikeT;
     public Action<string> Event; // "step", "stroke", ...
     public Pose Pose = Pose.Stand;
     Spring hemX = new(), hemY = new(), hairX = new(), hairY = new(), slX = new(), slY = new(), squash = new(), turn = new();
@@ -27,6 +27,8 @@ public sealed class AvatarAnim
     public void Set(Anim a) { if (a != State) { State = a; StateT = 0; } }
     public void Punch(float v) => squash.V += v;
     public float Squash => squash.X;
+    /// Hair, hems and sleeves keep going for a moment when a blow stops the body dead.
+    void Jolt(float k) { float ax = Aim.X; hairX.V += ax * 30 * k; hairY.V += 16 * k; hemX.V += ax * 14 * k; hemY.V += 9 * k; slX.V += ax * 18 * k; slY.V += 10 * k; }
     public void Gust(float v) { hemX.V += v * 14; hairX.V += v * 18; slX.V += v * 10; }
 
     public bool Update(float dt, float scale = PxPerUnit)
@@ -43,7 +45,7 @@ public sealed class AvatarAnim
         else if (State == Anim.Climb) { float o = Phase; Phase += MathF.Abs(Vel.Y) * dt * .085f; if ((int)(o / M.PI) != (int)(Phase / M.PI)) Event?.Invoke("climb"); }
         else if (State is Anim.Swim or Anim.Tread) { float o = Phase; Phase += dt * (State == Anim.Swim ? 4.6f : 2.6f); if ((int)(o / M.PI) != (int)(Phase / M.PI)) Event?.Invoke("stroke"); }
         else if (State == Anim.Dance) Phase += dt * 7.5f;
-        if (MineAmt > .5f) { float o = strikeT; strikeT += dt / StrikeLen; if (o < Hit && strikeT >= Hit) { Event?.Invoke("strike"); Punch(1.2f); } if (strikeT >= 1) { strikeT -= 1; StrikeN++; } Strike = strikeT; } else { strikeT = 0; Strike = 0; }
+        if (MineAmt > .5f) { float o = strikeT; strikeT += dt / StrikeLen; if (o < Hit && strikeT >= Hit) { bool fin = Final; Event?.Invoke("strike"); Punch(fin ? 2.6f : 1.2f); Jolt(fin ? 1.6f : 1); } if (strikeT >= 1) { strikeT -= 1; StrikeN++; } Strike = strikeT; } else { strikeT = 0; Strike = 0; }
         // secondary motion
         Vector2 accel = (Vel - lastVel) / MathF.Max(dt, .001f); lastVel = Vel;
         float gust = Wind * (1 + .6f * M.Sin(t * 1.9f) + .35f * M.Sin(t * 4.3f + 1));
@@ -172,6 +174,22 @@ public sealed class AvatarAnim
             case Anim.Point: if (d > 0) { p.ArmR0 = 1.45f; p.ArmR1 = 1.55f; } else { p.ArmL0 = -1.45f; p.ArmL1 = -1.55f; } p.LookX = d; p.Brow = .5f; p.Lean = d * .04f; break;
             case Anim.Cheer: { float c = MathF.Abs(M.Sin(s * 8)); p.ArmL0 = -2.2f - c * .2f; p.ArmL1 = -2.75f - c * .3f; p.ArmR0 = 2.2f + c * .2f; p.ArmR1 = 2.75f + c * .3f; p.OpenL = p.OpenR = 1; p.WristL = c * .2f; p.WristR = -c * .2f; p.Lift = c * 5; p.LegL0 = -.2f - c * .2f; p.LegR0 = .2f + c * .2f; p.LegL1 = .1f; p.LegR1 = -.1f; p.Mouth = .9f; p.Brow = 1; break; }
             case Anim.Think: p.ArmR0 = .35f; p.ArmR1 = -2.35f; p.ArmL0 = -.13f; p.ArmL1 = .1f; p.HeadTilt = .12f; p.LookX = .8f; p.LookY = -.9f; p.Brow = .4f; break;
+            case Anim.ShakeOut:
+                {
+                    float k = M.Smooth(0, .14f, s) * (1 - M.Smooth(1.0f, 1.25f, s));
+                    if (ShakeKind == 0)
+                    {   // shake the hitting hand loose
+                        float fl = MathF.Sin(s * 40) * M.Smooth(.12f, .2f, s) * (1 - M.Smooth(.75f, .95f, s)); float a0 = d * M.Lerp(.15f, .62f, k), a1 = d * (M.Lerp(-.08f, 1.55f, k) + fl * .22f);
+                        if (d > 0) { p.ArmR0 = a0; p.ArmR1 = a1; p.WristR = fl * .9f; p.OpenR = 1; } else { p.ArmL0 = a0; p.ArmL1 = a1; p.WristL = -fl * .9f; p.OpenL = 1; }
+                        p.LookX = d * .6f; p.LookY = .5f * k; p.HeadTilt = -d * .05f * k; p.Brow = .3f * k; p.Mouth = .15f * k;
+                    }
+                    else
+                    {   // brush the dust off: palms meet and rub
+                        float rub = MathF.Sin(s * 18) * M.Smooth(.15f, .25f, s) * (1 - M.Smooth(.85f, 1f, s)); float l0 = 0, l1 = 0, r0 = 0, r1 = 0; Reach(-1, new(d * 9 + rub * 2.4f, -14), ref l0, ref l1); Reach(1, new(d * 9 - rub * 2.4f, -13), ref r0, ref r1);
+                        p.ArmL0 = M.Lerp(p.ArmL0, l0, k); p.ArmL1 = M.Lerp(p.ArmL1, l1, k); p.ArmR0 = M.Lerp(p.ArmR0, r0, k); p.ArmR1 = M.Lerp(p.ArmR1, r1, k); p.OpenL = p.OpenR = 1; p.LookX = d * .3f; p.LookY = .8f * k; p.HeadY = .4f * k;
+                    }
+                    break;
+                }
             case Anim.Shrug: p.ArmL0 = -.55f; p.ArmL1 = -1.85f; p.ArmR0 = .55f; p.ArmR1 = 1.85f; p.OpenL = p.OpenR = 1; p.WristL = -.35f; p.WristR = .35f; p.HeadTilt = .14f; p.Brow = 1; p.HeadY = .6f; break;
             case Anim.Bow: // folds forward, toward the camera
                 { float k = M.Smooth(0, .38f, s) * (1 - M.Smooth(1.35f, 1.8f, s)); p.Bend = k; p.ArmL0 = M.Lerp(-.17f, -.20f, k); p.ArmL1 = M.Lerp(.05f, 1.15f, k); p.ArmR0 = M.Lerp(.15f, .26f, k); p.ArmR1 = M.Lerp(-.08f, .10f, k); p.LookY = k; p.LookX = 0; if (k > .5f) p.Blink = 1; break; }
@@ -202,19 +220,22 @@ public sealed class AvatarAnim
     /// then recoils; left and right take turns. Straight down becomes a two-handed hammer, straight up an overhead dig.
     void MinePose(ref Pose p)
     {
-        float u = Strike, d = MathF.Abs(Aim.X) > .25f ? MathF.Sign(Aim.X) : Dir; float coil = M.Smooth(0, Hit * .72f, u) * (1 - M.Smooth(Hit * .78f, Hit, u)), hit = M.Smooth(Hit * .78f, Hit, u) * (1 - M.Smooth(Hit + .10f, 1, u)); bool free = State is Anim.Mine or Anim.Idle or Anim.Crouch; float low = M.Clamp((Aim.Y - .25f) * 2), down = M.Clamp((Aim.Y - .74f) * 8), up = M.Clamp((-Aim.Y - .55f) * 3); bool over = (StrikeN & 1) == 1; bool leadR = d > 0;
+        float u = Strike, d = MathF.Abs(Aim.X) > .25f ? MathF.Sign(Aim.X) : Dir; float coil = M.Smooth(0, Hit * .72f, u) * (1 - M.Smooth(Hit * .78f, Hit, u)), hit = M.Smooth(Hit * .78f, Hit, u) * (1 - M.Smooth(Hit + .10f, 1, u)); bool free = State is Anim.Mine or Anim.Idle or Anim.Crouch; float low = M.Clamp((Aim.Y - .25f) * 2), down = M.Clamp((Aim.Y - .74f) * 8), up = M.Clamp((-Aim.Y - .55f) * 3); bool over = (StrikeN & 1) == 1; bool leadR = (d > 0) != (((StrikeN >> 1) & 1) == 1); // a drive and an overhand with one hand, then the same with the other
         float th = MathF.Atan2(Aim.X * .999f + d * .04f, Aim.Y); // the direction of the block, 0 down, +-pi/2 to the sides
         if (down > .4f)
         {
-            float ca = coil * coil, cb = MathF.Sqrt(coil), a0 = M.Lerp(M.Lerp(.42f, 2.2f, ca), .40f, hit), a1 = M.Lerp(M.Lerp(-.3f, 3.6f, cb), -.62f, hit); p.ArmL0 = -a0; p.ArmL1 = -a1; p.ArmR0 = a0; p.ArmR1 = a1; if (free) { p.Bend = M.Lerp(.10f, .62f, hit) * (1 - coil * .8f); p.ForeL = p.ForeR = M.Lerp(.16f, .56f, hit); p.LegL0 = -.28f; p.LegR0 = .28f; p.LegL1 = .06f; p.LegR1 = -.06f; p.HeadY = -coil * .8f + hit * .6f; } p.LookX = d * .2f; p.LookY = 1; p.Brow = -.2f + coil * .5f; p.Mouth = MathF.Max(p.Mouth, coil * .25f); return;
+            float ca = coil * coil, cb = MathF.Sqrt(coil), a0 = M.Lerp(M.Lerp(.42f, 2.2f, ca), .40f, hit), a1 = M.Lerp(M.Lerp(-.3f, 3.6f, cb), -.62f, hit); p.ArmL0 = -a0; p.ArmL1 = -a1; p.ArmR0 = a0; p.ArmR1 = a1; if (free) { p.Bend = M.Lerp(.10f, .62f, hit) * (1 - coil * .8f); p.ForeL = p.ForeR = M.Lerp(.16f, .56f, hit); p.LegL0 = -.28f; p.LegR0 = .28f; p.LegL1 = .06f; p.LegR1 = -.06f; p.HeadY = -coil * .8f + hit * .6f; } p.LookX = d * .2f; p.LookY = 1; p.Brow = -.2f + coil * .5f; p.Mouth = MathF.Max(p.Mouth, coil * .25f); if (Final && free) { p.Bend += .14f * hit; p.HeadY += .4f * hit; p.Brow += .3f * coil; } return;
         }
         // the arm on the block's side does the striking: first a straight drive from the ribs, then an overhand from behind the head
         float back0 = over ? d * 2.25f : -d * .55f, back1 = over ? d * 3.75f : d * 1.95f, reach0 = th * .90f, reach1 = th * 1.02f; if (up > .4f) { back0 = over ? d * 1.35f : d * .7f; back1 = over ? d * 3.1f : d * 2.5f; reach0 = d * 2.62f; reach1 = d * 3.06f; }
         float h0 = M.Lerp(M.Lerp(d * .55f, back0, coil), reach0, hit), h1 = M.Lerp(M.Lerp(d * 1.5f, back1, coil), reach1, hit), g0 = -d * (.34f + .34f * hit - .12f * coil), g1 = -d * (M.Lerp(M.Lerp(-.55f, -.9f, coil), .55f, hit)); // the far arm guards, then swings back as a counterweight
+        float fol = M.Smooth(Hit + .02f, Hit + .16f, u) * (1 - M.Smooth(Hit + .16f, .97f, u)) * (Final ? 1.8f : 1); h0 += d * .10f * fol; h1 += d * .16f * fol; // carries a little past the block, then settles
         if (leadR) { p.ArmR0 = h0; p.ArmR1 = h1; p.ArmL0 = g0; p.ArmL1 = g1; } else { p.ArmL0 = h0; p.ArmL1 = h1; p.ArmR0 = g0; p.ArmR1 = g1; }
         p.Lean = p.Lean * .4f + d * (-.15f * coil + .26f * hit) * (1 - up * .7f); p.HeadTilt = d * (-.05f * coil + .06f * hit); p.HeadX = d * (hit * 1.8f - coil); p.HeadY = up * -1.2f + hit * .3f; p.LookX = d * .9f; p.LookY = M.Clamp(Aim.Y * 1.4f, -1, 1); p.Brow = -.1f + coil * .6f; p.Mouth = MathF.Max(p.Mouth, hit * .3f);
+        p.Lean += d * (.05f * fol - .03f * coil) + (Final ? d * (.10f * hit - .06f * coil) : 0); p.HeadX += d * .5f * fol; if (Final) { p.Brow += .35f * coil; p.Mouth = MathF.Max(p.Mouth, hit * .55f); }
         if (low > 0 && free) { p.Bend = low * (.10f + .20f * hit); p.ForeL = p.ForeR = low * (.22f + .16f * hit); }
         if (free) { p.RootX = d * (-2.2f * coil + 3.2f * hit); p.LegL0 = -.26f - d * .06f * hit + d * .05f * coil; p.LegR0 = .26f - d * .06f * hit + d * .05f * coil; p.LegL1 = d > 0 ? -.16f - .18f * hit : .06f; p.LegR1 = d > 0 ? -.06f : .16f + .18f * hit; p.FootL = d > 0 ? .28f * hit : 0; p.FootR = d < 0 ? .28f * hit : 0; }
+        if (free) p.RootX += d * (.6f * fol + (Final ? 1.8f * hit - 1.2f * coil : 0));
     }
     void Idle(ref Pose p, float br)
     {

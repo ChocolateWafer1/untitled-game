@@ -74,7 +74,15 @@ public sealed class Player
         }
         Tick(dt);
     }
-    void Tick(float dt) { An.Aim = MineAim; An.MineAmt = M.Damp(An.MineAmt, Mining && !Climb && slideT <= 0 && ledgeT < 0 ? 1 : 0, Mining ? 40 : 10, dt); An.Fps = Mining ? 18 : 12; if (An.Update(dt)) Redraw(); }
+    int strikes0; bool wasMining; float shakeIn; public Col DustCol = 0x857f88;
+    /// After a good long dig, sometimes shake the hand out or brush the dust off.
+    void AfterMining(float dt)
+    {
+        if (Mining && !wasMining) strikes0 = An.StrikeN; if (!Mining && wasMining && An.StrikeN - strikes0 >= 3 && M.Hash(Environment.TickCount, 7) < .6f) shakeIn = .4f; wasMining = Mining;
+        if (shakeIn > 0) { shakeIn -= dt; if (Mining || MathF.Abs(V.X) > 6 || !Ground) shakeIn = 0; else if (shakeIn <= 0 && EmoteT <= 0 && !Swim && !Climb) { An.ShakeKind = M.Hash(Environment.TickCount, 8) < .5f ? 0 : 1; DoEmote(Anim.ShakeOut); EmoteT = 1.25f; } }
+        if (An.State == Anim.ShakeOut && An.ShakeKind == 1 && An.StateT is > .2f and < .85f && M.Hash(Environment.TickCount, (int)(An.StateT * 60)) < dt * 9) g.Life.Puff(HandPos(Dir) + new Vector2(0, -2), 1, DustCol.Shade(.2f), 4);
+    }
+    void Tick(float dt) { AfterMining(dt); An.Aim = MineAim; An.MineAmt = M.Damp(An.MineAmt, Mining && !Climb && slideT <= 0 && ledgeT < 0 ? 1 : 0, Mining ? 40 : 10, dt); An.Fps = Mining ? 18 : 12; if (An.Update(dt)) Redraw(); }
     void Move(float dt)
     {
         float nx = P.X + V.X * dt; nx = M.Clamp(nx, 26, World.W * 24 - 26);

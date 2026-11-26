@@ -38,9 +38,9 @@ public sealed partial class GameScreen
     }
     /// The moment of breaking: shards fly, hang, then rush back together into the drop.
     sealed class Shatter { public Texture2D Tex; public Vector2[] P = new Vector2[ShardN], V = new Vector2[ShardN], From = new Vector2[ShardN]; public float[] R = new float[ShardN], RV = new float[ShardN]; public Vector2[] Cen; public float T; public Loot Into; }
-    sealed class Loot { public int Id, N = 1; public Vector2 P, V; public float T, Born, Sq, SqV, HopT, Pull; public bool Ground; public Vector2 Swirl; }
+    sealed class Loot { public int Id, N = 1; public Vector2 P, V; public float T, Born, Sq, SqV, HopT, Pull; public bool Ground, Fresh; public Vector2 Swirl; }
     readonly Dictionary<int, Dig> digs = new(); readonly List<Shatter> shatters = new(); readonly List<Loot> loot = new(); readonly List<(int x, int y, float t, Vector2 from)> pops = new();
-    (int x, int y) aim; bool digArmed, putArmed, aimOk, placeOk; float placeCd; Dig cur; float cursorA; Vector2 cursorP; float strikeFx; Vector2 strikeAt, strikeDir;
+    (int x, int y) aim; bool digArmed, putArmed, aimOk, placeOk; float placeCd; Dig cur; float cursorA; Vector2 cursorP; float strikeFx; Vector2 strikeAt, strikeDir; int queued; float follow; readonly List<(Vector2 p, float t, Col c)> glints = new();
 
     Vector2 Chest => P.P + new Vector2(0, P.Crouch ? -26 : -38);
     static float BoxDist(Vector2 p, int x, int y) { float dx = MathF.Max(0, MathF.Max(x * DTS - p.X, p.X - (x + 1) * DTS)), dy = MathF.Max(0, MathF.Max(y * DTS - p.Y, p.Y - (y + 1) * DTS)); return MathF.Sqrt(dx * dx + dy * dy); }
@@ -55,19 +55,20 @@ public sealed partial class GameScreen
 
     void Digging(float dt, bool control)
     {
-        var wm = Ui.Mouse + new Vector2(CamX, CamY); int tx = (int)MathF.Floor(wm.X / DTS), ty = (int)MathF.Floor(wm.Y / DTS); bool free = control && !OverAdmin && !OverBar; if (free && Ui.Click) digArmed = true; if (!Ui.Held || !control) digArmed = false; if (free && Ui.RightClick) putArmed = true; if (!Ui.RightHeld || !control) putArmed = false; aim = (tx, ty); bool solid = W.Solid(tx, ty);
+        var wm = Ui.Mouse + new Vector2(CamX, CamY); int tx = (int)MathF.Floor(wm.X / DTS), ty = (int)MathF.Floor(wm.Y / DTS); bool free = control && !OverAdmin && !OverBar; if (free && Ui.Click) { digArmed = true; queued = 1; } if (!Ui.Held || !control) digArmed = false; if (free && Ui.RightClick) putArmed = true; if (!Ui.RightHeld || !control) putArmed = false; aim = (tx, ty); bool solid = W.Solid(tx, ty);
         aimOk = free && solid && Blocks.Minable(W.At(tx, ty)) && CanReach(tx, ty) && Exposed(tx, ty); placeOk = free && HandBlock != T.Air && CanPlace(tx, ty); var goal = new Vector2(tx * DTS, ty * DTS); cursorP = cursorA < .05f ? goal : M.Damp(cursorP, goal, 34, dt); cursorA = M.Damp(cursorA, aimOk || placeOk ? 1 : 0, 16, dt);
-        // digging
-        bool dig = aimOk && digArmed && !P.Climb && !P.Frozen; P.Mining = dig; cur = null;
+        // digging: holding keeps swinging; a single click still lands one whole blow and follows through
+        if (!aimOk) { queued = 0; follow = 0; } follow -= dt;
+        bool dig = aimOk && (digArmed || queued > 0 || follow > 0) && !P.Climb && !P.Frozen; P.Mining = dig; cur = null;
         if (dig)
         {
-            var bd = Blocks.Of(W.At(tx, ty)); P.An.StrikeLen = bd.Time / Blows(bd); P.EmoteT = 0; var c = new Vector2(tx * DTS + 12, ty * DTS + 12); var v = c - Chest; P.MineAim = v.Length() > 1 ? Vector2.Normalize(v) : new(P.Dir, 0); int key = ty * World.W + tx; if (!digs.TryGetValue(key, out cur) || cur.Block != W.At(tx, ty)) cur = null; if (cur != null) cur.Idle = 0;
+            var bd = Blocks.Of(W.At(tx, ty)); P.An.StrikeLen = bd.Time / Blows(bd); P.EmoteT = 0; var c = new Vector2(tx * DTS + 12, ty * DTS + 12); var v = c - Chest; P.MineAim = v.Length() > 1 ? Vector2.Normalize(v) : new(P.Dir, 0); int key = ty * World.W + tx; if (!digs.TryGetValue(key, out cur) || cur.Block != W.At(tx, ty)) cur = null; if (cur != null) cur.Idle = 0; P.An.Final = cur == null ? Blows(bd) == 1 : cur.P + 1f / Blows(bd) >= .999f; P.DustCol = bd.Color;
         }
         for (int i = digs.Count - 1; i >= 0; i--)
         {
             var (k, g) = digs.ElementAt(i); g.Idle += dt; g.WobV += (-g.Wob * 900 - g.WobV * 26) * dt; g.Wob += g.WobV * dt; if (W.At(g.X, g.Y) != g.Block) { Raylib.UnloadTexture(g.Tex); digs.Remove(k); continue; } if (g.Idle > 3.5f) { g.P -= dt * .5f; if (g.P <= 0) { Raylib.UnloadTexture(g.Tex); digs.Remove(k); continue; } } if (MathF.Abs(g.P - g.Shown) > .02f) g.Draw(Blocks.Of(g.Block).Glow, Blocks.Glows(g.Block));
         }
-        strikeFx = MathF.Max(0, strikeFx - dt * 5);
+        strikeFx = MathF.Max(0, strikeFx - dt * 5); for (int i = glints.Count - 1; i >= 0; i--) { var q = glints[i]; q.t += dt; if (q.t > .45f) glints.RemoveAt(i); else glints[i] = q; }
         // building
         placeCd -= dt; bool again = putArmed && placeCd <= 0; if ((Ui.RightClick || again) && control && !OverAdmin && !OverBar) { if (placeOk) Place(tx, ty); else if (Ui.RightClick && HandBlock != T.Air && !solid && CanReach(tx, ty)) Snd.Play("error", .25f); else if (Ui.RightClick && HandBlock == T.Air && !solid) Toast("Nothing in your hand to place"); }
         for (int i = pops.Count - 1; i >= 0; i--) { var q = pops[i]; q.t += dt; if (q.t > .22f) pops.RemoveAt(i); else pops[i] = q; }
@@ -80,15 +81,20 @@ public sealed partial class GameScreen
     {
         var (tx, ty) = aim; if (!aimOk || !P.Mining) return; int key = ty * World.W + tx; T b = W.At(tx, ty); var def = Blocks.Of(b); var ctr = new Vector2(tx * DTS + 12, ty * DTS + 12); var from = Chest; var face = Vector2.Clamp(from, new(tx * DTS + 1, ty * DTS + 1), new(tx * DTS + 22, ty * DTS + 22)); // the nearest point of the block to you is where it gets hit
         if (cur == null) { cur = new Dig(tx, ty, b, tiles.Paint(tx * DTS, ty * DTS, DTS, DTS), face - new Vector2(tx * DTS, ty * DTS), rng); if (digs.Remove(key, out var old)) Raylib.UnloadTexture(old.Tex); digs[key] = cur; }
-        cur.P += 1f / Blows(def) + .0001f; cur.Idle = 0; var dir = P.MineAim; cur.Kick = dir; cur.WobV = 95; strikeFx = 1; strikeAt = face; strikeDir = dir; Col col = def.Color; string sn = def.Surf == "sand" ? "sand" : def.Surf; Snd.Play("step_" + sn, .75f, .72f + cur.P * .25f + rng.F() * .1f); if (def.Surf == "stone") Snd.Play("tick", .35f, .5f + cur.P * .4f); Life.Chips(face, 3 + (int)(cur.P * 4), col, -dir); Life.Puff(face, 2, col.Shade(.2f), 5); Shake(.35f + (def.Time > 1.5f ? .35f : 0));
+        cur.P += 1f / Blows(def) + .0001f; cur.Idle = 0; var dir = P.MineAim; cur.Kick = dir; cur.WobV = 95; strikeFx = 1; strikeAt = face; strikeDir = dir; string mat = Blocks.Mat(b); string sn = def.Surf == "sand" ? "sand" : def.Surf; Snd.Play("dig_" + mat, .8f, .9f + cur.P * .18f + rng.F() * .08f); Snd.Play("step_" + sn, .3f, .72f + cur.P * .25f + rng.F() * .1f); Life.Debris(b, face - dir * 2, -dir, 3 + (int)(cur.P * 4), false); Shake(.35f + (def.Time > 1.5f ? .35f : 0));
+        if (!digArmed) { queued = 0; follow = P.An.StrikeLen * (1 - AvatarAnim.Hit) * .8f; }
+        if (mat is "stone" or "ore" or "crystal" or "ice" && def.Time >= 1.1f) Life.Sparks(face - dir * 3, -dir, mat == "ore" ? 5 : 2, mat == "ore" ? (Col)def.Glow : mat == "stone" ? (Col)0xffd890 : (Col)0xd8f0ff, mat == "ore" ? .42f : .26f);
+        if (mat is "ore" or "crystal" or "ice") for (int i = 0; i < (mat == "ice" ? 1 : 2); i++) glints.Add((new Vector2(tx * DTS + rng.R(4, 20), ty * DTS + rng.R(4, 20)), -i * .08f, def.Glow != 0 ? (Col)def.Glow : (Col)0xe8f6ff));
         if (cur.P >= 1) Break(tx, ty, cur); else cur.Draw(def.Glow, Blocks.Glows(b));
     }
+    public float DigProgressForTest(int x, int y) => digs.TryGetValue(y * World.W + x, out var g) ? g.P : W.At(x, y) == T.Air ? 1 : 0;
     readonly Painter atlas = new(DTS * ShardN, DTS);
     void Break(int x, int y, Dig g)
     {
-        var def = Blocks.Of(g.Block); var o = new Vector2(x * DTS, y * DTS); var drop = new Loot { Id = (int)g.Block, P = o + new Vector2(12, 14), V = new(rng.R(-26, 26), -90), Born = .62f, T = 0, HopT = rng.R(1, 4) }; loot.Add(drop);
+        var def = Blocks.Of(g.Block); var o = new Vector2(x * DTS, y * DTS); var drop = new Loot { Id = (int)g.Block, P = o + new Vector2(12, 14), V = new(rng.R(-26, 26), -90), Born = .62f, T = 0, HopT = rng.R(1, 4), Fresh = true }; loot.Add(drop);
         var s = new Shatter { Into = drop, Cen = g.Cen }; Array.Clear(atlas.Px); for (int k = 0; k < DTS * DTS; k++) if (g.Src[k].A > 0) atlas.Px[(k / DTS) * atlas.W + g.Id[k] * DTS + k % DTS] = g.Src[k]; s.Tex = atlas.ToTexture(); for (int i = 0; i < ShardN; i++) { s.P[i] = o + g.Cen[i]; s.V[i] = g.Way[i] * rng.R(60, 125) - P.MineAim * rng.R(10, 46) + new Vector2(0, -rng.R(40, 90)); s.RV[i] = rng.R(-560, 560); } shatters.Add(s); if (shatters.Count > 14) { Raylib.UnloadTexture(shatters[0].Tex); shatters[0].Into.Born = 0; shatters.RemoveAt(0); }
-        digs.Remove(y * World.W + x); Raylib.UnloadTexture(g.Tex); cur = null; Store.Data.Mined++; Col c = def.Color; Life.Chips(o + new Vector2(12, 12), 12, c, -P.MineAim, 60); Life.Puff(o + new Vector2(12, 12), 8, c.Shade(.25f), 14); if (def.Glow != 0) Life.Sparkle(o + new Vector2(12, 12), 12, ((Col)def.Glow).Rl()); Shake(1.1f); Snd.Play("step_" + def.Surf, 1, .55f); Snd.Play("land", .6f, 1.25f); if (def.Surf == "stone") Snd.Play("dice", .4f, 1.3f); W.Set(x, y, T.Air);
+        digs.Remove(y * World.W + x); Raylib.UnloadTexture(g.Tex); cur = null; Store.Data.Mined++; string mat = Blocks.Mat(g.Block); Life.Debris(g.Block, o + new Vector2(12, 12), -P.MineAim, 12, true); if (def.Glow != 0) Life.Sparkle(o + new Vector2(12, 12), 12, ((Col)def.Glow).Rl()); if (mat == "ore") Life.Sparks(o + new Vector2(12, 12), -P.MineAim, 9, def.Glow, .6f); else if (mat == "stone" && def.Time >= 1.1f) Life.Sparks(o + new Vector2(12, 12), -P.MineAim, 4, 0xffd890, .35f);
+        Shake(1.1f); Snd.Play("break_" + mat, 1, .95f + rng.F() * .1f); Snd.Play("land", .5f, 1.25f); W.Set(x, y, T.Air);
     }
     void Place(int x, int y)
     {
@@ -115,7 +121,7 @@ public sealed partial class GameScreen
         for (int i = loot.Count - 1; i >= 0; i--)
         {
             var l = loot[i]; l.T += dt; l.SqV += (-l.Sq * 420 - l.SqV * 14) * dt; l.Sq += l.SqV * dt; if (MathF.Abs(l.P.X - P.P.X) > 1500 || MathF.Abs(l.P.Y - P.P.Y) > 1100) continue;
-            var dv = chest - l.P; float dist = dv.Length(); bool ready = l.T > l.Born + .12f; if (ready && dist < 62 && Bag.Fits(Store.Data, l.Id)) { if (l.Pull <= 0) { l.Swirl = new(-MathF.Sign(dv.X == 0 ? 1 : dv.X) * 40, -110); Snd.Play("whoosh", .12f, 1.8f); } l.Pull += dt; } else if (l.Pull > 0 && dist > 90) l.Pull = 0;
+            var dv = chest - l.P; float dist = dv.Length(); bool ready = l.T > l.Born + .12f; if (ready && dist < (l.Fresh ? 190 : 62) && Bag.Fits(Store.Data, l.Id)) { if (l.Pull <= 0) { l.Swirl = new(-MathF.Sign(dv.X == 0 ? 1 : dv.X) * 40, -110); Snd.Play("whoosh", .12f, 1.8f); } l.Pull += dt; } else if (l.Pull > 0 && dist > (l.Fresh ? 220 : 90)) l.Pull = 0; if (l.T > 6) l.Fresh = false;
             if (l.Pull > 0)
             {
                 // a short hop upwards, then a curl into the hand, trailing sparks
@@ -130,7 +136,7 @@ public sealed partial class GameScreen
     }
     void Collect(Loot l)
     {
-        int left = Bag.Add(Store.Data, l.Id, l.N), got = l.N - left; if (got > 0) { Snd.Play("pick", .55f, 1.15f + rng.F() * .15f); Life.Sparkle(l.P, 4, ((Col)Blocks.All[l.Id].Color).Shade(.5f).Rl()); Gained(l.Id, got); P.An.Punch(.8f); } if (left > 0) { l.N = left; l.Pull = 0; loot.Add(l); }
+        var before = (ItemStack[])Store.Data.Slots.Clone(); int left = Bag.Add(Store.Data, l.Id, l.N), got = l.N - left; for (int i = 0; i < before.Length; i++) { var sNow = Store.Data.Slots[i]; if (sNow.Id == l.Id && sNow.N != (before[i].Id == l.Id ? before[i].N : 0)) slotPop[i] = (0, before[i].Id == l.Id ? before[i].N : 0); } if (got > 0) { Snd.Play("pick", .55f, 1.15f + rng.F() * .15f); Life.Sparkle(l.P, 4, ((Col)Blocks.All[l.Id].Color).Shade(.5f).Rl()); Gained(l.Id, got); P.An.Punch(.8f); } if (left > 0) { l.N = left; l.Pull = 0; loot.Add(l); }
     }
     void DrawDigs(int cx, int cy)
     {
@@ -149,6 +155,7 @@ public sealed partial class GameScreen
     {
         if (strikeFx > .5f && W.Solid((int)MathF.Floor((strikeAt.X + strikeDir.X * 4) / 24), (int)MathF.Floor((strikeAt.Y + strikeDir.Y * 4) / 24))) { int bx = (int)MathF.Floor((strikeAt.X + strikeDir.X * 4) / 24) * 24 - cx, by = (int)MathF.Floor((strikeAt.Y + strikeDir.Y * 4) / 24) * 24 - cy; Raylib.DrawRectangle(bx + 1, by + 1, 22, 22, new Color(255, 246, 220, (int)((strikeFx - .5f) * 150))); }
         if (strikeFx > 0) { float k = strikeFx; var c = strikeAt - new Vector2(cx, cy); for (int i = 0; i < 7; i++) { float a = i * M.TAU / 7 + .3f; var d = new Vector2(M.Cos(a), M.Sin(a)); float r0 = (1 - k) * 9 + 2, r1 = r0 + k * (i % 2 == 0 ? 8 : 5); Raylib.DrawLineEx(c + d * r0, c + d * r1, 1 + k, new Color(255, 244, 214, (int)(230 * k))); } }
+        foreach (var (gp, gt, gc) in glints) { if (gt < 0) continue; float k = M.Sin(M.Clamp(gt / .45f) * M.PI), r = 1 + k * 4; var q = new Vector2(MathF.Round(gp.X - cx), MathF.Round(gp.Y - cy)); Ui.GlowAt(q.X, q.Y, 8 * k, gc.Rl(.5f * k)); var wc = new Color(255, 255, 255, (int)(240 * k)); Raylib.DrawLineV(q - new Vector2(r, 0), q + new Vector2(r + 1, 0), wc); Raylib.DrawLineV(q - new Vector2(0, r), q + new Vector2(0, r + 1), wc); Raylib.DrawRectangleV(q - new Vector2(1, 1), new(2, 2), wc); }
         if (cursorA < .04f || hideHud) return; float x = MathF.Round(cursorP.X - cx), y = MathF.Round(cursorP.Y - cy); bool place = placeOk && !aimOk; if (place) { float b = .55f + .12f * M.Sin(time * 5); Items.Draw((int)HandBlock, x + 12, y + 12, 24, 1, 0, b * cursorA); }
         float g = (P.Mining ? 1.5f + strikeFx * 2 : 1 + M.Sin(time * 4) * .8f); var col = new Color(255, 250, 226, (int)(220 * cursorA)); var dk = new Color(48, 26, 28, (int)(190 * cursorA)); void Corner(float px, float py, int sx, int sy) { Raylib.DrawRectangleV(new(px - (sx < 0 ? 6 : 1), py - (sy < 0 ? 2 : 1)), new(7, 3), dk); Raylib.DrawRectangleV(new(px - (sx < 0 ? 2 : 1), py - (sy < 0 ? 6 : 1)), new(3, 7), dk); Raylib.DrawRectangleV(new(px - (sx < 0 ? 5 : 0), py - (sy < 0 ? 1 : 0)), new(5, 1), col); Raylib.DrawRectangleV(new(px - (sx < 0 ? 1 : 0), py - (sy < 0 ? 5 : 0)), new(1, 5), col); }
         Corner(x - g, y - g, 1, 1); Corner(x + 24 + g, y - g, -1, 1); Corner(x - g, y + 24 + g, 1, -1); Corner(x + 24 + g, y + 24 + g, -1, -1);
@@ -167,5 +174,5 @@ public sealed partial class GameScreen
             var p = falling[i]; p.Fall += dt; if (p.Fall < 1.15f) continue; falling.RemoveAt(i); float h = Sprites.Get(p.S).H; Col lc = p.S switch { var s when s.StartsWith("maple") => 0xd8743a, var s when s.StartsWith("cherry") || s.StartsWith("bloss") => 0xf2bcc8, var s when s.StartsWith("moon") => 0x58b0c0, var s when s.StartsWith("char") || s.StartsWith("cactus") || s.StartsWith("spire") => Blocks.Of(T.Ash).Color, _ => World.GrassCol(p.X / 24) }; for (int k = 0; k < 9; k++) { var q = new Vector2(p.X + p.FallDir * h * (.2f + k * .1f), p.Y - 10 + rng.R(-16, 4)); Life.Leaves(q, 4, lc); Life.Puff(q, 2, lc.Shade(.2f), 12); } Shake(2.2f); Snd.Play("land", .9f, .6f); Snd.Play("rustle", .9f, .8f);
         }
     }
-    void ClearDig() { foreach (var g in digs.Values) Raylib.UnloadTexture(g.Tex); digs.Clear(); foreach (var s in shatters) Raylib.UnloadTexture(s.Tex); shatters.Clear(); loot.Clear(); pops.Clear(); falling.Clear(); cur = null; cursorA = 0; aimOk = placeOk = false; if (P != null) P.Mining = false; }
+    void ClearDig() { foreach (var g in digs.Values) Raylib.UnloadTexture(g.Tex); digs.Clear(); foreach (var s in shatters) Raylib.UnloadTexture(s.Tex); shatters.Clear(); loot.Clear(); pops.Clear(); falling.Clear(); cur = null; cursorA = 0; aimOk = placeOk = false; queued = 0; follow = 0; glints.Clear(); if (P != null) P.Mining = false; }
 }

@@ -26,8 +26,9 @@ public sealed class Life
         {
             var p = pts[i]; p.T += dt; if (p.T > p.L || p.P.X < cx - 200 || p.P.X > cx + vw + 200 || p.P.Y > cy + vh + 160) { pts[i] = pts[^1]; pts.RemoveAt(pts.Count - 1); continue; }
             p.V.Y += p.G * dt; p.V *= MathF.Exp(-p.D * dt); if (p.K == 11) { p.V.X = M.Damp(p.V.X, 130 + MathF.Abs(wind) * 160, 2, dt); p.V.Y = M.Sin(p.T * 3 + p.R) * 9; } if (p.K == 1) { p.V.X += (wind * 46 + M.Sin(p.T * 3 + p.R) * 26) * dt * 2; p.V.Y = MathF.Min(p.V.Y, 26 + M.Sin(p.T * 4 + p.R) * 12); } if (p.K == 6) p.V.X += wind * 14 * dt; p.P += p.V * dt;
-            int tx = (int)(p.P.X / 24), ty = (int)(p.P.Y / 24); if (p.K is 10 or 11 && w.Solid(tx, ty)) p.T = p.L; if (p.K == 12 && p.V.Y > 0 && w.Solid(tx, ty)) { p.P.Y = ty * 24 - .5f; p.V.Y *= -.34f; p.V.X *= .5f; } if (p.K is 1 or 3 && w.Solid(tx, ty)) { if (p.K == 3) { p.T = p.L; } else { p.V = default; p.G = 0; p.P.Y = ty * 24 - .5f; p.K = 7; p.L = p.T + 3; } } if (p.K == 3 && p.V.Y > 40 && w.PoolAt(p.P.X, p.P.Y) != null) p.T = p.L; if (p.K == 4 && w.PoolAt(p.P.X, p.P.Y - 3) == null) p.T = p.L; pts[i] = p;
+            int tx = (int)(p.P.X / 24), ty = (int)(p.P.Y / 24); if (p.K is 10 or 11 or 13 && w.Solid(tx, ty)) p.T = p.L; if (p.K is 12 or 14 && p.V.Y > 0 && w.Solid(tx, ty)) { p.P.Y = ty * 24 - .5f; p.V.Y *= -.34f; p.V.X *= .5f; } if (p.K is 1 or 3 && w.Solid(tx, ty)) { if (p.K == 3) { p.T = p.L; } else { p.V = default; p.G = 0; p.P.Y = ty * 24 - .5f; p.K = 7; p.L = p.T + 3; } } if (p.K == 3 && p.V.Y > 40 && w.PoolAt(p.P.X, p.P.Y) != null) p.T = p.L; if (p.K == 4 && w.PoolAt(p.P.X, p.P.Y - 3) == null) p.T = p.L; pts[i] = p;
         }
+        for (int i = flashes.Count - 1; i >= 0; i--) { var f = flashes[i]; f.t += dt; if (f.t > .32f) flashes.RemoveAt(i); else flashes[i] = f; }
         // ambient leaves, petals, pollen
         float ctx = (cx + vw / 2f) / 24, cty = (cy + vh / 2f) / 24; bool under = g.Under > .5f; var bd = Biomes.Of(w.Here((int)ctx, (int)(pl.P.Y / 24) - 1, under)); Drifting(dt, bd, under, cx, cy, vw, vh);
         moteT -= dt; if (moteT < 0 && !under && e.Rain < .2f) { moteT = .12f; float a = e.Golden * .8f + .2f; Add(new(cx + r.R(0, vw), cy + r.R(vh * .2f, vh)), new(wind * 8 + r.R(-4, 4), r.R(-7, 2)), r.R(3, 6), 1, Col.Lerp(e.Sun, new Col(1, .95f, .8f), .5f).Rl(a * .5f), 8, 0, .1f); } else if (moteT < 0 && under) { moteT = .25f; Add(new(cx + r.R(0, vw), cy + r.R(0, vh)), new(r.R(-4, 4), r.R(-6, 1)), r.R(3, 6), 1, new Color(130, 240, 225, 130), 8, 0, .1f); }
@@ -56,8 +57,8 @@ public sealed class Life
     {
         foreach (var p in pts)
         {
-            float k = p.T / p.L; float x = MathF.Round(p.P.X - cx), y = MathF.Round(p.P.Y - cy); bool gl = p.K is 5 or 8; if (gl != glow) continue; var c = p.C; float fa = k > .7f ? (1 - k) / .3f : 1; if (p.K == 8) fa = M.Sin(M.Clamp(k) * M.PI); c.A = (byte)(c.A * fa);
-            switch (p.K) { case 1: case 7: { float a = p.K == 7 ? 0 : M.Sin(p.T * 5 + p.R); Raylib.DrawRectangle((int)x - 1, (int)y, a > 0 ? 3 : 2, a > .3f ? 1 : 2, c); break; } case 2: { float s = p.S * (1 + k * 1.4f); c.A = (byte)(c.A * (1 - k) * .7f); Raylib.DrawRectangle((int)(x - s), (int)(y - s), (int)(s * 2), (int)(s * 2), c); break; } case 4: Raylib.DrawRectangleLines((int)x - 1, (int)y - 1, (int)p.S + 2, (int)p.S + 2, c); break; case 6: { float s = p.S * (1 + k * 2); c.A = (byte)(c.A * (1 - k)); Raylib.DrawCircle((int)x, (int)y, s, c); break; } case 11: Raylib.DrawRectangle((int)x, (int)y, (int)(3 + p.S * 4), 1, c); break; case 9: { var d = Vector2.Normalize(p.V) * p.S; Raylib.DrawLine((int)x, (int)y, (int)(x - d.X), (int)(y - d.Y), c); break; } default: Raylib.DrawRectangle((int)x, (int)y, Math.Max(1, (int)p.S), Math.Max(1, (int)p.S), c); break; }
+            float k = p.T / p.L; float x = MathF.Round(p.P.X - cx), y = MathF.Round(p.P.Y - cy); bool gl = p.K is 5 or 8 or 13; if (gl != glow) continue; var c = p.C; float fa = k > .7f ? (1 - k) / .3f : 1; if (p.K == 8) fa = M.Sin(M.Clamp(k) * M.PI); c.A = (byte)(c.A * fa);
+            switch (p.K) { case 1: case 7: { float a = p.K == 7 ? 0 : M.Sin(p.T * 5 + p.R); Raylib.DrawRectangle((int)x - 1, (int)y, a > 0 ? 3 : 2, a > .3f ? 1 : 2, c); break; } case 2: { float s = p.S * (1 + k * 1.4f); c.A = (byte)(c.A * (1 - k) * .7f); Raylib.DrawRectangle((int)(x - s), (int)(y - s), (int)(s * 2), (int)(s * 2), c); break; } case 4: Raylib.DrawRectangleLines((int)x - 1, (int)y - 1, (int)p.S + 2, (int)p.S + 2, c); break; case 6: { float s = p.S * (1 + k * 2); c.A = (byte)(c.A * (1 - k)); Raylib.DrawCircle((int)x, (int)y, s, c); break; } case 11: Raylib.DrawRectangle((int)x, (int)y, (int)(3 + p.S * 4), 1, c); break; case 9: { var d = Vector2.Normalize(p.V) * p.S; Raylib.DrawLine((int)x, (int)y, (int)(x - d.X), (int)(y - d.Y), c); break; } case 13: { var d = p.V.LengthSquared() > 1 ? Vector2.Normalize(p.V) * p.S : default; Raylib.DrawLineV(new(x, y), new(x - d.X, y - d.Y), c); Raylib.DrawRectangle((int)x, (int)y, 1, 1, new Color(255, 255, 240, (int)c.A)); break; } case 14: { float a = p.R + MathF.Min(p.T, p.V.LengthSquared() > 400 ? p.T : .4f) * 14; var d = new Vector2(MathF.Cos(a), MathF.Sin(a)) * p.S * .5f; Raylib.DrawLineV(new(x - d.X, y - d.Y), new(x + d.X, y + d.Y), c); break; } default: Raylib.DrawRectangle((int)x, (int)y, Math.Max(1, (int)p.S), Math.Max(1, (int)p.S), c); break; }
         }
     }
     public void Smoke(Vector2 p, float s, Color c) => Add(p, new(r.R(-4, 4), -r.R(10, 18)), r.R(2, 3.4f), s, c, 6, 0, .3f);
@@ -142,6 +143,27 @@ public sealed class Life
             }
         }
     }
+    /// What flies off a block when it is hit or breaks, by what it is made of.
+    public void Debris(T b, Vector2 p, Vector2 dir, int n, bool burst)
+    {
+        Col c = Blocks.Of(b).Color; Vector2 RV(float k) => new(r.R(-k, k), r.R(-k, k));
+        switch (Blocks.Mat(b))
+        {
+            case "dirt": for (int i = 0; i < n; i++) Add(p + RV(5), dir * r.R(15, 55) + new Vector2(r.R(-40, 40), -r.R(20, 90)), r.R(.5f, 1), r.R(2, 3.6f), c.Shade(r.R(-.25f, .15f)).Rl(), 12, 460, .4f); Puff(p, burst ? 6 : 2, c.Shade(.15f), burst ? 12 : 6); break;
+            case "sand": for (int i = 0; i < n * 3; i++) Add(p + new Vector2(r.R(-7, 7), r.R(-2, 8)), new Vector2(dir.X * r.R(5, 30) + r.R(-12, 12), r.R(-30, 20)), r.R(.6f, 1.3f), 1, c.Shade(r.R(-.2f, .2f)).Rl(), 3, 520, .3f); Puff(p, burst ? 5 : 1, c.Shade(.25f), 8); break;
+            case "wood": for (int i = 0; i < n; i++) Add(p + RV(4), dir * r.R(30, 90) + new Vector2(r.R(-40, 40), -r.R(30, 100)), r.R(.5f, 1), r.R(3, 5), c.Shade(r.R(-.2f, .3f)).Rl(), 14, 420, .6f); Puff(p, burst ? 4 : 1, c.Shade(.3f), 8); break;
+            case "snow": for (int i = 0; i < n * 2; i++) Add(p + RV(6), new Vector2(r.R(-50, 50), -r.R(10, 70)) + dir * 20, r.R(.6f, 1.4f), r.R(1, 2.2f), new Color(248, 252, 255, 230), 0, 120, 1.6f); Puff(p, burst ? 8 : 3, 0xf4f8ff, 10); break;
+            case "ice" or "crystal": for (int i = 0; i < n; i++) Add(p + RV(5), dir * r.R(30, 90) + new Vector2(r.R(-60, 60), -r.R(30, 110)), r.R(.4f, .9f), r.R(1, 2.6f), c.Shade(r.R(0, .5f)).Rl(.85f), 12, 420, .5f); Sparkle(p, burst ? 8 : 2, new Color(230, 246, 255, 255)); break;
+            default: Chips(p, n, c, dir); Puff(p, burst ? 6 : 2, c.Shade(.2f), burst ? 14 : 5); if (b == T.Moss && burst) Leaves(p, 4, 0x6f8a4a); break;
+        }
+    }
+    /// Hot little streaks off stone and ore; each burst lights the dark around it for a moment.
+    readonly List<(Vector2 p, float t, float a, Col c)> flashes = new();
+    public void Sparks(Vector2 p, Vector2 dir, int n, Col c, float light)
+    {
+        for (int i = 0; i < n; i++) Add(p, dir * r.R(60, 170) + new Vector2(r.R(-90, 90), -r.R(40, 140)), r.R(.22f, .5f), r.R(2, 4), c.Shade(r.R(0, .4f)).Rl(), 13, 380, 1.2f);
+        flashes.Add((p, 0, light, c)); if (flashes.Count > 6) flashes.RemoveAt(0);
+    }
     /// Little square crumbs thrown off by a hit.
     public void Chips(Vector2 p, int n, Col c, Vector2 dir, float speed = 70) { for (int i = 0; i < n; i++) Add(p + new Vector2(r.R(-5, 5), r.R(-5, 5)), dir * speed * r.R(.3f, 1) + new Vector2(r.R(-50, 50), r.R(-80, 10)), r.R(.35f, .8f), r.R(1, 3.2f), c.Shade(r.R(-.3f, .35f)).Rl(), 12, 380, .6f); }
     public void Puff(Vector2 p, int n, Col c, float spread = 10) { for (int i = 0; i < n; i++) { float a = r.R(0, M.TAU); Add(p + new Vector2(M.Sin(a), M.Cos(a)) * spread * .6f, new Vector2(M.Sin(a), M.Cos(a)) * r.R(6, 34), r.R(.3f, .7f), r.R(1.4f, 3), c.Rl(.6f), 2, 0, 3); } }
@@ -206,5 +228,5 @@ public sealed class Life
             if (a.K is not (Kind.Firefly or Kind.Moth)) continue; float x = a.P.X - cx, y = a.P.Y - cy; if (x < -20 || x > vw + 20) continue; float on = a.K == Kind.Moth ? .7f : e.Night * (1 - e.Rain); if (on < .05f) continue; float b = MathF.Pow(MathF.Max(0, M.Sin(a.T * 1.7f + a.Home.X)), 2) * on; if (b < .03f) continue; var c = a.K == Kind.Moth ? new Color(140, 245, 230, (int)(180 * b)) : new Color(230, 255, 120, (int)(200 * b)); Ui.GlowAt(x, y, 13, Raylib.Fade(c, b * .5f)); Raylib.DrawRectangle((int)x, (int)y, 2, 2, c);
         }
     }
-    public void AddLights(Render R, float cx, float vw) { int n = 0; if (g.Env.Night > .4f) foreach (var a in animals) if (a.K == Kind.Firefly && a.P.X > cx && a.P.X < cx + vw && n++ < 5) R.Lights.Add((a.P.X, a.P.Y, 46, .5f * MathF.Pow(MathF.Max(0, M.Sin(a.T * 1.7f + a.Home.X)), 2), 0xd8f080)); }
+    public void AddLights(Render R, float cx, float vw) { foreach (var f in flashes) { float k = 1 - f.t / .32f; R.Lights.Add((f.p.X, f.p.Y, 72, f.a * k * k, f.c)); } int n = 0; if (g.Env.Night > .4f) foreach (var a in animals) if (a.K == Kind.Firefly && a.P.X > cx && a.P.X < cx + vw && n++ < 5) R.Lights.Add((a.P.X, a.P.Y, 46, .5f * MathF.Pow(MathF.Max(0, M.Sin(a.T * 1.7f + a.Home.X)), 2), 0xd8f080)); }
 }

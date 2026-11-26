@@ -103,7 +103,7 @@ public static class Items
 }
 public static class Bag
 {
-    public const int Cols = 12, Rows = 7, Size = Cols * Rows, MaxStack = 99;
+    public const int Cols = 12, Rows = 7, Size = Cols * Rows, MaxStack = 100;
     /// Adds items, filling existing stacks first. Returns how many did not fit.
     public static int Add(SaveData d, int id, int n)
     {

@@ -88,6 +88,29 @@ static class Synth
         S("rustle", Make(.3f, t => Nz(t) * MathF.Sin(t / .3f * M.PI) * (.5f + .5f * MathF.Sin(t * 120)) * .12f)); S("leaf", Make(.2f, t => Nz(t) * Env(t, .05f, .05f) * .08f)); S("area", Make(1.4f, t => (Pluck(392, t) + (t > .16f ? Pluck(587, t - .16f) : 0) + (t > .32f ? Pluck(784, t - .32f) : 0)) * .7f));
         S("bird", Make(.3f, t => Sn(2200 + MathF.Sin(t * 70) * 500, t) * MathF.Sin(t / .3f * M.PI) * .1f), Make(.24f, t => Sn(2800 - t * 2600, t) * MathF.Sin(t / .24f * M.PI) * .1f)); S("flap", Make(.4f, t => Nz(t) * MathF.Pow(MathF.Max(0, MathF.Sin(t * 70)), 3) * .16f)); S("frog", Make(.3f, t => Sn(180, t) * MathF.Pow(MathF.Max(0, MathF.Sin(t * 130)), 2) * MathF.Sin(t / .3f * M.PI) * .3f)); S("duck", Make(.22f, t => (Sn(330 - t * 300, t) + Sn(660 - t * 600, t) * .6f + Sn(990, t) * .3f) * MathF.Sin(t / .22f * M.PI) * .14f)); S("cricket", Make(.3f, t => Sn(4200, t) * MathF.Pow(MathF.Max(0, MathF.Sin(t * 120)), 2) * .05f)); S("owl", Make(.9f, t => Sn(360 - (t > .4f ? 30 : 0), t) * MathF.Pow(MathF.Max(0, MathF.Sin(t / .45f * M.PI)), 1) * .2f)); S("hop", Make(.1f, t => Sn(260 + t * 800, t) * Env(t, .005f, .03f) * .14f)); S("gull", Make(.5f, t => Sn(1200 + MathF.Sin(t * 22) * 300, t) * MathF.Sin(t / .5f * M.PI) * .1f));
         S("thunder", Make(3.2f, t => { float lp = M.Noise(t * 90, 0, 4) + M.Noise(t * 220, 0, 8) * .5f; return lp * (Env(t, .02f, .5f) + Env(MathF.Max(0, t - .5f), .3f, .9f) * .5f) * .6f; })); S("climb", Make(.1f, t => (Nz(t) * .2f + Sn(180, t) * .2f) * Env(t, .004f, .025f))); S("slide", Make(.4f, t => Nz(t) * MathF.Sin(t / .4f * M.PI) * .16f)); S("sit", Make(.2f, t => (Sn(120, t) + Nz(t) * .2f) * Env(t, .01f, .05f) * .3f)); S("snore", Make(.8f, t => (Nz(t) * .3f + Sn(70, t)) * MathF.Sin(t / .8f * M.PI) * .1f));
+        // digging: every material has its own knock, and its own way of giving up
+        float Lp(float t, float rate, int sd) => M.Noise(t * rate, 0, sd);
+        float Stone(float t, int sd) => Nz(t, sd) * .5f * Env(t, .0008f, .012f) + (Sn(1250, t) * .22f + Sn(1870, t) * .1f) * Env(t, .001f, .035f) + Sn(150 - t * 200, t) * .35f * Env(t, .002f, .04f);
+        float Pings(float t, float[] at, float[] fr) { float v = 0; for (int i = 0; i < at.Length; i++) if (t > at[i]) v += Sn(fr[i], t - at[i]) * Env(t - at[i], .0008f, .07f) * .13f; return v; }
+        for (int k = 0; k < 3; k++)
+        {
+            int sd = 20 + k; float f = 1 + (k - 1) * .06f;
+            S("dig_stone", Make(.16f, t => Stone(t * f, sd))); S("dig_ore", Make(.4f, t => Stone(t * f, sd) * .8f + Sn(1318 * f, t) * .16f * Env(t, .002f, .18f)));
+            S("dig_dirt", Make(.16f, t => Sn((95 - t * 140) * f, t) * .55f * Env(t, .003f, .05f) + Lp(t, 1800, sd) * .45f * Env(t, .004f, .06f)));
+            S("dig_sand", Make(.22f, t => Nz(t, sd) * .22f * Env(t, .012f, .08f) * (.6f + .4f * MathF.Sin(t * 260)) + Sn(80, t) * .12f * Env(t, .005f, .04f)));
+            S("dig_wood", Make(.16f, t => Sn((340 - t * 300) * f, t) * .45f * Env(t, .0015f, .045f) + Sn(690 * f, t) * .15f * Env(t, .001f, .02f) + Nz(t, sd) * .25f * Env(t, .0005f, .006f)));
+            S("dig_snow", Make(.18f, t => Lp(t, 4000, sd) * .35f * Env(t, .015f, .05f) * (.5f + .5f * MathF.Sin(t * 900))));
+            S("dig_ice", Make(.3f, t => Nz(t, sd) * .35f * Env(t, .0005f, .008f) + (Sn(2100 * f, t) * .2f + Sn(3150 * f, t) * .12f) * Env(t, .001f, .09f)));
+            S("dig_crystal", Make(.45f, t => Nz(t, sd) * .3f * Env(t, .0005f, .008f) + (Sn(1568 * f, t) * .2f + Sn(2349 * f, t) * .14f + Sn(3136 * f, t) * .08f) * Env(t, .001f, .16f)));
+        }
+        S("break_stone", Make(.6f, t => Sn(70 - t * 60, t) * .5f * Env(t, .003f, .09f) + Nz(t, 31) * .4f * Env(t, .001f, .05f) + Nz(t, 32) * .25f * MathF.Pow(MathF.Max(0, MathF.Sin(t * 70)), 6) * (1 - t / .6f)));
+        S("break_ore", Make(.8f, t => Sn(70 - t * 60, t) * .45f * Env(t, .003f, .09f) + Nz(t, 33) * .35f * Env(t, .001f, .05f) + (Pluck(784, t) + (t > .08f ? Pluck(1047, t - .08f) : 0) + (t > .16f ? Pluck(1319, t - .16f) : 0)) * .45f));
+        S("break_dirt", Make(.45f, t => Sn(60 - t * 40, t) * .6f * Env(t, .004f, .09f) + Lp(t, 1400, 34) * .45f * Env(t, .006f, .15f)));
+        S("break_sand", Make(.6f, t => Nz(t, 35) * .25f * MathF.Sin(t / .6f * M.PI) * (.7f + .3f * MathF.Sin(t * 190)) + Sn(70, t) * .15f * Env(t, .005f, .05f)));
+        S("break_wood", Make(.5f, t => Nz(t, 36) * .45f * Env(t, .0003f, .01f) + Sn(260 - t * 160, t) * .35f * Env(t, .002f, .12f) + Sn(130, t) * .2f * Env(t, .01f, .1f)));
+        S("break_snow", Make(.4f, t => Lp(t, 3000, 37) * .4f * Env(t, .02f, .12f)));
+        S("break_ice", Make(.6f, t => Nz(t, 38) * .4f * Env(t, .0005f, .012f) + Pings(t, [0, .04f, .07f, .11f, .16f], [2200, 2900, 1900, 3400, 2600])));
+        S("break_crystal", Make(.8f, t => Nz(t, 39) * .35f * Env(t, .0005f, .012f) + Pings(t, [0, .05f, .09f, .14f, .2f, .27f], [1568, 2093, 2349, 3136, 2637, 3520])));
         float[] bases = [210, 290, 130, 420, 180, 250];
         for (int v = 0; v < 6; v++)
         {

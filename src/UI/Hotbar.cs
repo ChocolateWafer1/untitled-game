@@ -5,7 +5,7 @@ namespace UntitledGame;
 /// The hotbar: one straight column of slots at the left edge that scrolls through everything you own.
 public sealed partial class GameScreen
 {
-    Spring barPop = new(); float barSel, nameT = 9; readonly List<(int id, int n, float t)> gains = new(); public bool OverBar; float barWheel, barHover;
+    Spring barPop = new(); float barSel, nameT = 9; readonly List<(int id, int n, float t)> gains = new(); public bool OverBar; float barWheel, barHover; readonly Dictionary<int, (float t, int from)> slotPop = new();
     const float BarX = 28, BarGap = 34, SlotOff = 24, SlotOn = 30;
     /// Everything you own, in bag order, with bare hands first. Values are slot indices, -1 for hands.
     List<int> BarList() { var l = new List<int> { -1 }; var s = Store.Data.Slots; for (int i = 0; i < s.Length; i++) if (!s[i].Empty) l.Add(i); return l; }
@@ -22,6 +22,7 @@ public sealed partial class GameScreen
         barSel = Store.Cfg.ReduceMotion ? at : M.Damp(barSel, at, 18, dt); if (MathF.Abs(barSel - at) < .004f) barSel = at; barPop.Update(0, 300, 24, dt);
         float cy = Ui.VH / 2; OverBar = control && MathF.Abs(Ui.Mouse.X - BarX) < 20 && MathF.Abs(Ui.Mouse.Y - cy) < BarGap * 3.5f; barHover = M.Damp(barHover, OverBar ? 1 : 0, 10, dt);
         if (OverBar && Ui.Click) { float my = Ui.Mouse.Y - cy; int k = (int)MathF.Round(my / BarGap); foreach (var (off, slot) in Shown(list)) if (MathF.Abs(off - k) < .4f) { Equip(slot); break; } }
+        foreach (var k in slotPop.Keys.ToArray()) { var q = slotPop[k]; q.t += dt; if (q.t > .5f) slotPop.Remove(k); else slotPop[k] = q; }
         for (int i = gains.Count - 1; i >= 0; i--) { var g = gains[i]; g.t += dt; if (g.t > 2.6f) gains.RemoveAt(i); else gains[i] = g; }
     }
     const int Loop = 9; int barHand = -9, barAt;
@@ -53,9 +54,9 @@ public sealed partial class GameScreen
         var d = Store.Data; var list = BarList(); float cy = MathF.Round(Ui.VH / 2), x = BarX;
         foreach (var (off, slot) in Shown(list).OrderByDescending(q => MathF.Abs(q.off)))
         {
-            float ab = MathF.Abs(off), near = M.Smooth(1, 0, ab), fade = M.Clamp(4.1f - ab); if (fade <= .02f) continue; float y = cy + off * BarGap + MathF.Sign(off) * M.Clamp(ab) * 3, size = M.Lerp(SlotOff, SlotOn, near) + barPop.X * near, h = size / 2; bool sel = near > .5f; bool hov = OverBar && MathF.Abs(Ui.Mouse.Y - y) < BarGap / 2 && !sel;
+            float ab = MathF.Abs(off), near = M.Smooth(1, 0, ab), fade = M.Clamp(4.1f - ab); if (fade <= .02f) continue; float y = cy + off * BarGap + MathF.Sign(off) * M.Clamp(ab) * 3, size = M.Lerp(SlotOff, SlotOn, near) + barPop.X * near, h = size / 2; bool sel = near > .5f; bool hov = OverBar && MathF.Abs(Ui.Mouse.Y - y) < BarGap / 2 && !sel; int shownN = slot >= 0 ? d.Slots[slot].N : 0; if (slot >= 0 && slotPop.TryGetValue(slot, out var sp)) { float pk = sp.t / .5f; size *= 1 + M.Sin(M.Clamp(pk * 1.6f) * M.PI) * .28f * (1 - pk); shownN = (int)MathF.Round(M.Lerp(sp.from, shownN, Ease.OutCubic(M.Clamp(pk * 2.4f)))); Ui.GlowAt(x, y, 20, new Color(255, 240, 200, (int)(90 * (1 - pk) * fade))); }
             if (slot < 0) Hand(x, y, sel ? 34 : 28, sel ? (size + 4) / 34 : (size + 4) / 28 + (hov ? .08f : 0), fade); else if (sel) Items.Draw(d.Slots[slot].Id, x, y, 30, size / 30, 0, fade); else Items.Draw(d.Slots[slot].Id, x, y, 24, size / 24 + (hov ? .08f : 0), 0, fade);
-            if (slot >= 0 && d.Slots[slot].N > 1) Font.Draw(d.Slots[slot].N.ToString(), x + h + 1, y + h - 8, Raylib.Fade(Color.White, fade), 1, 1, Raylib.Fade(new Color(30, 18, 22, 255), fade));
+            if (slot >= 0 && shownN > 1) Font.Draw(shownN.ToString(), x + h + 1, y + h - 8, Raylib.Fade(Color.White, fade), 1, 1, Raylib.Fade(new Color(30, 18, 22, 255), fade));
         }
         // the name slides out beside it for a moment
         float na = MathF.Max(M.Clamp(nameT * 6) * M.Clamp((2.2f - nameT) * 2.4f), barHover); if (na > .02f) { string s = d.Hand < 0 || d.Slots[d.Hand].Empty ? "Bare hands" : Items.Name(d.Slots[d.Hand].Id); float w = Font.Width(s, 1.25f) + 20, nx = x + 18 + Ease.OutCubic(M.Clamp(na)) * 6; Ui.Nine("tip", nx, cy - 10, w, 20, Raylib.Fade(Color.White, na)); Font.Draw(s, nx + 10, cy - 5.5f, Raylib.Fade(Ui.Cream, na), 1.25f); }
