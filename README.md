@@ -8,7 +8,7 @@ A cozy pixel-art 2D side platformer about dressing up, exploring, digging and bu
 
 Windows may show "Windows protected your PC" the first time, because the game isn't signed. Click **More info**, then **Run anyway**. Saves go to `%AppData%\Untitled Game`, so you can move or replace the .exe without losing anything.
 
-Controllers work too (Xbox, or PlayStation and Switch pads through Steam), with rumble.
+Controllers work too: Xbox and PlayStation, with rumble on Xbox (and on PlayStation through Steam).
 
 | Key | Action |
 | --- | --- |
@@ -29,21 +29,20 @@ Controllers work too (Xbox, or PlayStation and Switch pads through Steam), with 
 
 Keys can be rebound.
 
-| Controller | Action |
-| --- | --- |
-| Left stick / D-pad | Walk, climb, crouch |
-| A | Jump |
-| B (hold) | Run |
-| RT | Dig: tap for one blow, hold to keep going |
-| LT | Build |
-| Right stick | Aim at a block (left alone, it picks the block in front of you) |
-| LB / RB | Choose what is in your hand |
-| Y | Inventory |
-| X (hold) | Emote wheel, pick with the stick |
-| View / Back | Map |
-| Start / Menu | Menu |
+| Xbox | PlayStation | Action |
+| --- | --- | --- |
+| Left stick / D-pad | Left stick / D-pad | Walk, climb, crouch. Push the stick all the way (or click it) to run |
+| A | Cross | Jump |
+| RT (hold) | R2 (hold) | Dig the block you aim at |
+| LT | L2 | Build |
+| Right stick | Right stick | Aim (left alone, it picks the block in front of you) |
+| LB / RB | L1 / R1 | Choose what is in your hand |
+| Y | Triangle | Inventory |
+| X (hold) | Square (hold) | Emote wheel, pick with the stick |
+| View | Share | Map |
+| Menu | Options | Menu |
 
-In menus the D-pad jumps between buttons, the left stick moves a cursor, A clicks, B goes back, the right stick scrolls and LB/RB change tabs in the creator. Typing a name brings up an on-screen keyboard.
+In menus the D-pad jumps between buttons, the left stick moves a cursor, A/Cross clicks, B/Circle goes back, the right stick scrolls and LB/RB change tabs in the creator. Typing a name brings up an on-screen keyboard. Rumble works with Xbox controllers, and with PlayStation controllers through Steam. Settings > Controls says which controller the game found.
 
 ## What is inside
 - Avatar creator: body sliders with exact sizes you can type in, 13 face shape sliders, freckles, wrinkles, scars, birthmarks, moles you place, vitiligo, makeup, full-arm tattoos (17 patterns, or draw your own in the Tattoo Studio with brush, fill, shapes, knife, select, mirror and repeat tools), 12 piercings, 96 hair styles with hairlines, length, curl, part side and streaks, split dye, tips, roots and underlayers, 22 beards, 25 glasses, 32 tops, 30 jackets, 30 pants, 30 shorts, 30 skirts, 30 shoes, 30 hats, more accessories, 3 colors and 20 patterns per piece. Clothes and hair move in the wind.

@@ -62,8 +62,8 @@ public static class Ui
         {
             var st = In.LStick; if (st != default) { if (!PadMode) pad = m; PadMode = true; pad += st * dt * (90 + 430 * st.LengthSquared()); pad = Vector2.Clamp(pad, Vector2.Zero, new(VW, VH)); }
             (GamepadButton b, Vector2 d)[] hops = [(GamepadButton.LeftFaceUp, new(0, -1)), (GamepadButton.LeftFaceDown, new(0, 1)), (GamepadButton.LeftFaceLeft, new(-1, 0)), (GamepadButton.LeftFaceRight, new(1, 0))];
-            foreach (var (b, d) in hops) if (Raylib.IsGamepadButtonPressed(0, b)) { if (!PadMode) pad = m; PadMode = true; Hop(d); }
-            if (PadMode) { m = pad; Click |= Raylib.IsGamepadButtonPressed(0, GamepadButton.RightFaceDown); Held |= Raylib.IsGamepadButtonDown(0, GamepadButton.RightFaceDown); Release |= Raylib.IsGamepadButtonReleased(0, GamepadButton.RightFaceDown); RightClick |= Raylib.IsGamepadButtonPressed(0, GamepadButton.RightFaceLeft); RightHeld |= Raylib.IsGamepadButtonDown(0, GamepadButton.RightFaceLeft); Wheel -= In.RStick.Y * dt * 10; }
+            foreach (var (b, d) in hops) if (In.PadPress(b)) { if (!PadMode) pad = m; PadMode = true; Hop(d); }
+            if (PadMode) { m = pad; Click |= In.PadPress(GamepadButton.RightFaceDown); Held |= In.PadDown(GamepadButton.RightFaceDown); Release |= In.PadRelease(GamepadButton.RightFaceDown); RightClick |= In.PadPress(GamepadButton.RightFaceLeft); RightHeld |= In.PadDown(GamepadButton.RightFaceLeft); Wheel -= In.RStick.Y * dt * 10; }
         }
         else if (!cursor) PadMode = false;
         if (FakeMouse is Vector2 f) { m = f; Click = FakeClick; Held = FakeClick || FakeHold; Release = FakeRelease; RightClick = FakeRight; RightHeld = FakeRight || FakeRightHold; Wheel = FakeWheel; FakeWheel = 0; FakeClick = FakeRight = FakeRelease = false; }
@@ -94,8 +94,8 @@ public static class Ui
         float by = py + 8 + 4 * (kh + g), bx = px + 7;
         if (Button("oskAa", oskLower ? "ABC" : "abc", bx, by, 44, kh, "btnP", text: .9f)) oskLower = !oskLower;
         if (Button("oskSp", "Space", bx + 48, by, 130, kh, "btnP", text: .9f)) oskQ.Enqueue(' ');
-        if (Button("oskBk", "Delete", bx + 182, by, 64, kh, "btnR", text: .9f, tip: "B")) oskBack = true;
-        if (Button("oskOk", "Done", bx + 250, by, pw - 14 - 250, kh, "btnG", "check", text: .9f, tip: "Start")) oskDone = true;
+        if (Button("oskBk", "Delete", bx + 182, by, 64, kh, "btnR", text: .9f, tip: In.PadLabel(GamepadButton.RightFaceRight))) oskBack = true;
+        if (Button("oskOk", "Done", bx + 250, by, pw - 14 - 250, kh, "btnG", "check", text: .9f, tip: In.PadLabel(GamepadButton.MiddleRight))) oskDone = true;
         if (In.PadPress(GamepadButton.RightFaceRight)) oskBack = true; if (In.PadPress(GamepadButton.MiddleRight)) oskDone = true; if (In.PadPress(GamepadButton.RightFaceLeft)) oskQ.Enqueue(' ');
         inOsk = false;
     }

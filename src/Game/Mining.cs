@@ -105,7 +105,7 @@ public sealed partial class GameScreen
         if (cur == null) { cur = new Dig(tx, ty, b, tiles.Paint(tx * DTS, ty * DTS, DTS, DTS), face - new Vector2(tx * DTS, ty * DTS), rng); if (digs.Remove(key, out var old)) Raylib.UnloadTexture(old.Tex); digs[key] = cur; }
         cur.P += 1f / Blows(def) + .0001f; cur.Idle = 0; var dir = P.MineAim; cur.Kick = dir; cur.WobV = 95; strikeFx = 1; strikeAt = face; strikeDir = dir; string mat = Blocks.Mat(b); string sn = def.Surf == "sand" ? "sand" : def.Surf; Snd.Play("dig_" + mat, .8f, .9f + cur.P * .18f + rng.F() * .08f); Snd.Play("step_" + sn, .3f, .72f + cur.P * .25f + rng.F() * .1f); Life.Debris(b, face - dir * 2, -dir, 3 + (int)(cur.P * 4), false); Shake(.35f + (def.Time > 1.5f ? .35f : 0));
         if (!digArmed) { queued = 0; follow = P.An.StrikeLen * (1 - AvatarAnim.Hit) * .8f; }
-        if (cur.P < 1) { float hard = M.Clamp(def.Time / 3); Rumble.Kick(.12f + hard * .3f, .22f + hard * .2f, .07f + hard * .04f); }
+        if (cur.P < 1) { float hard = M.Clamp(def.Time / 3); Rumble.Kick(.18f + hard * .35f, .28f + hard * .25f, .11f + hard * .06f); }
         if (mat is "stone" or "ore" or "crystal" or "ice" && def.Time >= 1.1f) Life.Sparks(face - dir * 3, -dir, mat == "ore" ? 5 : 2, mat == "ore" ? (Col)def.Glow : mat == "stone" ? (Col)0xffd890 : (Col)0xd8f0ff, mat == "ore" ? .42f : .26f);
         if (mat is "ore" or "crystal" or "ice") for (int i = 0; i < (mat == "ice" ? 1 : 2); i++) glints.Add((new Vector2(tx * DTS + rng.R(4, 20), ty * DTS + rng.R(4, 20)), -i * .08f, def.Glow != 0 ? (Col)def.Glow : (Col)0xe8f6ff));
         if (cur.P >= 1) Break(tx, ty, cur); else cur.Draw(def.Glow, Blocks.Glows(b));
@@ -121,7 +121,7 @@ public sealed partial class GameScreen
     }
     void Place(int x, int y)
     {
-        var d = Store.Data; ref var st = ref d.Slots[d.Hand]; T b = (T)st.Id; placeCd = .15f; W.Set(x, y, b); st.N--; d.Placed++; Rumble.Kick(.1f, .2f, .05f); var c = new Vector2(x * DTS + 12, y * DTS + 12); pops.Add((x, y, 0, Vector2.Normalize(c - Chest + new Vector2(.01f, 0)))); Snd.Play("step_" + Blocks.Of(b).Surf, .9f, .85f + rng.F() * .1f); Snd.Play("pick", .4f, .8f); Life.Puff(c + new Vector2(0, 8), 6, ((Col)Blocks.Of(b).Color).Shade(.25f), 14); P.An.Punch(1.4f); if (MathF.Abs(c.X - P.P.X) > 10 && MathF.Abs(P.V.X) < 20) P.Dir = c.X > P.P.X ? 1 : -1; placeSwing = .2f;
+        var d = Store.Data; ref var st = ref d.Slots[d.Hand]; T b = (T)st.Id; placeCd = .15f; W.Set(x, y, b); st.N--; d.Placed++; Rumble.Kick(.12f, .25f, .08f); var c = new Vector2(x * DTS + 12, y * DTS + 12); pops.Add((x, y, 0, Vector2.Normalize(c - Chest + new Vector2(.01f, 0)))); Snd.Play("step_" + Blocks.Of(b).Surf, .9f, .85f + rng.F() * .1f); Snd.Play("pick", .4f, .8f); Life.Puff(c + new Vector2(0, 8), 6, ((Col)Blocks.Of(b).Color).Shade(.25f), 14); P.An.Punch(1.4f); if (MathF.Abs(c.X - P.P.X) > 10 && MathF.Abs(P.V.X) < 20) P.Dir = c.X > P.P.X ? 1 : -1; placeSwing = .2f;
         if (st.N <= 0) { int id = st.Id; st = default; int next = Array.FindIndex(d.Slots, s => s.Id == id && !s.Empty); d.Hand = next; barPop.V += 4; }
         foreach (var l in loot) if (l.P.X > x * DTS && l.P.X < (x + 1) * DTS && l.P.Y > y * DTS && l.P.Y <= (y + 1) * DTS) { l.P.Y = y * DTS - 1; l.V = new(rng.R(-30, 30), -80); }
     }
@@ -159,7 +159,7 @@ public sealed partial class GameScreen
     }
     void Collect(Loot l)
     {
-        var before = (ItemStack[])Store.Data.Slots.Clone(); int left = Bag.Add(Store.Data, l.Id, l.N), got = l.N - left; for (int i = 0; i < before.Length; i++) { var sNow = Store.Data.Slots[i]; if (sNow.Id == l.Id && sNow.N != (before[i].Id == l.Id ? before[i].N : 0)) slotPop[i] = (0, before[i].Id == l.Id ? before[i].N : 0); } if (got > 0) { Rumble.Kick(0, .14f, .04f); Snd.Play("pick", .55f, 1.15f + rng.F() * .15f); Life.Sparkle(l.P, 4, ((Col)Blocks.All[l.Id].Color).Shade(.5f).Rl()); Gained(l.Id, got); P.An.Punch(.8f); } if (left > 0) { l.N = left; l.Pull = 0; loot.Add(l); }
+        var before = (ItemStack[])Store.Data.Slots.Clone(); int left = Bag.Add(Store.Data, l.Id, l.N), got = l.N - left; for (int i = 0; i < before.Length; i++) { var sNow = Store.Data.Slots[i]; if (sNow.Id == l.Id && sNow.N != (before[i].Id == l.Id ? before[i].N : 0)) slotPop[i] = (0, before[i].Id == l.Id ? before[i].N : 0); } if (got > 0) { Rumble.Kick(0, .2f, .07f); Snd.Play("pick", .55f, 1.15f + rng.F() * .15f); Life.Sparkle(l.P, 4, ((Col)Blocks.All[l.Id].Color).Shade(.5f).Rl()); Gained(l.Id, got); P.An.Punch(.8f); } if (left > 0) { l.N = left; l.Pull = 0; loot.Add(l); }
     }
     void DrawDigs(int cx, int cy)
     {
