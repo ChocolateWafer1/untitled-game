@@ -24,15 +24,15 @@ public sealed class SelectScreen
             float x = gx + i % 3 * (CW + 12), y = gy + i / 3 * (CH + Gap); float born = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp(openT * 2.6f - i * .08f)); if (born <= 0) continue; Ui.PushScale(x + CW / 2, y + CH / 2, born, born);
             if (i < Saves.All.Count) Card(i, x, y); else Empty(i, x, y); Ui.PopScale();
         }
-        if (Ui.Button("selback", "Back", 12, 12, 72, 24, "btn", "left", text: 1.25f)) Program.BackToTitle(); Ui.Enabled = en; if (asking != null) Ask();
+        if (Ui.Button("selback", "Back", 12, 12, 72, 24, "btn", "left", text: 1.25f)) Program.BackToTitle(); Ui.Enabled = en; if (asking != null) Ask(); Font.Draw("Version " + Saves.GameVer, W - 6, H - 13, new Color(240, 214, 176, 170), 1, 1);
     }
     void Card(int i, float x, float y)
     {
         var s = Saves.All[i]; var d = s.Data; var a = Ui.A("sel" + i); bool over = Ui.Over(x, y, CW, CH); a.Hover.Update(over ? 1 : 0, 300, 18, Ui.DT); if (over && !a.Was) { Snd.Play("hover", .4f); an[i].Set(Anim.Wave); an[i].StateT = 0; wave[i] = 1.5f; } a.Was = over; y += MathF.Round(-a.Hover.X * 3 * (Store.Cfg.ReduceMotion ? 0 : 1));
         Ui.Nine("panel", x, y, CW, CH, Color.White); Raylib.DrawRectangleGradientV((int)x + 12, (int)y + 11, 62, (int)CH - 22, new Color(250, 222, 170, 255), new Color(224, 176, 124, 255)); Raylib.BeginBlendMode(BlendMode.Additive); Ui.GlowAt(x + 43, y + 40, 40, new Color(255, 220, 150, (int)(50 + 40 * M.Clamp(a.Hover.X)))); Raylib.EndBlendMode(); Ui.Clip(x + 12, y + 3, 62, CH - 14); Ui.Tex(tex[i], x + 43 - 55, y + 6 - 38, 1, Color.White); Ui.Unclip();
-        Font.Draw(d.Avatar.Name, x + 84, y + 11, Ui.Ink, Font.Width(d.Avatar.Name, 1.5f) > CW - 98 ? 1.15f : 1.5f); Font.Draw("Day " + d.Day + "   " + d.Mined + " dug", x + 84, y + 27, Ui.Soft); Font.Draw(Time(d.Seconds), x + 84, y + 38, Ui.Soft);
-        if (Ui.Button("play" + i, "Play", x + 83, y + CH - 33, 42, 24, "btnG", text: 1.25f)) { an[i].Set(Anim.Cheer); wave[i] = 3; Program.PlaySave(s, new(x + 45, y + CH / 2)); }
-        if (Ui.Button("edit" + i, null, x + 128, y + CH - 33, 24, 24, "btnB", "top", "Edit avatar")) Program.EditAvatar(s, new(x + 45, y + CH / 2), false);
+        Font.Draw(d.Avatar.Name, x + 84, y + 11, Ui.Ink, Font.Width(d.Avatar.Name, 1.5f) > CW - 98 ? 1.15f : 1.5f); Font.Draw("Day " + d.Day + "   " + d.Mined + " dug", x + 84, y + 27, Ui.Soft); Font.Draw(s.Newer ? "Made in version " + d.Ver : Time(d.Seconds), x + 84, y + 38, s.Newer ? Ui.Red : Ui.Soft);
+        if (Ui.Button("play" + i, "Play", x + 83, y + CH - 33, 42, 24, "btnG", text: 1.25f, tip: s.Newer ? "Update the game to play this save" : null, disabled: s.Newer)) { an[i].Set(Anim.Cheer); wave[i] = 3; Program.PlaySave(s, new(x + 45, y + CH / 2)); }
+        if (Ui.Button("edit" + i, null, x + 128, y + CH - 33, 24, 24, "btnB", "top", "Edit avatar", disabled: s.Newer)) Program.EditAvatar(s, new(x + 45, y + CH / 2), false);
         if (Ui.Button("del" + i, null, x + CW - 35, y + CH - 33, 24, 24, "btnR", "x", "Delete")) { asking = s; askT = 0; Snd.Play("open", .7f); }
     }
     void Empty(int i, float x, float y)

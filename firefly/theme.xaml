@@ -1,0 +1,517 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:px="clr-namespace:GooberLauncher;assembly=Firefly Launcher">
+
+  <!-- Untitled Game's page: the game's own menus. Wooden frames with brass rivets around warm paper, cream buttons with
+       cocoa outlines, a chunky green Play button, and the game's pixel lettering for headings, tabs and buttons.
+       Paper panels set dark ink for everything inside them, so the word styles below leave their colour to whatever
+       they sit on: dark ink on paper, cream over the pictures. -->
+
+  <!-- FONTS: the game's own lettering for show, a clean font for reading -->
+  <FontFamily x:Key="GameDisplay">./#Untitled Pixel</FontFamily>
+  <FontFamily x:Key="GameFont">Segoe UI</FontFamily>
+
+  <!-- COLOURS -->
+  <SolidColorBrush x:Key="GameShade" Color="#2A1A1C" />
+  <SolidColorBrush x:Key="GamePanel" Color="#FAEFD3" />
+  <SolidColorBrush x:Key="GameRow" Color="#FFF8E8" />
+  <SolidColorBrush x:Key="GameRowHot" Color="#FFFDF4" />
+  <SolidColorBrush x:Key="GameAccent" Color="#C8622D" />
+  <SolidColorBrush x:Key="GameAccentHi" Color="#D2672A" />
+  <SolidColorBrush x:Key="GameAccentFaint" Color="#59C8622D" />
+  <SolidColorBrush x:Key="GameText" Color="#FBF1DC" />
+  <SolidColorBrush x:Key="GameBodyText" Color="#EADCC4" />
+  <SolidColorBrush x:Key="GameDim" Color="#C9B597" />
+  <SolidColorBrush x:Key="GameGood" Color="#3F7A32" />
+  <SolidColorBrush x:Key="GameInk" Color="#3E2622" />
+  <SolidColorBrush x:Key="GameOutline" Color="#3A2220" />
+  <SolidColorBrush x:Key="GameGold" Color="#F0B64E" />
+  <SolidColorBrush x:Key="GameCocoa" Color="#46302A" />
+  <SolidColorBrush x:Key="GamePlayText" Color="#FFF8E6" />
+  <LinearGradientBrush x:Key="GamePlay" StartPoint="0,0" EndPoint="0,1">
+    <GradientStop Color="#A9CC78" Offset="0" />
+    <GradientStop Color="#86A85E" Offset="0.5" />
+    <GradientStop Color="#6E8E48" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GamePlayHot" StartPoint="0,0" EndPoint="0,1">
+    <GradientStop Color="#BCDD8C" Offset="0" />
+    <GradientStop Color="#97BA6C" Offset="0.5" />
+    <GradientStop Color="#7C9E54" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GameWood" StartPoint="0,0" EndPoint="0,1">
+    <GradientStop Color="#BE804C" Offset="0" />
+    <GradientStop Color="#A8693C" Offset="0.45" />
+    <GradientStop Color="#8A5230" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GameCream" StartPoint="0,0" EndPoint="0,1">
+    <GradientStop Color="#FDF4DE" Offset="0" />
+    <GradientStop Color="#EFD9AE" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GameCreamHot" StartPoint="0,0" EndPoint="0,1">
+    <GradientStop Color="#FFFBEE" Offset="0" />
+    <GradientStop Color="#F6E3BC" Offset="1" />
+  </LinearGradientBrush>
+  <Color x:Key="GameGlow">#F0B64E</Color>
+
+  <!-- SHAPES -->
+  <CornerRadius x:Key="GameCorner">10</CornerRadius>
+  <CornerRadius x:Key="GameSmallCorner">6</CornerRadius>
+
+  <!-- WORDS. Their colours are resources, and every paper panel swaps those for dark ink (see PaperInk below). -->
+  <Style x:Key="GameHeading" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource GameDisplay}" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource GameText}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style x:Key="GameLabel" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource GameFont}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource GameAccent}" />
+  </Style>
+  <Style x:Key="GameMeta" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource GameFont}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource GameDim}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style x:Key="GameBody" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{DynamicResource GameFont}" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="LineHeight" Value="22" />
+    <Setter Property="Foreground" Value="{DynamicResource GameBodyText}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- PANELS: a wooden frame with brass rivets, cocoa outline, and paper inside -->
+  <ControlTemplate x:Key="GameWoodPaper" TargetType="ContentControl">
+    <Grid SnapsToDevicePixels="True">
+      <Border CornerRadius="11" Background="{DynamicResource GameOutline}" />
+      <Border CornerRadius="10" Margin="1.5" Background="{DynamicResource GameWood}" />
+      <Border CornerRadius="10" Margin="1.5" BorderBrush="#33FFFFFF" BorderThickness="0,1.5,0,0" />
+      <Border CornerRadius="5" Margin="7" Background="#4E2E22" />
+      <Border CornerRadius="4.5" Margin="8" Background="{DynamicResource GamePanel}" BorderBrush="#E8D2A2" BorderThickness="0,2,0,0"
+              Padding="{TemplateBinding Padding}">
+        <ContentPresenter />
+      </Border>
+      <Ellipse Width="5" Height="5" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Fill="#E8BD62" Stroke="#6A4A20" StrokeThickness="0.8" />
+      <Ellipse Width="5" Height="5" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,2,0" Fill="#E8BD62" Stroke="#6A4A20" StrokeThickness="0.8" />
+      <Ellipse Width="5" Height="5" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="2,0,0,2" Fill="#E8BD62" Stroke="#6A4A20" StrokeThickness="0.8" />
+      <Ellipse Width="5" Height="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2" Fill="#E8BD62" Stroke="#6A4A20" StrokeThickness="0.8" />
+    </Grid>
+  </ControlTemplate>
+  <Style x:Key="GamePlate" TargetType="ContentControl">
+      <Style.Resources>
+        <SolidColorBrush x:Key="GameText" Color="#3E2622" />
+        <SolidColorBrush x:Key="GameBodyText" Color="#4A322A" />
+        <SolidColorBrush x:Key="GameDim" Color="#7C6250" />
+        <SolidColorBrush x:Key="GameGood" Color="#3F7A32" />
+        <SolidColorBrush x:Key="GameAccent" Color="#B5552A" />
+        <SolidColorBrush x:Key="GameAccentHi" Color="#B5552A" />
+      </Style.Resources>
+      <Setter Property="Foreground" Value="#3E2622" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template" Value="{StaticResource GameWoodPaper}" />
+  </Style>
+
+  <!-- One version or one set of patch notes: a little card on the paper, like the game's item cards -->
+  <Style x:Key="GameRowPlate" TargetType="ContentControl">
+      <Style.Resources>
+        <SolidColorBrush x:Key="GameText" Color="#3E2622" />
+        <SolidColorBrush x:Key="GameBodyText" Color="#4A322A" />
+        <SolidColorBrush x:Key="GameDim" Color="#7C6250" />
+        <SolidColorBrush x:Key="GameGood" Color="#3F7A32" />
+        <SolidColorBrush x:Key="GameAccent" Color="#B5552A" />
+        <SolidColorBrush x:Key="GameAccentHi" Color="#B5552A" />
+      </Style.Resources>
+      <Setter Property="Foreground" Value="#3E2622" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Border Background="{DynamicResource GameRow}" BorderBrush="#9C7A58" BorderThickness="1.2" CornerRadius="{DynamicResource GameSmallCorner}"
+                  Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+            <ContentPresenter />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Feature chips over the pictures: small paper tags -->
+  <Style x:Key="GameChip" TargetType="ContentControl">
+      <Style.Resources>
+        <SolidColorBrush x:Key="GameText" Color="#3E2622" />
+        <SolidColorBrush x:Key="GameBodyText" Color="#4A322A" />
+        <SolidColorBrush x:Key="GameDim" Color="#7C6250" />
+        <SolidColorBrush x:Key="GameGood" Color="#3F7A32" />
+        <SolidColorBrush x:Key="GameAccent" Color="#B5552A" />
+        <SolidColorBrush x:Key="GameAccentHi" Color="#B5552A" />
+      </Style.Resources>
+      <Setter Property="Foreground" Value="#3E2622" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Padding" Value="13,6" />
+    <Setter Property="Margin" Value="0,8,8,0" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Grid>
+            <Border CornerRadius="7" Background="#66140A0C" Margin="0,2,0,-2" />
+            <Border CornerRadius="7" Background="{DynamicResource GameOutline}" />
+            <Border CornerRadius="6" Margin="1.5" Background="{DynamicResource GameCream}" BorderBrush="#FFFDF4" BorderThickness="0,1,0,0"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter />
+            </Border>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Where a version stands: a stamped tag -->
+  <Style x:Key="GameState" TargetType="ContentControl">
+      <Style.Resources>
+        <SolidColorBrush x:Key="GameText" Color="#3E2622" />
+        <SolidColorBrush x:Key="GameBodyText" Color="#4A322A" />
+        <SolidColorBrush x:Key="GameDim" Color="#7C6250" />
+        <SolidColorBrush x:Key="GameGood" Color="#3F7A32" />
+        <SolidColorBrush x:Key="GameAccent" Color="#B5552A" />
+        <SolidColorBrush x:Key="GameAccentHi" Color="#B5552A" />
+      </Style.Resources>
+      <Setter Property="Foreground" Value="#3E2622" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Padding" Value="9,3" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Border Background="#F2DCAE" BorderBrush="#C9A06A" BorderThickness="1" CornerRadius="4" Padding="{TemplateBinding Padding}"
+                 >
+            <ContentPresenter />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="GamePicture" TargetType="ContentControl">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource GameOutline}" BorderThickness="2"
+                  CornerRadius="{DynamicResource GameSmallCorner}" SnapsToDevicePixels="True">
+            <ContentPresenter />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The top of the bottom bar: a wooden beam -->
+  <Style x:Key="GameBarTop" TargetType="ContentControl">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Grid Height="6">
+            <Rectangle Fill="{DynamicResource GameOutline}" />
+            <Rectangle Fill="{DynamicResource GameWood}" Margin="0,1" />
+            <Rectangle Fill="#33FFFFFF" Height="1" VerticalAlignment="Top" Margin="0,1,0,0" />
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- TABS: the game's lettering, with a gold bar under the one you're on -->
+  <Style x:Key="GameTab" TargetType="RadioButton">
+    <Setter Property="FontFamily" Value="{DynamicResource GameDisplay}" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="Foreground" Value="{DynamicResource GameBodyText}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Margin" Value="4,0" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <StackPanel Background="Transparent">
+            <Border Background="Transparent" Padding="14,8,14,6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <Border x:Name="Mark" Height="5" Margin="12,0" CornerRadius="2" Background="{DynamicResource GameGold}" BorderBrush="{DynamicResource GameOutline}" BorderThickness="1" />
+          </StackPanel>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="#FFFDF4" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter Property="Foreground" Value="{DynamicResource GameGold}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="GameTabLine" TargetType="ContentControl">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Height" Value="5" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Border CornerRadius="2" Background="{DynamicResource GameGold}" BorderBrush="{DynamicResource GameOutline}" BorderThickness="1" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="GameBadge" TargetType="ContentControl">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContentControl">
+          <Ellipse Width="9" Height="9" Fill="{DynamicResource GameGold}" Stroke="{DynamicResource GameOutline}" StrokeThickness="1.2" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- BUTTONS: cream, with a cocoa outline and a darker lip along the bottom, like the game's -->
+  <Style x:Key="GameButton" TargetType="Button">
+    <Setter Property="FontFamily" Value="{DynamicResource GameDisplay}" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Foreground" Value="{DynamicResource GameInk}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="16,8" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Face" RenderTransformOrigin="0.5,0.5">
+            <Border CornerRadius="7" Background="{DynamicResource GameOutline}" />
+            <Border x:Name="Lip" CornerRadius="6" Margin="1.5" Background="#C9A06A" />
+            <Border x:Name="Top" CornerRadius="6" Margin="1.5,1.5,1.5,4" Background="{DynamicResource GameCream}" BorderBrush="#FFFDF4" BorderThickness="0,1,0,0" />
+            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Top" Property="Background" Value="{DynamicResource GameCreamHot}" />
+              <Setter TargetName="Lip" Property="Background" Value="{DynamicResource GameAccent}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Face" Property="RenderTransform">
+                <Setter.Value>
+                  <TranslateTransform Y="1.5" />
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Face" Property="Opacity" Value="0.45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Play: the game's own green button, the brightest thing on the page -->
+  <Style x:Key="GamePlayButton" TargetType="Button">
+    <Setter Property="FontFamily" Value="{DynamicResource GameDisplay}" />
+    <Setter Property="FontSize" Value="26" />
+    <Setter Property="Foreground" Value="{DynamicResource GamePlayText}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="22,12,22,15" />
+    <Setter Property="SnapsToDevicePixels" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Face" RenderTransformOrigin="0.5,0.5">
+            <Border x:Name="Rim" CornerRadius="11" Background="{DynamicResource GameOutline}" />
+            <Border x:Name="Lip" CornerRadius="10" Margin="2" Background="#4E6A30" />
+            <Border x:Name="Top" CornerRadius="10" Margin="2,2,2,6" Background="{DynamicResource GamePlay}" />
+            <Border CornerRadius="9,9,4,4" Margin="6,4,6,0" Height="10" VerticalAlignment="Top" Background="#30FFFFFF" />
+            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <ContentPresenter.Effect>
+                <DropShadowEffect ShadowDepth="2" Direction="270" BlurRadius="0" Color="#2E3A18" Opacity="0.9" />
+              </ContentPresenter.Effect>
+            </ContentPresenter>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Top" Property="Background" Value="{DynamicResource GamePlayHot}" />
+              <Setter TargetName="Rim" Property="Effect">
+                <Setter.Value>
+                  <DropShadowEffect BlurRadius="22" ShadowDepth="0" Opacity="0.7" Color="{DynamicResource GameGlow}" />
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Face" Property="RenderTransform">
+                <Setter.Value>
+                  <TranslateTransform Y="2" />
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Top" Property="Background" Value="#CDBFA6" />
+              <Setter TargetName="Lip" Property="Background" Value="#9C8C74" />
+              <Setter Property="Foreground" Value="#F4EAD8" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="GameProgress" TargetType="ProgressBar">
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ProgressBar">
+          <Border Background="#4E2E22" BorderBrush="{DynamicResource GameOutline}" BorderThickness="1.5" CornerRadius="5" ClipToBounds="True">
+            <Grid>
+              <Rectangle x:Name="PART_Track" />
+              <Rectangle x:Name="PART_Indicator" HorizontalAlignment="Left" RadiusX="3.5" RadiusY="3.5">
+                <Rectangle.Fill>
+                  <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#FFD27A" Offset="0" />
+                    <GradientStop Color="#E8923F" Offset="1" />
+                  </LinearGradientBrush>
+                </Rectangle.Fill>
+              </Rectangle>
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- THE VERSION PICKER: a dark cocoa box, like the game's tooltips, so its cream words read -->
+  <Style x:Key="GameDropToggle" TargetType="ToggleButton">
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="Face" Background="{DynamicResource GameCocoa}" BorderBrush="{DynamicResource GameOutline}" BorderThickness="1.5"
+                  CornerRadius="{DynamicResource GameSmallCorner}">
+            <Path x:Name="Arrow" Data="M 0 0 L 5 5 L 10 0" Stroke="{DynamicResource GameGold}" StrokeThickness="2" HorizontalAlignment="Right"
+                  VerticalAlignment="Center" Margin="0,2,14,0" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Face" Property="Background" Value="#5A3E34" />
+              <Setter TargetName="Face" Property="BorderBrush" Value="{DynamicResource GameGold}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="GameComboItem" TargetType="ComboBoxItem">
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ComboBoxItem">
+          <Border x:Name="Face" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+            <ContentPresenter />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Face" Property="Background" Value="#6A4A3E" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="Face" Property="Background" Value="#2E1E1C" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="GameCombo" TargetType="ComboBox">
+    <Setter Property="Height" Value="40" />
+    <Setter Property="ItemContainerStyle" Value="{DynamicResource GameComboItem}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ComboBox">
+          <Grid>
+            <ToggleButton Style="{DynamicResource GameDropToggle}" Focusable="False" ClickMode="Press"
+                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+            <ContentPresenter Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource TemplatedParent}}"
+                              ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource TemplatedParent}}"
+                              Margin="14,0,34,0" VerticalAlignment="Center" IsHitTestVisible="False" />
+            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Top" AllowsTransparency="True" Focusable="False"
+                   PopupAnimation="Fade" VerticalOffset="-6">
+              <Border Background="{DynamicResource GameCocoa}" BorderBrush="{DynamicResource GameOutline}" BorderThickness="1.5" CornerRadius="8"
+                      Padding="6" MinWidth="{TemplateBinding ActualWidth}">
+                <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto">
+                  <ItemsPresenter />
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Typing boxes on the Reviews tab: fresh paper -->
+  <Style x:Key="GameTextBox" TargetType="TextBox">
+    <Setter Property="FontFamily" Value="{DynamicResource GameFont}" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="Foreground" Value="{DynamicResource GameInk}" />
+    <Setter Property="Background" Value="#FFFBF0" />
+    <Setter Property="BorderBrush" Value="#9C7A58" />
+    <Setter Property="CaretBrush" Value="{DynamicResource GameInk}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource GameGold}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="TextBox">
+          <Border x:Name="Face" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource GameSmallCorner}" Padding="{TemplateBinding Padding}">
+            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Auto" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Face" Property="BorderBrush" Value="{DynamicResource GameAccent}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Scrollbars: a little wooden peg on a faint line -->
+  <Style TargetType="ScrollBar">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ScrollBar">
+          <Grid Background="Transparent">
+            <Rectangle Fill="{DynamicResource GameAccentFaint}" Width="2" HorizontalAlignment="Center" Margin="0,4" />
+            <Track x:Name="PART_Track" IsDirectionReversed="True">
+              <Track.Thumb>
+                <Thumb>
+                  <Thumb.Template>
+                    <ControlTemplate TargetType="Thumb">
+                      <Border Background="{DynamicResource GameWood}" BorderBrush="{DynamicResource GameOutline}" BorderThickness="1" Margin="2,0" CornerRadius="3" />
+                    </ControlTemplate>
+                  </Thumb.Template>
+                </Thumb>
+              </Track.Thumb>
+              <Track.IncreaseRepeatButton>
+                <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False" />
+              </Track.IncreaseRepeatButton>
+              <Track.DecreaseRepeatButton>
+                <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False" />
+              </Track.DecreaseRepeatButton>
+            </Track>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

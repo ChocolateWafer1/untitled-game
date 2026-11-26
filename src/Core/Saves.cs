@@ -9,6 +9,7 @@ public sealed class DropData { public int Id { get; set; } public int N { get; s
 public sealed class SaveData
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Ver { get; set; } = ""; // the version that last wrote this save
     public AvatarData Avatar { get; set; } = new();
     public int Seed { get; set; } = 1;
     public int Gen { get; set; } = World.GenVer;
@@ -38,7 +39,11 @@ public sealed class SaveData
 public static class Saves
 {
     public const int Max = 9;
-    public sealed class Slot { public string File; public SaveData Data; }
+    public sealed class Slot { public string File; public SaveData Data; public bool Newer; }
+    /// This build's version, as players see it (MAJOR.MINOR.PATCH).
+    public static string GameVer { get { var v = typeof(Saves).Assembly.GetName().Version; return v == null ? "0.0.0" : $"{v.Major}.{v.Minor}.{Math.Max(0, v.Build)}"; } }
+    /// A save written by a newer version is never overwritten by an older one.
+    static bool IsNewer(string ver) => Version.TryParse(ver, out var a) && Version.TryParse(GameVer, out var b) && a > b;
     static readonly JsonSerializerOptions O = new() { WriteIndented = true };
     public static string Dir => Path.Combine(Store.Dir, "saves");
     public static List<Slot> All = new();
@@ -49,7 +54,7 @@ public static class Saves
     public static void Refresh()
     {
         Import(); All = new(); var seen = new HashSet<string>();
-        try { if (Directory.Exists(Dir)) foreach (var f in Directory.GetFiles(Dir, "*.json")) { try { var d = JsonSerializer.Deserialize<SaveData>(File.ReadAllText(f), O); if (d == null) continue; d.Validate(); if (!seen.Add(d.Id)) continue; /* a copied file is the same character, and a character lives in one save */ All.Add(new Slot { File = f, Data = d }); } catch { } } } catch { }
+        try { if (Directory.Exists(Dir)) foreach (var f in Directory.GetFiles(Dir, "*.json")) { try { var d = JsonSerializer.Deserialize<SaveData>(File.ReadAllText(f), O); if (d == null) continue; d.Validate(); if (!seen.Add(d.Id)) continue; /* a copied file is the same character, and a character lives in one save */ All.Add(new Slot { File = f, Data = d, Newer = IsNewer(d.Ver) }); } catch { } } } catch { }
         All = All.OrderBy(s => s.Data.Created).Take(Max).ToList();
     }
     public static bool Full => All.Count >= Max;
@@ -70,9 +75,20 @@ public static class Saves
     }
     public static bool Write(Slot s)
     {
-        if (Locked) return false;
+        if (Locked || s.Newer) return false;
         // written beside the real file first, so a crash mid-save can never destroy a character
-        try { Directory.CreateDirectory(Dir); File.WriteAllText(s.File + ".tmp", JsonSerializer.Serialize(s.Data, O)); File.Move(s.File + ".tmp", s.File, true); return true; } catch { return false; }
+        try { Directory.CreateDirectory(Dir); Backup(s); s.Data.Ver = GameVer; File.WriteAllText(s.File + ".tmp", JsonSerializer.Serialize(s.Data, O)); File.Move(s.File + ".tmp", s.File, true); return true; } catch { return false; }
+    }
+    /// Keeps the last five copies of each character's save, at most one every ten minutes, in saves/backups.
+    static void Backup(Slot s)
+    {
+        try
+        {
+            if (!File.Exists(s.File)) return; var dir = Path.Combine(Dir, "backups", s.Data.Id); Directory.CreateDirectory(dir); var have = Directory.GetFiles(dir, "*.json").OrderBy(f => f).ToList();
+            if (have.Count > 0 && (DateTime.Now - File.GetLastWriteTime(have[^1])).TotalMinutes < 10) return;
+            File.Copy(s.File, Path.Combine(dir, DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + ".json"), true); have = Directory.GetFiles(dir, "*.json").OrderBy(f => f).ToList(); while (have.Count > 5) { File.Delete(have[0]); have.RemoveAt(0); }
+        }
+        catch { }
     }
     /// Removes a save from the game. The file is kept in a "deleted" folder rather than destroyed.
     public static void Delete(Slot s)

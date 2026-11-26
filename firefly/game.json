@@ -1,0 +1,17 @@
+{
+  "id": "untitledgame",
+  "name": "Untitled Game",
+  "exe": "Untitled Game.exe",
+  "tagline": "A cozy little world",
+  "blurb": "Make a character who is really yours, then dig, build and wander a world of twenty biomes grown from its own seed.",
+  "safeNote": "Your saves and settings are kept safe either way.",
+  "chips": [
+    "Deep avatar creator",
+    "20 biomes",
+    "Dig and build by hand",
+    "Controller ready"
+  ],
+  "saves": "%APPDATA%\\Untitled Game",
+  "pixelArt": false,
+  "logoHeight": 56
+}

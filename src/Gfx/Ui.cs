@@ -54,7 +54,7 @@ public static class Ui
 
     public static void Begin(float dt)
     {
-        frame++; DT = dt; T += dt; int w = Raylib.GetRenderWidth(), h = Raylib.GetRenderHeight(); Scale = h / 360f; VH = 360; VW = w / Scale; if (VW < 480) { Scale = w / 480f; VW = 480; VH = h / Scale; }
+        frame++; DT = dt; T += dt; int w = SizeOverride?.w ?? Raylib.GetRenderWidth(), h = SizeOverride?.h ?? Raylib.GetRenderHeight(); Scale = h / 360f; VH = 360; VW = w / Scale; if (VW < 480) { Scale = w / 480f; VW = 480; VH = h / Scale; }
         var m = Raylib.GetMousePosition() / Scale; Click = Raylib.IsMouseButtonPressed(MouseButton.Left); Held = Raylib.IsMouseButtonDown(MouseButton.Left); Release = Raylib.IsMouseButtonReleased(MouseButton.Left); RightClick = Raylib.IsMouseButtonPressed(MouseButton.Right); RightHeld = Raylib.IsMouseButtonDown(MouseButton.Right); Wheel = Raylib.GetMouseWheelMove();
         if (m != lastMouse) PadMode = false; lastMouse = m;
         In.Track(); (prevRects, rects) = (rects, prevRects); rects.Clear(); bool cursor = !InGame; InGame = false;
@@ -101,7 +101,7 @@ public static class Ui
     }
     public static An A(string id) { if (!an.TryGetValue(id, out var a)) an[id] = a = new An(); if (a.Seen < frame - 1) { a.Born = T; a.Hover = new(); a.Press = new(); a.Was = false; } a.Seen = frame; return a; }
     /// Set by the game every frame the character has control, so the left stick walks instead of moving a cursor.
-    public static bool InGame;
+    public static bool InGame; public static (int w, int h)? SizeOverride;
     static List<Vector4> rects = new(), prevRects = new();
     /// Jumps the controller cursor to the nearest button in a direction.
     static void Hop(Vector2 d)

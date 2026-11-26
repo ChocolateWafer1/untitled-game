@@ -30,6 +30,8 @@ public sealed partial class GameScreen
     public void Shake(float v) => shake = MathF.Max(shake, v * Store.Cfg.Shake * (Store.Cfg.ReduceMotion ? .2f : 1));
     public Vector2 ToScreen(Vector2 w) => new(w.X - CamX, w.Y - CamY);
     public bool MenuOpen => panel != Panel.None;
+    bool hidePlayer; /// For pictures of the world: no character and no HUD.
+    public void CleanForShots(bool on) { hidePlayer = on; hideHud = on; }
 
     public void Update(float dt)
     {
@@ -100,7 +102,7 @@ public sealed partial class GameScreen
         tiles.Draw(cx, cy, w, h); if (!Title) DrawDigs(cx, cy); for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) if (W.Climb[y * World.W + x] == 2) VineDraw(x, y, cx, cy);
         foreach (var p in Visible(170)) if (p.Layer == 1) DrawProp(p, cx, cy);
         Life.DrawAnimals(cx, cy, w, true); foreach (var p in Visible(170)) if (p.Layer == 2) DrawProp(p, cx, cy);
-        Life.DrawGrass(cx, cy, w, h, false); Life.DrawAnimals(cx, cy, w, false); if (!Title) { DrawLoot(cx, cy); if (P.Ground) Shadow(P.P.X - cx, P.P.Y + P.StepY - cy, 13); P.Draw(cx, cy); DrawHeld(cx, cy); } Life.DrawGrass(cx, cy, w, h, true); foreach (var p in Visible(170)) if (p.Layer == 3) DrawProp(p, cx, cy);
+        Life.DrawGrass(cx, cy, w, h, false); Life.DrawAnimals(cx, cy, w, false); if (!Title && !hidePlayer) { DrawLoot(cx, cy); if (P.Ground) Shadow(P.P.X - cx, P.P.Y + P.StepY - cy, 13); P.Draw(cx, cy); DrawHeld(cx, cy); } Life.DrawGrass(cx, cy, w, h, true); foreach (var p in Visible(170)) if (p.Layer == 3) DrawProp(p, cx, cy);
     }
     static void Shadow(float x, float y, float r) { Raylib.DrawEllipse((int)x, (int)y + 1, r, 2.4f, new Color(30, 18, 34, 80)); }
     void VineDraw(int tx, int ty, int cx, int cy) { int x = tx * 24 - cx, y = ty * 24 - cy; float s = M.Sin(time * 1.4f + ty * .5f) * 1.5f + Env.Wind; for (int k = 0; k < 3; k++) { int ox = 6 + k * 5 + (int)(s * (k - 1) * .4f + s * .5f); Raylib.DrawRectangle(x + ox, y, 2, 24, new Color(72, 104, 62, 255)); for (int q = 0; q < 3; q++) { int yy = y + q * 8 + k * 3; Raylib.DrawRectangle(x + ox - 3 + (q + k) % 2 * 4, yy, 4, 3, new Color(122, 168, 84, 255)); Raylib.DrawRectangle(x + ox - 3 + (q + k) % 2 * 4, yy + 2, 4, 1, new Color(74, 110, 60, 255)); } } }

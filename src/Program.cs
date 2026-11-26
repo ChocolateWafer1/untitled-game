@@ -21,7 +21,7 @@ public static class Program
     static void Run(bool dev)
     {
         Store.LoadAll(); Raylib.SetTraceLogLevel(dev && shot == "passes" ? TraceLogLevel.Info : TraceLogLevel.Warning);
-        Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "Untitled Game"); Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
+        Raylib.SetConfigFlags((dev ? ConfigFlags.HiddenWindow : ConfigFlags.ResizableWindow) | (Store.Cfg.Vsync && !dev ? ConfigFlags.VSyncHint : 0)); Raylib.InitWindow(1280, 720, "Untitled Game"); if (dev && shot == "backdrops") { Dev.Rt = Raylib.LoadRenderTexture(1920, 1080); Ui.SizeOverride = (1920, 1080); } Raylib.SetExitKey(KeyboardKey.Null); if (!dev) Raylib.SetTargetFPS(Store.Cfg.Vsync ? 0 : 144);
         if (!dev) ApplyWindow();
         Snd.Load(dev); Ui.Load(); Editor = new EditorScreen { Done = EditorDone, Back = EditorBack }; Game = new GameScreen(new World(dev ? 4242 : Saves.All.OrderByDescending(q => q.Data.Played).FirstOrDefault()?.Data.Seed ?? Random.Shared.Next(1, int.MaxValue)));
         Dev.Shots = shotDir;
@@ -73,7 +73,8 @@ public static class Program
         Snd.Update(dt); Voice.Update(dt);
         if (Screen == Scr.Editor) { Snd.Music("editor"); Editor.Update(dt); } else { if (Screen == Scr.Select) Select.Update(dt); Game.Update(dt); }
         Raylib.BeginDrawing(); Raylib.ClearBackground(Color.Black); if (Screen != Scr.Editor) Game.RenderWorld();
-        if (Screen != Scr.Editor) { Ui.Push(); Game.DrawWorld(); Ui.Pop(); } Ui.Push(); if (Screen == Scr.Editor) Editor.Draw(); else { Game.DrawUi(); if (Screen == Scr.Select) Select.Draw(); } Ui.End(); DrawIris(dt); Ui.Pop(); Raylib.EndDrawing();
+        bool off = Dev.Rt.Id != 0; if (off) { Raylib.BeginTextureMode(Dev.Rt); Raylib.ClearBackground(Color.Black); }
+        if (Screen != Scr.Editor) { Ui.Push(); Game.DrawWorld(); Ui.Pop(); } Ui.Push(); if (Screen == Scr.Editor) Editor.Draw(); else { Game.DrawUi(); if (Screen == Scr.Select) Select.Draw(); } Ui.End(); DrawIris(dt); Ui.Pop(); if (off) Raylib.EndTextureMode(); Raylib.EndDrawing();
     }
     public static void IrisClose(Vector2 c, Action mid, float dur = .85f) { irisC = c; irisFrom = 1; irisTo = 0; irisT = 0; irisDur = dur; irisMid = mid; Snd.Play("iris_in"); }
     public static void IrisOpen(Vector2 c, float dur = 1.25f) { irisC = c; irisFrom = 0; irisTo = 1; irisT = 0; irisDur = dur; irisMid = null; Snd.Play("iris_out"); }
@@ -108,7 +109,7 @@ public static class Dev
     {
         switch (a[0])
         {
-            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--hand": { var big = new Painter(1000, 340); int k = 0; foreach (Col sk in new Col[] { 0xf0c4a0, 0xc68a5e, 0x7e4b30 }) { Blit(GameScreen.HandArt(34, sk, k == 0 ? 0x2f9a94 : 0xc65a4a), big, 10 + k * 320, 10, 8); k++; } Finish(big, a[1]); return true; } case "--weight": { int[] lbs = [100, 110, 120, 130, 140, 150, 170, 190, 220, 260, 300]; var big = new Painter(lbs.Length * 130, 300); var ap = new AvatarPainter(); var one = new Painter(130, 300); for (int i = 0; i < lbs.Length; i++) { float lo = 0, hi = 1; for (int k = 0; k < 24; k++) { float m = (lo + hi) / 2; if (Rig.Pounds(new AvatarData { Weight = m }) < lbs[i]) lo = m; else hi = m; } one.Clear(); var d = new AvatarData { Weight = lo }; var rg = new Rig(d); ap.Draw(one, d, Pose.Stand, 2.5f, 65, 290, outlinePx: 2); Blit(one, big, i * 130, 0); Console.WriteLine($"{lbs[i]} lb at average height: slider {lo:0.00}, waist {rg.Waist * 67 / 95.2f * 5.8f:0.0} in"); } Finish(big, a[1]); return true; } case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
+            case "--sheet": Sheet(a[1]); return true; case "--walk": WalkSheet(a[1]); return true; case "--migrate": Store.Migrate(a[1], a[2]); return true; case "--slide": SlideSheet(a[1]); return true; case "--poses": PoseSheet(a[1]); return true; case "--wind": WindSheet(a[1]); return true; case "--wave": WaveSheet(a[1]); return true; case "--launcher": LauncherArt(a[1]); return true; case "--cat": Cat(a[1], a[2]); return true; case "--mine": MineSheet(a[1]); return true; case "--blocks": BlockSheet(a[1]); return true; case "--worlds": Worlds(a[1], int.Parse(a[2])); return true; case "--icon": IconArt(a[1]); return true; case "--hand": { var big = new Painter(1000, 340); int k = 0; foreach (Col sk in new Col[] { 0xf0c4a0, 0xc68a5e, 0x7e4b30 }) { Blit(GameScreen.HandArt(34, sk, k == 0 ? 0x2f9a94 : 0xc65a4a), big, 10 + k * 320, 10, 8); k++; } Finish(big, a[1]); return true; } case "--weight": { int[] lbs = [100, 110, 120, 130, 140, 150, 170, 190, 220, 260, 300]; var big = new Painter(lbs.Length * 130, 300); var ap = new AvatarPainter(); var one = new Painter(130, 300); for (int i = 0; i < lbs.Length; i++) { float lo = 0, hi = 1; for (int k = 0; k < 24; k++) { float m = (lo + hi) / 2; if (Rig.Pounds(new AvatarData { Weight = m }) < lbs[i]) lo = m; else hi = m; } one.Clear(); var d = new AvatarData { Weight = lo }; var rg = new Rig(d); ap.Draw(one, d, Pose.Stand, 2.5f, 65, 290, outlinePx: 2); Blit(one, big, i * 130, 0); Console.WriteLine($"{lbs[i]} lb at average height: slider {lo:0.00}, waist {rg.Waist * 67 / 95.2f * 5.8f:0.0} in"); } Finish(big, a[1]); return true; } case "--steps": Tall(); return true; case "--backs": Backs(a[1]); return true;
         }
         return false;
     }
@@ -128,7 +129,9 @@ public static class Dev
     }
     static void Backs(string path) { var m = typeof(Backdrop).GetMethod("Layer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static); var big = new Painter(1024 * 2, 8 * 200); for (int b = 0; b < 16; b++) { for (int L = 0; L < 4; L++) { var p = (Painter)m.Invoke(null, [(Biome)b, L]); int ox = b % 2 * 1024, oy = b / 2 * 200; for (int y = 0; y < 200; y++) for (int x = 0; x < 1024; x++) { int sy = y - L * 14 + 30; if (sy < 0 || sy >= 300) continue; var c = p.Px[sy * 1024 + x]; if (c.A > 80) big.Px[(oy + y) * big.W + ox + x] = c; } } } Finish(big, path); }
     public static void Steps(int n, float dt = 1 / 60f) { for (int i = 0; i < n; i++) Program.Frame(dt); }
-    public static void Save(string n) { var img = Raylib.LoadImageFromScreen(); if (img.Width != 1280) Raylib.ImageCrop(ref img, new Rectangle(0, img.Height - 720, 1280, 720)); Raylib.ExportImage(img, Path.Combine(Shots, n + ".png")); Raylib.UnloadImage(img); }
+    /// Off-screen target for pictures bigger than the hidden window (the launcher's 1920x1080 backdrops).
+    public static RenderTexture2D Rt;
+    public static void Save(string n) { if (Rt.Id != 0) { var im = Raylib.LoadImageFromTexture(Rt.Texture); Raylib.ImageFlipVertical(ref im); Raylib.ExportImage(im, Path.Combine(Shots, n + ".png")); Raylib.UnloadImage(im); return; } var img = Raylib.LoadImageFromScreen(); if (img.Width != 1280 && img.Width != 1920) Raylib.ImageCrop(ref img, new Rectangle(0, img.Height - 720, 1280, 720)); Raylib.ExportImage(img, Path.Combine(Shots, n + ".png")); Raylib.UnloadImage(img); }
     public static void ClickAt(float x, float y) { Ui.FakeMouse = new(x, y); Steps(2); Ui.FakeMouse = new(x, y); Ui.FakeClick = true; Steps(1); Steps(2); }
     static void Key(Act a, string nm = null, int wait = 50) { In.ForcePress.Add(a); Steps(1); In.ForcePress.Clear(); Steps(wait); if (nm != null) Save(nm); }
     static void NewSave(string name, int seed) { var r = new Rng(12 + name.Length); var a = AvatarData.Random(r); a.Name = name; var d = new SaveData { Avatar = a, Seed = seed, Clock = .42f }; d.Validate(); Store.Data = d; Store.Current = new Saves.Slot { Data = d, File = "x" }; }
@@ -137,6 +140,14 @@ public static class Dev
     {
         if (n == "audio") { Snd.Load(false); Program.Screen = Scr.Editor; Program.Editor.Open(new AvatarData(), false); foreach (var q in new[] { "click", "step_grass", "step_stone", "step_snow", "splash", "voicea", "thunder", "bird", "dice" }) { Snd.Play(q, .05f); Steps(10); Console.WriteLine(q + " " + Snd.Has(q)); } Snd.Close(); return; }
         if (n == "flow") { Flow(); return; }
+        if (n == "savever")
+        {
+            Store.TestSaves = true; if (Directory.Exists(Store.Dir)) Directory.Delete(Store.Dir, true); Saves.Refresh(); var a = new AvatarData { Name = "Ivy" }; var sl = Saves.Create(a); sl.Data.Day = 3; Saves.Write(sl); Console.WriteLine("written as version " + sl.Data.Ver + " (game " + Saves.GameVer + ")");
+            for (int i = 0; i < 3; i++) { File.SetLastWriteTime(Directory.GetFiles(Path.Combine(Saves.Dir, "backups", sl.Data.Id))[^1], DateTime.Now.AddMinutes(-30)); Saves.Write(sl); }
+            Console.WriteLine("backups kept: " + Directory.GetFiles(Path.Combine(Saves.Dir, "backups", sl.Data.Id)).Length);
+            var txt = File.ReadAllText(sl.File).Replace("\"Ver\": \"" + Saves.GameVer + "\"", "\"Ver\": \"99.0.0\""); File.WriteAllText(sl.File, txt); Saves.Refresh(); var q = Saves.All[0]; Console.WriteLine("newer save seen as newer: " + q.Newer + ", write refused: " + !Saves.Write(q) + ", file still says 99: " + File.ReadAllText(q.File).Contains("99.0.0"));
+            Program.StartForTest(); Steps(150); Save("sv_title"); ClickAt(Ui.VW / 2, 180); Steps(90); Save("sv_select"); return;
+        }
         if (n == "creator")
         {
             var r = new Rng(31); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Robin"; d[Slot.Top].Id = 0; d.Tattoos[0] = 3; d.Tattoos[1] = 12; d.Validate(); d.Liner = 2; d.Lipstick = .5f; d.Piercings = 1 | 64; Program.Editor.Open(d, true); Ui.FakeMouse = new(5, 5); Steps(60); var E = Program.Editor;
@@ -193,6 +204,13 @@ public static class Dev
         void At(Vector2 p, float clock, Weather w = Weather.Clear) { G.Travel(p); G.Env.Clock = clock; G.Env.SetWeather(w, true); G.Env.WeatherT = 999; }
         void Shot(string nm, Vector2? p, float clock, Weather w = Weather.Clear, int warm = 110) { if (p == null) { Console.WriteLine("no spot for " + nm); return; } At(p.Value, clock, w); Steps(warm); G.Env.Clock = clock; Steps(2); Save(nm); }
         Vector2 Ground(int x) => new(x * 24 + 12, G.W.Top[x] * 24);
+        if (n == "backdrops")
+        {
+            G.CleanForShots(true); Ui.FakeMouse = new(1, 1);
+            foreach (var (nm, b, clock, w) in new (string, Biome, float, Weather)[] { ("meadow", Biome.Meadow, .72f, Weather.Clear), ("meadow_day", Biome.Meadow, .42f, Weather.Breezy), ("blossom", Biome.Blossom, .46f, Weather.Breezy), ("amber", Biome.Amber, .74f, Weather.Clear), ("dunes", Biome.Dunes, .76f, Weather.Clear), ("frost", Biome.Frost, .40f, Weather.Snow), ("moonpetal", Biome.Moonpetal, .93f, Weather.Clear), ("lavender", Biome.Lavender, .62f, Weather.Clear), ("highlands", Biome.Highlands, .30f, Weather.Mist), ("toadstool", Biome.Toadstool, .92f, Weather.Clear), ("coast", Biome.Coast, .74f, Weather.Clear), ("glowcap", Biome.Glowcap, .5f, Weather.Clear), ("amethyst", Biome.Amethyst, .5f, Weather.Clear), ("jungle", Biome.Jungle, .45f, Weather.Rain) })
+                Shot("bd_" + nm, G.FindBiome(b), clock, w, 170);
+            return;
+        }
         if (n == "biomes") { foreach (var b in Enum.GetValues<Biome>()) Shot("b_" + (int)b + "_" + b, G.FindBiome(b), b is Biome.Moonpetal ? .5f : .44f); return; }
         if (n == "dusk") { foreach (var b in new[] { Biome.Dunes, Biome.Crystal, Biome.Moonpetal, Biome.Cinder, Biome.Toadstool, Biome.Frost }) { Shot("d_" + b, G.FindBiome(b), b is Biome.Moonpetal or Biome.Toadstool ? .93f : .72f, b == Biome.Frost ? Weather.Rain : Weather.Clear); } return; }
         if (n == "mine")
@@ -325,6 +343,44 @@ public static class Dev
         bool full = page == 4; int cw = full ? 170 : 160, ch = full ? 330 : 170, cols = 9; var big = new Painter(cols * cw, (list.Count + cols - 1) / cols * ch); var ap = new AvatarPainter(); var one = new Painter(cw, ch);
         for (int i = 0; i < list.Count; i++) { one.Clear(); if (full) ap.Draw(one, list[i], Pose.Stand with { ArmL0 = -.5f, ArmL1 = -1.2f, ArmR0 = .5f, ArmR1 = 1.2f }, 2.6f, cw / 2, 318, outlinePx: 2); else ap.Draw(one, list[i], Pose.Stand, 6.2f, cw / 2, 630, outlinePx: 2); Blit(one, big, i % cols * cw, i / cols * ch); }
         Finish(big, path);
+    }
+    /// The launcher's icon and logo, painted from the game's own hand icon and lettering.
+    static void LauncherArt(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        // icon: the bare hand on teal, painted small and blown up so it stays pixel art
+        var ic = new Painter(256, 256); const float R = 60; var hand = GameScreen.HandArt(40, 0xf0c4a0, 0xf0b64e);
+        for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++)
+        {
+            float cx = M.Clamp(x + .5f, R, 256 - R), cy = M.Clamp(y + .5f, R, 256 - R), d = MathF.Sqrt((x + .5f - cx) * (x + .5f - cx) + (y + .5f - cy) * (y + .5f - cy)); float a = M.Clamp(R + .5f - d); if (a <= 0) continue;
+            int by = y / 8 * 8; Col c = Col.Lerp(0x4cc4b8, 0x1d7570, by / 255f); float lt = M.Clamp(1 - MathF.Sqrt((x - 70) * (x - 70) + (by - 60) * (by - 60)) / 200f); c = Col.Lerp(c, 0x7ee0d2, lt * .35f); if (d > R - 7) c = c.Shade(-.18f); if (y < 10) c = c.Shade(.12f);
+            ic.Px[y * 256 + x] = c.Rl(a);
+        }
+        int k = 5, ox = 128 - 20 * k, oy = 134 - 20 * k;
+        for (int pass = 0; pass < 2; pass++) for (int y = 0; y < 40; y++) for (int x = 0; x < 40; x++)
+            {
+                var h = hand.Px[y * 40 + x]; if (h.A < 128) continue;
+                for (int j = 0; j < k; j++) for (int i = 0; i < k; i++) { int px = ox + x * k + i + (pass == 0 ? 6 : 0), py = oy + y * k + j + (pass == 0 ? 7 : 0); if (px < 0 || py < 0 || px >= 256 || py >= 256 || ic.Px[py * 256 + px].A == 0) continue; ic.Px[py * 256 + px] = pass == 0 ? Col.Lerp(new Col(ic.Px[py * 256 + px].R / 255f, ic.Px[py * 256 + px].G / 255f, ic.Px[py * 256 + px].B / 255f), 0x0e3a38, .55f).Rl() : h; }
+            }
+        ic.Export(Path.Combine(dir, "icon.png"));
+        // logo: the title lettering, a cell per font pixel
+        string s = "Untitled Game"; const int S = 22; var g = FontData.Glyphs; int cells = 2; foreach (char ch in s) cells += (ch == ' ' ? 3 : g[ch].IndexOf('/')) + 1; cells += 1;
+        int gw = cells, gh = 13; var fill = new int[gw * gh]; var col = new Col[gw * gh]; int cxp = 2, idx = 0;
+        foreach (char ch in s)
+        {
+            if (ch == ' ') { cxp += 4; idx++; continue; } var rows = g[ch].Split('/'); int w = rows[0].Length; Col cc = Col.Lerp(0xffe2a0, 0xf08a4a, .5f + .5f * M.Sin(idx * .6f));
+            for (int r = 0; r < rows.Length; r++) for (int c = 0; c < w && c < rows[r].Length; c++) if (rows[r][c] == '#') { int q = (r + 2) * gw + cxp + c; fill[q] = 1; col[q] = Col.Lerp(cc.Shade(.18f), cc.Shade(-.12f), r / 8f); }
+            cxp += w + 1; idx++;
+        }
+        var lg = new Painter(gw * S, gh * S); Color ink = new(62, 30, 30, 255), shadow = new(58, 26, 30, 150);
+        bool Near(int x, int y) { for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) { int a = x + i, b = y + j; if (a >= 0 && b >= 0 && a < gw && b < gh && fill[b * gw + a] == 1) return true; } return false; }
+        void Cell(int x, int y, Color c) { for (int j = 0; j < S; j++) for (int i = 0; i < S; i++) lg.Px[(y * S + j) * lg.W + x * S + i] = c; }
+        for (int y = 0; y < gh; y++) for (int x = 0; x < gw; x++) if (y >= 9 && Near(x, y - 1) && !Near(x, y)) Cell(x, y, shadow); // drop shadow under the outline
+        for (int y = 0; y < gh; y++) for (int x = 0; x < gw; x++) if (fill[y * gw + x] == 0 && Near(x, y)) Cell(x, y, ink);
+        for (int y = 0; y < gh; y++) for (int x = 0; x < gw; x++) if (fill[y * gw + x] == 1) Cell(x, y, col[y * gw + x].Rl());
+        // trim empty rows and columns
+        int x0 = lg.W, x1 = 0, y0 = lg.H, y1 = 0; for (int y = 0; y < lg.H; y++) for (int x = 0; x < lg.W; x++) if (lg.Px[y * lg.W + x].A > 0) { x0 = Math.Min(x0, x); x1 = Math.Max(x1, x); y0 = Math.Min(y0, y); y1 = Math.Max(y1, y); }
+        var tr = new Painter(x1 - x0 + 1, y1 - y0 + 1); for (int y = 0; y < tr.H; y++) for (int x = 0; x < tr.W; x++) tr.Px[y * tr.W + x] = lg.Px[(y + y0) * lg.W + x + x0]; tr.Export(Path.Combine(dir, "logo.png")); Console.WriteLine($"icon 256x256, logo {tr.W}x{tr.H}");
     }
     static void TatBig(string path)
     {

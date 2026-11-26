@@ -4,6 +4,7 @@ public static class FontData
 {
     public static readonly Dictionary<char, string> Glyphs = new()
     {
+        ['\''] = "#/#",
         ['A'] = ".##./#..#/#..#/####/#..#/#..#/#..#",
         ['B'] = "###./#..#/#..#/###./#..#/#..#/###.",
         ['C'] = ".##./#..#/#.../#.../#.../#..#/.##.",
