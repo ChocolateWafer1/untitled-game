@@ -4,7 +4,7 @@
     
     <ApplicationIcon>assets\icon.ico</ApplicationIcon>
     <Product>Untitled Game</Product>
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>Untitled Game</AssemblyName>
@@ -17,9 +17,13 @@
     <TieredPGO>true</TieredPGO>
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
     <NoWarn>CS0649;CS0169;CS0414</NoWarn>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Raylib-cs" Version="7.0.1" />
-    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="assets" />
+    <!-- Loose files for development; a release (-p:SingleExe=true) carries the audio inside the .exe and unpacks it on first run. -->
+    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="assets" Condition="'$(SingleExe)' != 'true'" />
+    <EmbeddedResource Include="assets\audio\**\*" LogicalName="audio/%(RecursiveDir)%(Filename)%(Extension)" Condition="'$(SingleExe)' == 'true'" />
   </ItemGroup>
 </Project>

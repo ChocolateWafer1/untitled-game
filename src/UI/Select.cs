@@ -13,7 +13,7 @@ public sealed class SelectScreen
     public void Update(float dt)
     {
         openT += dt; for (int i = 0; i < Saves.All.Count; i++) { var d = Saves.All[i].Data.Avatar; an[i].IdleStyle = d.Idle; an[i].Wind = .3f; wave[i] -= dt; if (wave[i] <= 0) an[i].Set(Anim.Idle); if (an[i].Update(dt)) Paint(i); }
-        if (In.Press(Act.Menu)) { if (asking != null) { asking = null; Snd.Play("close", .7f); } else Program.BackToTitle(); }
+        if (In.Press(Act.Menu) || In.PadBack) { if (asking != null) { asking = null; Snd.Play("close", .7f); } else Program.BackToTitle(); }
     }
     public void Draw()
     {

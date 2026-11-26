@@ -69,7 +69,7 @@ public static class Program
     public static void Frame(float dt)
     {
         if (Raylib.IsKeyPressed(KeyboardKey.F11)) { Store.Cfg.Window = 1 - Store.Cfg.Window; ApplyWindow(); Store.SaveCfg(); }
-        Ui.Begin(dt); bool busy = Busy; if (busy) { Ui.Click = Ui.Held = Ui.RightClick = Ui.RightHeld = Ui.Release = false; Ui.Wheel = 0; } In.Locked = busy;
+        Ui.Begin(dt); Rumble.Update(dt); bool busy = Busy; if (busy) { Ui.Click = Ui.Held = Ui.RightClick = Ui.RightHeld = Ui.Release = false; Ui.Wheel = 0; } In.Locked = busy;
         Snd.Update(dt); Voice.Update(dt);
         if (Screen == Scr.Editor) { Snd.Music("editor"); Editor.Update(dt); } else { if (Screen == Scr.Select) Select.Update(dt); Game.Update(dt); }
         Raylib.BeginDrawing(); Raylib.ClearBackground(Color.Black); if (Screen != Scr.Editor) Game.RenderWorld();
@@ -206,6 +206,22 @@ public static class Dev
             { At(G.W.SafeSpawn(), .97f); Steps(30); int x = (int)(G.P.P.X / 24) + 1, y = (int)(G.P.P.Y / 24) - 1; G.W.Set(x, y, T.Glowrock); G.W.Set(x, y - 1, T.Stone); Steps(2); Hold(x, y, 130, "night_", 5); Steps(40); Save("night_after"); }
             foreach (T t in Enum.GetValues<T>()) if (Blocks.Minable(t)) { At(G.W.SafeSpawn(), .45f); Steps(8); int x = (int)(G.P.P.X / 24) + 2, y = (int)(G.P.P.Y / 24) - 1; G.W.Set(x, y, t); Steps(2); Ui.FakeClick = true; Ui.FakeHold = true; int f = 0; while (G.W.At(x, y) != T.Air && f++ < 900) { Ui.FakeMouse = Scr2(x, y); Steps(1); } Ui.FakeHold = false; Steps(2); Console.WriteLine($"{Blocks.Of(t).Name,-16} {f / 60f:0.0}s"); G.W.Set(x, y, T.Air); }
             return;
+        }
+        if (n == "pad")
+        {
+            In.FakePad = true; At(G.W.SafeSpawn(), .45f); Steps(40); int px = (int)(G.P.P.X / 24), py = (int)((G.P.P.Y - 1) / 24), dir = G.P.Dir; Console.WriteLine("controller in use: " + In.UsingPad + ", xinput pad found: " + Rumble.Connected);
+            for (int k = 0; k < 3; k++) G.W.Set(px + dir, py - k, T.Dirt); G.W.Set(px, py - 3, T.Dirt); G.W.Set(px - dir, py - 1, T.Sand); Steps(3);
+            void Rt(int frames) { In.FakeRT = true; Steps(frames); In.FakeRT = false; Steps(50); }
+            Rt(1); Rt(1); Console.WriteLine($"RT tapped twice, stick at rest: chest block {G.W.At(px + dir, py - 1)}, knee block {G.W.At(px + dir, py)}"); Save("p_front");
+            Rt(70); Console.WriteLine($"RT held: knee block {G.W.At(px + dir, py)}");
+            In.Force.Add(Act.Up); Rt(70); In.Force.Remove(Act.Up); Console.WriteLine($"up + RT: block over head {G.W.At(px, py - 3)}");
+            In.FakeR = new(-dir, 0); Console.WriteLine($"  aiming behind: player tile {(int)(G.P.P.X / 24)},{(int)((G.P.P.Y - 1) / 24)} dir {G.P.Dir}, targets {G.PadForTest()}, sand at {px - dir},{py - 1}"); Rt(70); In.FakeR = default; Console.WriteLine($"right stick behind + RT: sand {G.W.At(px - dir, py - 1)}");
+            Bag.Add(Store.Data, (int)T.Stone, 10); Store.Data.Hand = Array.FindIndex(Store.Data.Slots, q => q.Id == (int)T.Stone); Steps(5); int st0 = Bag.Count(Store.Data, (int)T.Stone); Console.WriteLine($"  build targets {G.PadForTest()}"); In.FakeLT = true; Steps(1); In.FakeLT = false; Steps(20); Console.WriteLine($"LT builds in front: {G.W.At(px + dir, py)} / {G.W.At(px + dir, py - 1)}, stone used {st0 - Bag.Count(Store.Data, (int)T.Stone)}"); Save("p_build");
+            In.FakeR = new(0, 1); Rt(80); In.FakeR = default; Console.WriteLine($"stick down + RT: under feet {G.W.At(px, py + 1)}"); Save("p_down"); In.FakePad = false; return;
+        }
+        if (n == "osk")
+        {
+            var r = new Rng(5); Program.Screen = Scr.Editor; var d = AvatarData.Random(r); d.Name = "Sky"; Program.Editor.Open(d, true); Ui.FakeMouse = new(5, 5); Steps(30); In.FakePad = true; float nx = (Ui.VW - 336) / 2; ClickAt(M.Clamp((Ui.VW - 336 - 34) / 2, 110, 260), 22); Steps(20); Console.WriteLine("keyboard showing: " + Ui.OskOn); Save("osk"); In.FakePad = false; Steps(3); return;
         }
         if (n == "build")
         {

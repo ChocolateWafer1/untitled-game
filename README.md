@@ -1,9 +1,14 @@
 # Untitled Game
 
-A cozy pixel-art 2D side platformer about dressing up, exploring, digging and building. Written from scratch in C# with no game engine (raylib is used only for the window, drawing and audio).
+A cozy pixel-art 2D side platformer about dressing up, exploring, digging and building, with full controller support. Written from scratch in C# with no game engine (raylib is used only for the window, drawing and audio).
 
-## Play
-Download the zip from Releases, unzip it and run `Untitled Game.exe`. Windows 10/11, no install needed.
+## Download and play
+
+**[Download Untitled-Game.exe](https://github.com/ChocolateWafer1/untitled-game/releases/latest/download/Untitled-Game.exe)**, then double-click it. That's all: one file, no installer, nothing else to download. Windows 10 or 11.
+
+Windows may show "Windows protected your PC" the first time, because the game isn't signed. Click **More info**, then **Run anyway**. Saves go to `%AppData%\Untitled Game`, so you can move or replace the .exe without losing anything.
+
+Controllers work too (Xbox, or PlayStation and Switch pads through Steam), with rumble.
 
 | Key | Action |
 | --- | --- |
@@ -24,6 +29,22 @@ Download the zip from Releases, unzip it and run `Untitled Game.exe`. Windows 10
 
 Keys can be rebound.
 
+| Controller | Action |
+| --- | --- |
+| Left stick / D-pad | Walk, climb, crouch |
+| A | Jump |
+| B (hold) | Run |
+| RT | Dig: tap for one blow, hold to keep going |
+| LT | Build |
+| Right stick | Aim at a block (left alone, it picks the block in front of you) |
+| LB / RB | Choose what is in your hand |
+| Y | Inventory |
+| X (hold) | Emote wheel, pick with the stick |
+| View / Back | Map |
+| Start / Menu | Menu |
+
+In menus the D-pad jumps between buttons, the left stick moves a cursor, A clicks, B goes back, the right stick scrolls and LB/RB change tabs in the creator. Typing a name brings up an on-screen keyboard.
+
 ## What is inside
 - Avatar creator: body sliders with exact sizes you can type in, 13 face shape sliders, freckles, wrinkles, scars, birthmarks, moles you place, vitiligo, makeup, full-arm tattoos (17 patterns, or draw your own in the Tattoo Studio with brush, fill, shapes, knife, select, mirror and repeat tools), 12 piercings, 96 hair styles with hairlines, length, curl, part side and streaks, split dye, tips, roots and underlayers, 22 beards, 25 glasses, 32 tops, 30 jackets, 30 pants, 30 shorts, 30 skirts, 30 shoes, 30 hats, more accessories, 3 colors and 20 patterns per piece. Clothes and hair move in the wind.
 - Nine save files. Each one belongs to one character, who can be edited any time, is named after them, and has its own world grown from its own seed.
@@ -36,7 +57,7 @@ Needs the .NET 10 SDK.
 
 ```
 dotnet run -c Release
-dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o Play
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:SingleExe=true -o Play
 ```
 
 All art is painted by code at run time. Audio credits are in [CREDITS.md](CREDITS.md).

@@ -57,12 +57,15 @@ public static class Ui
         frame++; DT = dt; T += dt; int w = Raylib.GetRenderWidth(), h = Raylib.GetRenderHeight(); Scale = h / 360f; VH = 360; VW = w / Scale; if (VW < 480) { Scale = w / 480f; VW = 480; VH = h / Scale; }
         var m = Raylib.GetMousePosition() / Scale; Click = Raylib.IsMouseButtonPressed(MouseButton.Left); Held = Raylib.IsMouseButtonDown(MouseButton.Left); Release = Raylib.IsMouseButtonReleased(MouseButton.Left); RightClick = Raylib.IsMouseButtonPressed(MouseButton.Right); RightHeld = Raylib.IsMouseButtonDown(MouseButton.Right); Wheel = Raylib.GetMouseWheelMove();
         if (m != lastMouse) PadMode = false; lastMouse = m;
-        if (Raylib.IsGamepadAvailable(0))
+        In.Track(); (prevRects, rects) = (rects, prevRects); rects.Clear(); bool cursor = !InGame; InGame = false;
+        if (In.Pad0 && cursor)
         {
-            float x = Raylib.GetGamepadAxisMovement(0, GamepadAxis.LeftX), y = Raylib.GetGamepadAxisMovement(0, GamepadAxis.LeftY);
-            if (MathF.Abs(x) > .25f || MathF.Abs(y) > .25f) { if (!PadMode) pad = m; PadMode = true; pad += new Vector2(x, y) * dt * 260; pad = Vector2.Clamp(pad, Vector2.Zero, new(VW, VH)); }
-            if (PadMode) { m = pad; Click |= Raylib.IsGamepadButtonPressed(0, GamepadButton.RightFaceDown); Held |= Raylib.IsGamepadButtonDown(0, GamepadButton.RightFaceDown); Release |= Raylib.IsGamepadButtonReleased(0, GamepadButton.RightFaceDown); Wheel -= Raylib.GetGamepadAxisMovement(0, GamepadAxis.RightY) * dt * 10; }
+            var st = In.LStick; if (st != default) { if (!PadMode) pad = m; PadMode = true; pad += st * dt * (90 + 430 * st.LengthSquared()); pad = Vector2.Clamp(pad, Vector2.Zero, new(VW, VH)); }
+            (GamepadButton b, Vector2 d)[] hops = [(GamepadButton.LeftFaceUp, new(0, -1)), (GamepadButton.LeftFaceDown, new(0, 1)), (GamepadButton.LeftFaceLeft, new(-1, 0)), (GamepadButton.LeftFaceRight, new(1, 0))];
+            foreach (var (b, d) in hops) if (Raylib.IsGamepadButtonPressed(0, b)) { if (!PadMode) pad = m; PadMode = true; Hop(d); }
+            if (PadMode) { m = pad; Click |= Raylib.IsGamepadButtonPressed(0, GamepadButton.RightFaceDown); Held |= Raylib.IsGamepadButtonDown(0, GamepadButton.RightFaceDown); Release |= Raylib.IsGamepadButtonReleased(0, GamepadButton.RightFaceDown); RightClick |= Raylib.IsGamepadButtonPressed(0, GamepadButton.RightFaceLeft); RightHeld |= Raylib.IsGamepadButtonDown(0, GamepadButton.RightFaceLeft); Wheel -= In.RStick.Y * dt * 10; }
         }
+        else if (!cursor) PadMode = false;
         if (FakeMouse is Vector2 f) { m = f; Click = FakeClick; Held = FakeClick || FakeHold; Release = FakeRelease; RightClick = FakeRight; RightHeld = FakeRight || FakeRightHold; Wheel = FakeWheel; FakeWheel = 0; FakeClick = FakeRight = FakeRelease = false; }
         Mouse = m; Tip = null; if (!Held) Active = null; Enabled = true; Hot = null;
     }
@@ -72,13 +75,48 @@ public static class Ui
     {
         tipT = Tip != null ? MathF.Min(1, tipT + DT * 8) : 0;
         if (Tip != null && tipT > .2f) { float w = Font.Width(Tip) + 12, x = M.Clamp(Mouse.X + 8, 4, VW - w - 4), y = M.Clamp(Mouse.Y - 16, 4, VH - 18); Nine("tip", x, y - (1 - Ease.OutBack(tipT)) * -4, w, 15, Raylib.Fade(Color.White, tipT)); Font.Draw(Tip, x + 6, y + 3, Raylib.Fade(Cream, tipT)); }
-        if (PadMode) { var c = Mouse; Raylib.DrawCircleV(c, 4, Ink); Raylib.DrawCircleV(c, 3, Gold); }
+        if (WantKeys != null) Keyboard(WantKeys); else OskOn = false; WantKeys = null;
+        if (PadMode) { var c = Mouse; Raylib.DrawCircleV(c, 5, Ink); Raylib.DrawCircleV(c, 3.8f, Gold); Raylib.DrawCircleV(c - new Vector2(1, 1), 1.2f, Cream); }
+    }
+    // ---------------------------------------------------------------- on-screen keyboard for controllers
+    /// A text field that is being typed into sets this each frame (extra keys for the number row); the keyboard shows only when a controller is in use.
+    public static string WantKeys; public static bool OskOn; public static Rectangle OskRect; static bool inOsk, oskLower, oskBack, oskDone; static readonly Queue<int> oskQ = new();
+    public static int NextChar() => oskQ.Count > 0 ? oskQ.Dequeue() : Raylib.GetCharPressed();
+    public static bool BackKey() { bool b = oskBack; oskBack = false; return b || Raylib.IsKeyPressed(KeyboardKey.Backspace) || Raylib.IsKeyPressedRepeat(KeyboardKey.Backspace); }
+    public static bool EnterKey() { bool b = oskDone; oskDone = false; return b || Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.KpEnter); }
+    static void Keyboard(string extra)
+    {
+        if (!In.UsingPad) { OskOn = false; return; }
+        string[] rows = ["1234567890" + extra, "QWERTYUIOP", "ASDFGHJKL-", "ZXCVBNM_"]; float kw = 22, kh = 19, g = 3, pw = 13 * (kw + g) + 14, ph = 5 * (kh + g) + 16, px = MathF.Round(VW / 2 - pw / 2), py = VH - ph - 6;
+        bool was = OskOn; OskOn = true; OskRect = new Rectangle(px, py, pw, ph); if (!was) { pad = new(px + pw / 2, py + ph - 18); PadMode = true; }
+        inOsk = true; Nine("panel", px, py, pw, ph, Color.White);
+        for (int r = 0; r < rows.Length; r++) { float rx = px + 7 + (pw - 14 - rows[r].Length * (kw + g) + g) / 2; for (int i = 0; i < rows[r].Length; i++) { char c = rows[r][i]; if (oskLower && char.IsLetter(c)) c = char.ToLowerInvariant(c); if (Button("osk" + r + "_" + i, c.ToString(), rx + i * (kw + g), py + 8 + r * (kh + g), kw, kh, "btnP", text: .95f)) { oskQ.Enqueue(c); Snd.Play("type", .7f); } } }
+        float by = py + 8 + 4 * (kh + g), bx = px + 7;
+        if (Button("oskAa", oskLower ? "ABC" : "abc", bx, by, 44, kh, "btnP", text: .9f)) oskLower = !oskLower;
+        if (Button("oskSp", "Space", bx + 48, by, 130, kh, "btnP", text: .9f)) oskQ.Enqueue(' ');
+        if (Button("oskBk", "Delete", bx + 182, by, 64, kh, "btnR", text: .9f, tip: "B")) oskBack = true;
+        if (Button("oskOk", "Done", bx + 250, by, pw - 14 - 250, kh, "btnG", "check", text: .9f, tip: "Start")) oskDone = true;
+        if (In.PadPress(GamepadButton.RightFaceRight)) oskBack = true; if (In.PadPress(GamepadButton.MiddleRight)) oskDone = true; if (In.PadPress(GamepadButton.RightFaceLeft)) oskQ.Enqueue(' ');
+        inOsk = false;
     }
     public static An A(string id) { if (!an.TryGetValue(id, out var a)) an[id] = a = new An(); if (a.Seen < frame - 1) { a.Born = T; a.Hover = new(); a.Press = new(); a.Was = false; } a.Seen = frame; return a; }
-    public static bool Over(float x, float y, float w, float h) => Enabled && Mouse.X >= x && Mouse.Y >= y && Mouse.X < x + w && Mouse.Y < y + h;
+    /// Set by the game every frame the character has control, so the left stick walks instead of moving a cursor.
+    public static bool InGame;
+    static List<Vector4> rects = new(), prevRects = new();
+    /// Jumps the controller cursor to the nearest button in a direction.
+    static void Hop(Vector2 d)
+    {
+        Vector2 best = default; float bs = 1e9f;
+        foreach (var r in prevRects) { if (r.Z < 4 || r.W < 4) continue; var c = new Vector2(r.X + r.Z / 2, r.Y + r.W / 2); if (c.X < 0 || c.Y < 0 || c.X > VW || c.Y > VH) continue; var v = c - pad; float along = Vector2.Dot(v, d); if (along < 4) continue; float perp = MathF.Abs(v.X * d.Y - v.Y * d.X), sc = along + perp * 2.2f; if (sc < bs) { bs = sc; best = c; } }
+        if (bs < 1e8f) { pad = best; Snd.Play("hover", .35f); }
+    }
+    static bool Blocked => OskOn && !inOsk && Mouse.X >= OskRect.X && Mouse.Y >= OskRect.Y && Mouse.X < OskRect.X + OskRect.Width && Mouse.Y < OskRect.Y + OskRect.Height;
+    public static bool InOsk => OskOn && Mouse.X >= OskRect.X && Mouse.Y >= OskRect.Y && Mouse.X < OskRect.X + OskRect.Width && Mouse.Y < OskRect.Y + OskRect.Height;
+    public static bool Over(float x, float y, float w, float h) => Enabled && !Blocked && Mouse.X >= x && Mouse.Y >= y && Mouse.X < x + w && Mouse.Y < y + h;
     /// Runs interaction + springs for a widget. Returns (animation, clicked).
     public static (An a, bool hit, bool over) Widget(string id, float x, float y, float w, float h, string sfx = "click", bool silent = false)
     {
+        rects.Add(new Vector4(x, y, w, h));
         var a = A(id); bool o = Over(x, y, w, h) && (Active == null || Active == id); bool hit = false;
         if (o) { Hot = id; if (!a.Was && !silent) Snd.Play("hover", .35f, 1 + M.Hash(frame, 3) * .12f); if (Click) { Active = id; hit = true; a.Press.V += 9; if (sfx != null) Snd.Play(sfx, .8f, .96f + M.Hash(frame, 7) * .1f); } }
         a.Was = o; a.Hover.Update(o ? 1 : 0, 420, 22, DT); a.Press.Update(0, 480, 16, DT); return (a, hit, o);

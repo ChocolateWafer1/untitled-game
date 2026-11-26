@@ -149,10 +149,10 @@ public sealed partial class EditorScreen
     }
     void NumTyping()
     {
-        int c; while ((c = Raylib.GetCharPressed()) > 0) if (numText.Length < 9 && (char.IsAsciiDigit((char)c) || c is '\'' or '"' or ' ' or '.' or 'c' or 'm' or 'k' or 'g' or 'f' or 't')) { numText += (char)c; Snd.Play("type", .7f, 1.1f); }
-        if ((Raylib.IsKeyPressed(KeyboardKey.Backspace) || Raylib.IsKeyPressedRepeat(KeyboardKey.Backspace)) && numText.Length > 0) numText = numText[..^1];
+        Ui.WantKeys = "'\".cmkgft"; int c; while ((c = Ui.NextChar()) > 0) if (numText.Length < 9 && (char.IsAsciiDigit((char)c) || char.ToLowerInvariant((char)c) is '\'' or '"' or ' ' or '.' or 'c' or 'm' or 'k' or 'g' or 'f' or 't')) { numText += (char)c; Snd.Play("type", .7f, 1.1f); }
+        if (Ui.BackKey() && numText.Length > 0) numText = numText[..^1];
         if (Raylib.IsKeyPressed(KeyboardKey.Escape)) { numEdit = -1; return; }
-        if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.KpEnter)) { var v = Parse(numText, numEdit == 1); if (v is float f) { if (!SetMeasure(numEdit, f)) { shake = .3f; Snd.Play("error", .5f); } else Snd.Play("confirm", .5f); } numEdit = -1; }
+        if (Ui.EnterKey()) { var v = Parse(numText.ToLowerInvariant(), numEdit == 1); if (v is float f) { if (!SetMeasure(numEdit, f)) { shake = .3f; Snd.Play("error", .5f); } else Snd.Play("confirm", .5f); } numEdit = -1; }
     }
     /// The readout next to a body slider: click it to type an exact size.
     void Readout(int i, float x, float y, string shown)

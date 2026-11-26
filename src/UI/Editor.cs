@@ -57,14 +57,16 @@ public sealed partial class EditorScreen
         if (numEdit >= 0) NumTyping();
         else if (typing)
         {
-            int c; while ((c = Raylib.GetCharPressed()) > 0) if (name.Length < 10 && (char.IsAsciiLetterOrDigit((char)c) || c is ' ' or '_' or '-')) { name += (char)c; Snd.Play("type", .8f, .9f + rng.F() * .3f); } else { shake = .25f; Snd.Play("error", .4f); }
-            if ((Raylib.IsKeyPressed(KeyboardKey.Backspace) || Raylib.IsKeyPressedRepeat(KeyboardKey.Backspace)) && name.Length > 0) { name = name[..^1]; Snd.Play("type", .7f, .75f); }
-            if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Escape)) typing = false;
+            Ui.WantKeys = ""; int c; while ((c = Ui.NextChar()) > 0) if (name.Length < 10 && (char.IsAsciiLetterOrDigit((char)c) || c is ' ' or '_' or '-')) { name += (char)c; Snd.Play("type", .8f, .9f + rng.F() * .3f); } else { shake = .25f; Snd.Play("error", .4f); }
+            if (Ui.BackKey() && name.Length > 0) { name = name[..^1]; Snd.Play("type", .7f, .75f); }
+            if (Ui.EnterKey() || Raylib.IsKeyPressed(KeyboardKey.Escape)) typing = false;
         }
         else if (finishT < 0)
         {
             if (Raylib.IsKeyDown(KeyboardKey.LeftControl)) { if (Raylib.IsKeyPressed(KeyboardKey.Z)) Undo(); if (Raylib.IsKeyPressed(KeyboardKey.Y)) Redo(); }
-            if (CanBack && numEdit < 0 && Raylib.IsKeyPressed(KeyboardKey.Escape)) Back?.Invoke();
+            if (CanBack && numEdit < 0 && (Raylib.IsKeyPressed(KeyboardKey.Escape) || In.PadBack)) Back?.Invoke();
+            if (In.PadPress(GamepadButton.LeftTrigger1) || In.PadPress(GamepadButton.RightTrigger1)) { tab = M.Mod(tab + (In.PadPress(GamepadButton.RightTrigger1) ? 1 : -1), Tabs.Length); scroll = scrollT = 0; tabSlide = 0; Snd.Play("tab"); }
+            if (In.PadPress(GamepadButton.MiddleRight)) Finish();
         }
         shake = MathF.Max(0, shake - dt);
         if (finishT >= 0) { finishT += dt; if (finishT > 1.25f) { finishT = -100; Done?.Invoke(); } }
@@ -117,7 +119,7 @@ public sealed partial class EditorScreen
     {
         float W = Ui.VW; float sh = shake > 0 ? M.Sin(shake * 70) * shake * 14 : 0; float nx = avX - 70 + sh; float k = Store.Cfg.ReduceMotion ? 1 : Ease.OutBack(M.Clamp((introT - .3f) * 2));
         Rlgl.PushMatrix(); Rlgl.Translatef(0, (1 - k) * -60, 0);
-        var (a, hit, o) = Ui.Widget("name", nx, 10, 140, 24); if (hit) { typing = true; while (Raylib.GetCharPressed() > 0) { } } else if (Ui.Click && !o) typing = false;
+        var (a, hit, o) = Ui.Widget("name", nx, 10, 140, 24); if (hit) { typing = true; while (Raylib.GetCharPressed() > 0) { } } else if (Ui.Click && !o && !Ui.InOsk) typing = false;
         a.Sel.Update(typing ? 1 : 0, 300, 16, Ui.DT); Ui.PushScale(nx + 70, 22, 1 + a.Hover.X * .03f + a.Sel.X * .05f, 1 + a.Hover.X * .03f + a.Sel.X * .05f); Ui.Nine("paper", nx, 8, 140, 28, Color.White);
         string shown = name.Length == 0 && !typing ? "Your name..." : name; float tw = Font.Width(shown, 1.5f); Font.Draw(shown, nx + 70, 15, name.Length == 0 && !typing ? Ui.Soft : Ui.Ink, 1.5f, .5f); if (typing && (Ui.T % .9f) < .5f) Raylib.DrawRectangleV(new(nx + 71 + tw / 2 + (name.Length > 0 ? 1 : -tw / 2), 15), new(1.5f, 12), Ui.Orange);
         Font.Draw(name.Length + "/10", nx + 132, 18, ValidName(name) ? Ui.Green : Ui.Orange, 1, 1); taken -= Ui.DT; if (taken > 0) Font.Draw("You already have a " + name.Trim(), nx + 70, 38, new Color(255, 170, 140, 255), 1, .5f, Ui.Ink); else if (!ValidName(name)) Font.Draw("3 to 10 letters", nx + 70, 38, new Color(255, 214, 170, 255), 1, .5f, Ui.Ink); Ui.PopScale(); Rlgl.PopMatrix();

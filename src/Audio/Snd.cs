@@ -11,9 +11,26 @@ public static class Snd
     static readonly HashSet<string> uiNames = ["hover", "click", "pick", "tick", "type", "error", "open", "close", "page", "whoosh", "confirm", "tab", "dice", "undo", "iris_in", "iris_out", "finish"];
     public static float Duck = 1;
 
+    /// The loose assets folder next to the game when there is one; otherwise the copy carried inside the .exe, unpacked once per version.
+    static string AudioDir()
+    {
+        var loose = Path.Combine(AppContext.BaseDirectory, "assets", "audio"); var asm = typeof(Snd).Assembly; var names = asm.GetManifestResourceNames().Where(n => n.StartsWith("audio/")).ToArray(); if (Directory.Exists(loose) || names.Length == 0) return loose;
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Untitled Game", "audio-" + asm.GetName().Version);
+        try
+        {
+            if (!File.Exists(Path.Combine(dir, ".done")))
+            {
+                foreach (var n in names) { var rel = n["audio/".Length..].Replace('\\', '/'); var to = Path.Combine(dir, rel); Directory.CreateDirectory(Path.GetDirectoryName(to)); using var src = asm.GetManifestResourceStream(n); using var dst = File.Create(to); src.CopyTo(dst); }
+                File.WriteAllText(Path.Combine(dir, ".done"), "ok");
+                foreach (var old in Directory.GetDirectories(Path.GetDirectoryName(dir), "audio-*")) if (old != dir) try { Directory.Delete(old, true); } catch { }
+            }
+        }
+        catch { }
+        return dir;
+    }
     public static void Load(bool silent)
     {
-        Root = Path.Combine(AppContext.BaseDirectory, "assets", "audio");
+        Root = AudioDir();
         if (silent) return;
         Raylib.InitAudioDevice(); if (!Raylib.IsAudioDeviceReady()) return; ok = true; Raylib.SetAudioStreamBufferSizeDefault(8192);
         Dictionary<string, List<string>> f = new();

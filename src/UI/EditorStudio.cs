@@ -167,7 +167,8 @@ public sealed partial class EditorScreen
             var mid = new Vector2(SX0 + AX + AW / 2, AY + AH / 2);
             if (Raylib.IsKeyPressed(KeyboardKey.Equal) || Raylib.IsKeyPressed(KeyboardKey.KpAdd)) ZoomAt(1.25f, mid); if (Raylib.IsKeyPressed(KeyboardKey.Minus) || Raylib.IsKeyPressed(KeyboardKey.KpSubtract)) ZoomAt(.8f, mid); if (Raylib.IsKeyPressed(KeyboardKey.Zero)) Fit();
             if (Raylib.IsKeyPressed(KeyboardKey.Enter)) { Commit(); hasSel = false; }
-            if (Raylib.IsKeyPressed(KeyboardKey.Escape)) { if (hasSel) { Commit(); hasSel = false; } else CloseStudio(true); }
+            if (Raylib.IsKeyPressed(KeyboardKey.Escape) || In.PadBack) { if (hasSel) { Commit(); hasSel = false; } else CloseStudio(true); }
+            if (In.PadPress(GamepadButton.LeftTrigger1)) SUndo(); if (In.PadPress(GamepadButton.RightTrigger1)) SRedo();
         }
         pvT -= dt; if (pvDirty && pvT <= 0) { PreviewRedraw(); pvDirty = false; pvT = .05f; }
         Snd.Loop("room", .35f);

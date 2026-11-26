@@ -14,7 +14,8 @@ public sealed partial class GameScreen
     void BarUpdate(float dt, bool control)
     {
         var d = Store.Data; if (d.Hand < -1 || (d.Hand >= 0 && d.Slots[d.Hand].Empty)) d.Hand = -1; nameT += dt; var list = BarList(); int n = list.Count, at = Math.Max(0, list.IndexOf(d.Hand));
-        if (control && Ui.Wheel != 0 && !OverAdmin) { barWheel += Ui.Wheel; while (MathF.Abs(barWheel) >= 1) { int step = barWheel > 0 ? -1 : 1; barWheel += step; at = M.Mod(at + step, n); Equip(list[at]); } }
+        if (control && (In.PadPress(GamepadButton.LeftTrigger1) || In.PadPress(GamepadButton.RightTrigger1))) { at = M.Mod(at + (In.PadPress(GamepadButton.RightTrigger1) ? 1 : -1), n); Equip(list[at]); Rumble.Kick(0, .1f, .03f); }
+        if (control && Ui.Wheel != 0 && !OverAdmin && !In.UsingPad) { barWheel += Ui.Wheel; while (MathF.Abs(barWheel) >= 1) { int step = barWheel > 0 ? -1 : 1; barWheel += step; at = M.Mod(at + step, n); Equip(list[at]); } }
         // items gained or lost elsewhere in the list must not make the column move
         if (d.Hand == barHand && at != barAt) { barSel += at - barAt; } barHand = d.Hand; barAt = at;
         // long lists loop and take the short way round; short ones are a plain column with two ends

@@ -7,7 +7,7 @@ public sealed partial class GameScreen
     public World W; public readonly Render R; public readonly Env Env = new(); public Life Life; public readonly Player P; Tiles tiles; readonly Backdrop back; public float CamX, CamY; float lookX, lookY, shake; public float Under; readonly Rng rng = new(Environment.TickCount); string area = "", shownArea = ""; float areaT = 9, areaHold; bool newArea; float time, playT; Prop[] byX; Lamp[] lampX; public bool Title; float titleT; float autosave = 30; bool playing;
     public GameScreen(World w)
     {
-        World.Cur = w; W = w; R = new Render(w); back = new Backdrop(R.Hill); P = new Player(w, this); Env.Thunder = v => Snd.Play("thunder", v * .9f, .85f + rng.F() * .3f); SetWorld(w);
+        World.Cur = w; W = w; R = new Render(w); back = new Backdrop(R.Hill); P = new Player(w, this); Env.Thunder = v => { Snd.Play("thunder", v * .9f, .85f + rng.F() * .3f); Rumble.Kick(.5f * v, .08f, .7f); }; SetWorld(w);
     }
     public void SetWorld(World w)
     {
@@ -36,7 +36,7 @@ public sealed partial class GameScreen
         float vw = Ui.VW, vh = Ui.VH; if (Title || panel is not (Panel.Menu or Panel.Settings)) time += dt; bool paused = panel is Panel.Menu or Panel.Settings, wasOpen = panel != Panel.None; if (Title) { UpdateTitle(dt); return; }
         Panels(dt); if (paused) { P.Mining = false; Ambience(); return; }
         if (Raylib.IsKeyPressed(KeyboardKey.F1)) { admin = !admin; Snd.Play(admin ? "open" : "close"); }
-        bool control = panel == Panel.None && !emoteOpen && !wasOpen && !Program.Busy; AdminTick(dt); Local(P.P.X / 24, dt); Env.Update(dt); BarUpdate(dt, control); Digging(dt, control); P.Update(dt, control); Falling(dt); W.Tick(dt, P.P.X);
+        bool control = panel == Panel.None && !emoteOpen && !wasOpen && !Program.Busy; Ui.InGame = panel == Panel.None && !Program.Busy; AdminTick(dt); Local(P.P.X / 24, dt); Env.Update(dt); BarUpdate(dt, control); Digging(dt, control); P.Update(dt, control); Falling(dt); W.Tick(dt, P.P.X);
         if (control) { if (In.Press(Act.Bag)) Open(Panel.Bag); if (In.Press(Act.Map)) Open(Panel.Map); if (In.Press(Act.Menu)) Open(Panel.Menu); }
         Camera(dt, vw, vh); Life.Update(dt, P, CamX, CamY, (int)vw, (int)vh); Emit(dt); Warm();
         // areas
