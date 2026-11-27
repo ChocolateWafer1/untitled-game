@@ -43,6 +43,10 @@ public sealed class AvatarData
     // body sliders, 0..1 with .5 = average
     public float Height { get; set; } = .5f;
     public float Weight { get; set; } = .42f;
+    /// Weight reaches past the old 0..1 at both ends; the slider covers the whole span, and older saves keep their exact shape.
+    public const float WeightMin = -.10f, WeightMax = 1.17f;
+    public static float WeightToSlider(float w) => (w - WeightMin) / (WeightMax - WeightMin);
+    public static float SliderToWeight(float v) => WeightMin + M.Clamp(v) * (WeightMax - WeightMin);
     public float Shoulder { get; set; } = .5f;
     public float Waist { get; set; } = .5f;
     public float Hip { get; set; } = .5f;
@@ -150,7 +154,7 @@ public sealed class AvatarData
         if (Art == null || Art.Length != 2) Art = [Art?.ElementAtOrDefault(0), Art?.ElementAtOrDefault(1)];
         for (int i = 0; i < 2; i++) { var a = Art[i]; if (a != null && a.Length != AvatarPainter.TW * AvatarPainter.TH) a = null; if (a != null) for (int k = 0; k < a.Length; k++) if (a[k] > TatPal.Length) a[k] = 0; if (a == null && t[i] > 0) a = AvatarPainter.Raster(t[i], this); if (a == null && t[i] < 0) t[i] = 0; Art[i] = a; } Piercings &= (1 << Catalog.Piercings.Length) - 1;
         Hair.Hairline = Math.Clamp(Hair.Hairline, 0, Catalog.Hairlines.Length - 1); Hair.Length = M.Clamp(Hair.Length); Hair.Curl = M.Clamp(Hair.Curl); BeardLen = M.Clamp(BeardLen); BeardThick = M.Clamp(BeardThick); BeardGrey = M.Clamp(BeardGrey);
-        Height = M.Clamp(Height); Weight = M.Clamp(Weight); Shoulder = M.Clamp(Shoulder); Waist = M.Clamp(Waist); Hip = M.Clamp(Hip); Arm = M.Clamp(Arm); Leg = M.Clamp(Leg); Head = M.Clamp(Head);
+        Height = M.Clamp(Height); Weight = float.IsFinite(Weight) ? Math.Clamp(Weight, WeightMin, WeightMax) : .42f; Shoulder = M.Clamp(Shoulder); Waist = M.Clamp(Waist); Hip = M.Clamp(Hip); Arm = M.Clamp(Arm); Leg = M.Clamp(Leg); Head = M.Clamp(Head);
     }
 
     public static readonly int[] SkinTones = [0xfbe3d0, 0xf6d3b8, 0xf0c4a0, 0xe8b48e, 0xe0a981, 0xd49a70, 0xc68a5e, 0xb67a4e, 0xa56a42, 0x925a38, 0x7e4b30, 0x6b3e29, 0x573222, 0x44271c];

@@ -143,7 +143,7 @@ public sealed partial class EditorScreen
     /// Moves one body slider until the readout matches what was typed. Returns false when it is out of reach.
     bool SetMeasure(int i, float want)
     {
-        Func<AvatarData, float> get = i switch { 0 => q => q.Height, 1 => q => q.Weight, 2 => q => q.Shoulder, 3 => q => q.Waist, 4 => q => q.Hip, 5 => q => q.Arm, 6 => q => q.Leg, _ => q => q.Head }; Action<AvatarData, float> put = i switch { 0 => (q, v) => q.Height = v, 1 => (q, v) => q.Weight = v, 2 => (q, v) => q.Shoulder = v, 3 => (q, v) => q.Waist = v, 4 => (q, v) => q.Hip = v, 5 => (q, v) => q.Arm = v, 6 => (q, v) => q.Leg = v, _ => (q, v) => q.Head = v };
+        Func<AvatarData, float> get = i switch { 0 => q => q.Height, 1 => q => AvatarData.WeightToSlider(q.Weight), 2 => q => q.Shoulder, 3 => q => q.Waist, 4 => q => q.Hip, 5 => q => q.Arm, 6 => q => q.Leg, _ => q => q.Head }; Action<AvatarData, float> put = i switch { 0 => (q, v) => q.Height = v, 1 => (q, v) => q.Weight = AvatarData.SliderToWeight(v), 2 => (q, v) => q.Shoulder = v, 3 => (q, v) => q.Waist = v, 4 => (q, v) => q.Hip = v, 5 => (q, v) => q.Arm = v, 6 => (q, v) => q.Leg = v, _ => (q, v) => q.Head = v };
         var t = D.Clone(); float lo = 0, hi = 1; put(t, 0); float a = MeasureNum(t, i); put(t, 1); float b = MeasureNum(t, i); bool up = b > a; float min = MathF.Min(a, b), max = MathF.Max(a, b);
         for (int k = 0; k < 30; k++) { float m = (lo + hi) / 2; put(t, m); if ((MeasureNum(t, i) < want) == up) lo = m; else hi = m; } Snap(); put(D, (lo + hi) / 2); Changed(6); return want >= min - .5f && want <= max + .5f;
     }

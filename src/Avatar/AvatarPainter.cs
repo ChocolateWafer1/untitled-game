@@ -32,6 +32,18 @@ public sealed class Rig
         Torso = 29 * hs; float ar = M.Lerp(.9f, 1.1f, d.Arm), lg = M.Lerp(.88f, 1.12f, d.Leg);
         UArm = 16.8f * hs * ar; LArm = 15.2f * hs * ar; ArmR = (2.75f + f * .75f) * ws; ForeR = (2.35f + f * .5f) * ws; WristR = (1.75f + f * .25f) * ws; HandR = (2.45f + f * .15f) * ws;
         Thigh = 22f * hs * lg; Shin = 21.5f * hs * lg; ThighR = (4.6f + f * 1.2f + hi * .35f) * ws; KneeR = (3.3f + f * .7f) * ws; CalfR = (3.3f + f * .7f) * ws; AnkleR = (2.15f + f * .35f) * ws;
+        // past the old ends of the weight slider the body keeps going: much rounder and heavier, or much slimmer
+        float e = MathF.Max(0, w - 1.16f), t = MathF.Max(0, -.84f - w);
+        if (e > 0)
+        {
+            Waist += e * 9f * ws; Belly += e * 1.8f; Hip += e * 5f * ws; Chest += e * 3.6f * ws; ShX += e * 2.6f * ws; Neck += e * 1.5f * ws; HeadRx += e * .8f * hd; Fat += e * .5f;
+            ArmR += e * 1.7f * ws; ForeR += e * 1.25f * ws; WristR += e * .45f * ws; HandR += e * .25f * ws; ThighR += e * 6f * ws; KneeR += e * 3.6f * ws; CalfR += e * 3.4f * ws; AnkleR += e * .9f * ws;
+        }
+        if (t > 0)
+        {
+            Waist = MathF.Max(3.4f * ws, Waist - t * 4.5f * ws); Chest = MathF.Max(5.4f * ws, Chest - t * 2.8f * ws); Hip = MathF.Max(5f * ws, Hip - t * 3.2f * ws); ShX = MathF.Max(10f * ws, ShX - t * 1.8f * ws); Neck = MathF.Max(1.9f * ws, Neck - t * .9f * ws); HeadRx -= t * .4f * hd;
+            ArmR = MathF.Max(1.45f * ws, ArmR - t * 1.1f * ws); ForeR = MathF.Max(1.3f * ws, ForeR - t * .9f * ws); WristR = MathF.Max(1.15f * ws, WristR - t * .4f * ws); HandR = MathF.Max(2f * ws, HandR - t * .2f * ws); ThighR = MathF.Max(2.3f * ws, ThighR - t * 2.2f * ws); KneeR = MathF.Max(2f * ws, KneeR - t * .8f * ws); CalfR = MathF.Max(1.8f * ws, CalfR - t * 1.4f * ws); AnkleR = MathF.Max(1.45f * ws, AnkleR - t * .35f * ws);
+        }
         Total = AnkleH + Thigh + Shin + Torso + NeckLen + HeadRy * 2;
     }
     /// How much space the body takes up, from the same measurements it is drawn with.
@@ -104,6 +116,22 @@ public sealed partial class AvatarPainter
         shL = Tp(-sx2, sy); shR = Tp(sx2, sy);
         elL = shL + M.Dir(po.ArmL0, r.UArm); haL = elL + M.Dir(po.ArmL1, r.LArm);
         elR = shR + M.Dir(po.ArmR0, r.UArm); haR = elR + M.Dir(po.ArmR1, r.LArm);
+        if (po.Plant < .01f)
+        {
+            // hanging arms rest around a wide belly and hips rather than through them
+            float k = 1 - M.Clamp(at);
+            float Body(float up) => up >= 0 ? r.Half(up) : MathF.Max(r.Half(up), r.Hip * .52f + r.ThighR * .9f);
+            void Clear(float s, float a0, float a1, ref Vector2 el, ref Vector2 ha)
+            {
+                float hang0 = M.Clamp(1 - MathF.Abs(a0) / 1.1f) * k; if (hang0 <= 0) return;
+                float ex = s * sx2 + M.Sin(a0) * r.UArm, eu = sy - M.Cos(a0) * r.UArm, need = Body(eu) + r.ArmR * .85f, d = need - s * ex;
+                float b0 = a0, b1 = a1; if (d > 0) { float q = MathF.Asin(M.Clamp(d / r.UArm, 0, 1)) * hang0; b0 += s * q; b1 += s * q; }
+                float ex2 = s * sx2 + M.Sin(b0) * r.UArm, eu2 = sy - M.Cos(b0) * r.UArm, hx = ex2 + M.Sin(b1) * r.LArm, hu = eu2 - M.Cos(b1) * r.LArm, need2 = Body(hu) + r.ForeR * .8f, d2 = need2 - s * hx;
+                if (d2 > 0) b1 += s * MathF.Asin(M.Clamp(d2 / r.LArm, 0, 1)) * M.Clamp(1 - MathF.Abs(a1) / 1.1f) * k;
+                if (b0 == a0 && b1 == a1) return; var sh = s < 0 ? shL : shR; el = sh + M.Dir(b0, r.UArm); ha = el + M.Dir(b1, r.LArm);
+            }
+            Clear(-1, po.ArmL0, po.ArmL1, ref elL, ref haL); Clear(1, po.ArmR0, po.ArmR1, ref elR, ref haR);
+        }
         if (po.Plant > .01f)
         {
             // reach each wrist to its ground point with the elbow bending away from the body

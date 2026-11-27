@@ -267,7 +267,7 @@ public sealed partial class EditorScreen
     }
     void BodyTab(float x, float y, float w)
     {
-        (string n, Func<float> g, Action<float> s)[] sl = [("Height", () => D.Height, v => D.Height = v), ("Weight", () => D.Weight, v => D.Weight = v), ("Shoulders", () => D.Shoulder, v => D.Shoulder = v), ("Waist", () => D.Waist, v => D.Waist = v), ("Hips", () => D.Hip, v => D.Hip = v), ("Arm length", () => D.Arm, v => D.Arm = v), ("Leg length", () => D.Leg, v => D.Leg = v), ("Head size", () => D.Head, v => D.Head = v)];
+        (string n, Func<float> g, Action<float> s)[] sl = [("Height", () => D.Height, v => D.Height = v), ("Weight", () => AvatarData.WeightToSlider(D.Weight), v => D.Weight = AvatarData.SliderToWeight(v)), ("Shoulders", () => D.Shoulder, v => D.Shoulder = v), ("Waist", () => D.Waist, v => D.Waist = v), ("Hips", () => D.Hip, v => D.Hip = v), ("Arm length", () => D.Arm, v => D.Arm = v), ("Leg length", () => D.Leg, v => D.Leg = v), ("Head size", () => D.Head, v => D.Head = v)];
         for (int i = 0; i < sl.Length; i++)
         {
             float yy = y + 2 + i * 19; Font.Draw(sl[i].n, x + 2, yy, Ui.Ink); float v = sl[i].g(); if (Ui.Click && Ui.Over(x + 70, yy - 3, w - 100, 14)) Snap();
